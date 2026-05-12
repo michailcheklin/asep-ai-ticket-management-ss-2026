@@ -1,0 +1,14 @@
+---
+#
+# Expose Zammad via cloudflare.
+#
+
+services:
+  cloudflare-tunnel:
+    image: cloudflare/cloudflared
+    restart: ${RESTART:-always}
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN}
+  zammad-nginx:
+    ports: !reset []
