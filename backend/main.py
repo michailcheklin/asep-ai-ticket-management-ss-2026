@@ -1,0 +1,94 @@
+"""API für AI Ticket System; optionale Anbindung an Zammad (REST)."""
+import os
+from typing import Any
+
+import httpx
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI(title="AI Ticket API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+ZAMMAD_BASE = os.getenv("ZAMMAD_INTERNAL_URL", "http://localhost:8080").rstrip("/")
+ZAMMAD_TOKEN = os.getenv("ZAMMAD_API_TOKEN", "").strip()
+
+
+def _zammad_headers() -> dict[str, str]:
+    if not ZAMMAD_TOKEN:
+        return {}
+    return {"Authorization": f"Token token={ZAMMAD_TOKEN}"}
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+
+@app.get("/")
+def root():
+    return {"message": "AI Ticket Backend"}
+
+
+@app.get("/integrations/zammad/status")
+def zammad_status() -> dict[str, Any]:
+    """Prüft Erreichbarkeit und (falls gesetzt) API-Token gegen Zammad."""
+    out: dict[str, Any] = {
+        "base_url_configured": bool(ZAMMAD_BASE),
+        "base_url": ZAMMAD_BASE,
+        "token_configured": bool(ZAMMAD_TOKEN),
+        "reachable": False,
+        "api_ok": False,
+        "detail": None,
+    }
+    try:
+        with httpx.Client(timeout=8.0) as client:
+            ping = client.get(f"{ZAMMAD_BASE}/", follow_redirects=True)
+            out["reachable"] = ping.status_code < 500
+            if not ZAMMAD_TOKEN:
+                out["detail"] = "Setze ZAMMAD_API_TOKEN (Persönliches Zugangs-Token in Zammad) für API-Zugriff."
+                return out
+            me = client.get(f"{ZAMMAD_BASE}/api/v1/users/me", headers=_zammad_headers())
+            out["api_ok"] = me.status_code == 200
+            if me.status_code == 200:
+                data = me.json()
+                out["user"] = {"id": data.get("id"), "login": data.get("login")}
+            elif me.status_code == 401:
+                out["detail"] = "Zammad antwortet, aber Token abgelehnt (401)."
+            else:
+                out["detail"] = f"users/me HTTP {me.status_code}"
+    except httpx.RequestError as e:
+        out["detail"] = str(e)
+    return out
+
+
+@app.get("/integrations/zammad/tickets")
+def zammad_tickets(limit: int = 10) -> dict[str, Any]:
+    """Listet Tickets über die Zammad-API (benötigt ZAMMAD_API_TOKEN)."""
+    if not ZAMMAD_TOKEN:
+        raise HTTPException(
+            status_code=503,
+            detail="ZAMMAD_API_TOKEN ist nicht gesetzt.",
+        )
+    limit = max(1, min(limit, 100))
+    try:
+        with httpx.Client(timeout=15.0) as client:
+            r = client.get(
+                f"{ZAMMAD_BASE}/api/v1/tickets",
+                headers=_zammad_headers(),
+                params={"per_page": limit, "page": 1},
+            )
+            if r.status_code == 401:
+                raise HTTPException(status_code=502, detail="Zammad: ungültiger API-Token.")
+            r.raise_for_status()
+            return r.json()
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=502, detail=f"Zammad HTTP {e.response.status_code}") from e
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=502, detail=str(e)) from e
