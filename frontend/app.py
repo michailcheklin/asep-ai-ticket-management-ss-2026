@@ -37,3 +37,29 @@ with col2:
         st.error(f"Status nicht abrufbar: {e}")
 
 st.caption("Backend: `backend/main.py` · Tickets-API: `GET /integrations/zammad/tickets` (mit Token).")
+
+st.divider()
+
+st.header("Tickets")
+
+try:
+    ticket_response = requests.get(
+        f"{BACKEND_URL}/integrations/zammad/tickets",
+        timeout=10,
+    )
+    ticket_response.raise_for_status()
+    tickets = ticket_response.json()
+    if not tickets:
+        st.info("Keine Tickets gefunden.")
+    else:
+        for ticket in tickets:
+            with st.container(border=True):
+                st.subheader(f"#{ticket.get('number')} - {ticket.get('title')} - {ticket.get('description')}")
+
+                st.write(f"**ID:** {ticket.get('id')}")
+                st.write(f"**Status:** {ticket.get('state_id')}")
+                st.write(f"**Priorität:** {ticket.get('priority_id')}")
+                st.write(f"**Erstellt:** {ticket.get('created_at')}")
+
+except Exception as e:
+    st.error(f"Tickets konnten nicht geladen werden: {e}")

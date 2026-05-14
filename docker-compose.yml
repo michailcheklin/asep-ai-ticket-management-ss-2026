@@ -28,7 +28,7 @@ x-shared:
       AUTOWIZARD_JSON: ""
       AUTOWIZARD_RELATIVE_PATH: ""
       #Ich habe Elastic search deaktiviert
-      ELASTICSEARCH_ENABLED: false
+      ELASTICSEARCH_ENABLED:
       ELASTICSEARCH_SCHEMA:
       ELASTICSEARCH_HOST:
       ELASTICSEARCH_PORT:

@@ -80,7 +80,7 @@ def zammad_status() -> dict[str, Any]:
 # Tickets über die Zammad REST API abrufen
 # https://docs.zammad.org/en/latest/api/ticket/index.html
 @app.get("/integrations/zammad/tickets")
-def zammad_tickets(limit: int = 10) -> dict[str, Any]:
+def zammad_tickets(limit: int = 10) -> list[dict[str, Any]]:
     """Listet Tickets über die Zammad-API (benötigt ZAMMAD_API_TOKEN)."""
     if not ZAMMAD_TOKEN:
         raise HTTPException(
