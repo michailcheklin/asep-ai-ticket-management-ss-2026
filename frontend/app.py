@@ -40,26 +40,64 @@ st.caption("Backend: `backend/main.py` · Tickets-API: `GET /integrations/zammad
 
 st.divider()
 
-st.header("Tickets")
+col3, col4 = st.columns(2)
+with col3:
+    st.header("Tickets")
 
-try:
-    ticket_response = requests.get(
-        f"{BACKEND_URL}/integrations/zammad/tickets",
-        timeout=10,
-    )
-    ticket_response.raise_for_status()
-    tickets = ticket_response.json()
-    if not tickets:
-        st.info("Keine Tickets gefunden.")
-    else:
-        for ticket in tickets:
-            with st.container(border=True):
-                st.subheader(f"#{ticket.get('number')} - {ticket.get('title')} - {ticket.get('description')}")
+    try:
+        ticket_response = requests.get(
+            f"{BACKEND_URL}/integrations/zammad/tickets",
+            timeout=10,
+        )
+        ticket_response.raise_for_status()
+        tickets = ticket_response.json()
+        if not tickets:
+            st.info("Keine Tickets gefunden.")
+        else:
+            for ticket in tickets:
+                with st.container(border=True):
+                    st.subheader(f"#{ticket.get('number')} - {ticket.get('title')} - {ticket.get('description')}")
 
-                st.write(f"**ID:** {ticket.get('id')}")
-                st.write(f"**Status:** {ticket.get('state_id')}")
-                st.write(f"**Priorität:** {ticket.get('priority_id')}")
-                st.write(f"**Erstellt:** {ticket.get('created_at')}")
+                    st.write(f"**ID:** {ticket.get('id')}")
+                    st.write(f"**Status:** {ticket.get('state_id')}")
+                    st.write(f"**Priorität:** {ticket.get('priority_id')}")
+                    st.write(f"**Erstellt:** {ticket.get('created_at')}")
 
-except Exception as e:
-    st.error(f"Tickets konnten nicht geladen werden: {e}")
+    except Exception as e:
+        st.error(f"Tickets konnten nicht geladen werden: {e}")
+
+with col4:
+    st.header("Neues Ticket erstellen")
+
+    with st.form("ticket_form"):
+
+        customer = st.text_input("Customer Email")
+        title = st.text_input("Titel")
+        description = st.text_area("Beschreibung")
+
+
+        submitted = st.form_submit_button("Ticket erstellen")
+
+        if submitted:
+
+            try:
+                response = requests.post(
+                    f"{BACKEND_URL}/integrations/zammad/tickets",
+                    json={
+                        "title": title,
+                        "description": description,
+                        "customer": customer,
+                    },
+                    timeout=10,
+                )
+
+                response.raise_for_status()
+
+                created_ticket = response.json()
+
+                st.success(
+                    f"Ticket erfolgreich erstellt: #{created_ticket.get('number')}"
+                )
+
+            except Exception as e:
+                st.error(f"Ticket konnte nicht erstellt werden: {e}")

@@ -6,6 +6,8 @@ import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
+from pydantic import BaseModel
+
 app = FastAPI(title="AI Ticket API")
 
 # Erlaubt Frontend-Zugriffe (z. B. Streamlit oder React) auf die API
@@ -22,6 +24,12 @@ ZAMMAD_BASE = (os.getenv("ZAMMAD_INTERNAL_URL", "http://localhost:8080")
                .rstrip("/"))
 # Liest das persönliche API-Token für die Zammad-Authentifizierung
 ZAMMAD_TOKEN = os.getenv("ZAMMAD_API_TOKEN", "").strip()
+
+
+class TicketCreate(BaseModel):
+    title: str
+    description: str
+    customer: str
 
 
 # Zammad API Authentication via HTTP Token
@@ -103,3 +111,50 @@ def zammad_tickets(limit: int = 10) -> list[dict[str, Any]]:
         raise HTTPException(status_code=502, detail=f"Zammad HTTP {e.response.status_code}") from e
     except httpx.RequestError as e:
         raise HTTPException(status_code=502, detail=str(e)) from e
+
+
+
+
+@app.post("/integrations/zammad/tickets")
+def create_zammad_ticket(ticket: TicketCreate) -> dict[str, Any]:
+    """Erstellt ein neues Ticket in Zammad."""
+
+    if not ZAMMAD_TOKEN:
+        raise HTTPException(
+            status_code=503,
+            detail="ZAMMAD_API_TOKEN ist nicht gesetzt.",
+        )
+
+    payload = {
+        "title": ticket.title,
+        "group_id": 1,
+        "customer": ticket.customer,
+        "article": {
+            "subject": ticket.title,
+            "body": ticket.description,
+            "type": "note",
+            "internal": False,
+        },
+    }
+
+    try:
+        with httpx.Client(timeout=15.0) as client:
+            response = client.post(
+                f"{ZAMMAD_BASE}/api/v1/tickets",
+                headers=_zammad_headers(),
+                json=payload,
+            )
+
+        if response.status_code >= 400:
+            raise HTTPException(
+                status_code=response.status_code,
+                detail=response.text,
+            )
+
+        return response.json()
+
+    except httpx.RequestError as e:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Verbindungsfehler zu Zammad: {str(e)}",
+        ) from e
