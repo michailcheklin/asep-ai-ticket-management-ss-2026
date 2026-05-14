@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(title="AI Ticket API")
 
+# Erlaubt Frontend-Zugriffe (z. B. Streamlit oder React) auf die API
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -16,29 +17,38 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-ZAMMAD_BASE = os.getenv("ZAMMAD_INTERNAL_URL", "http://localhost:8080").rstrip("/")
+# Liest die interne Zammad-URL aus den Docker-/Systemvariablen
+ZAMMAD_BASE = (os.getenv("ZAMMAD_INTERNAL_URL", "http://localhost:8080")
+               .rstrip("/"))
+# Liest das persönliche API-Token für die Zammad-Authentifizierung
 ZAMMAD_TOKEN = os.getenv("ZAMMAD_API_TOKEN", "").strip()
 
 
+# Zammad API Authentication via HTTP Token
+#https://docs.zammad.org/en/latest/api/intro.html#authentication
 def _zammad_headers() -> dict[str, str]:
     if not ZAMMAD_TOKEN:
         return {}
     return {"Authorization": f"Token token={ZAMMAD_TOKEN}"}
 
 
+# Einfacher Health-Check für Docker, Monitoring oder Tests
 @app.get("/health")
 def health():
     return {"status": "ok"}
 
 
+# Basis-Endpunkt der API
 @app.get("/")
 def root():
     return {"message": "AI Ticket Backend"}
 
 
+# Endpoint zum Prüfen der Zammad-Verbindung und API-Erreichbarkeit
+#https://docs.zammad.org/en/latest/api/intro.html#endpoints-and-example-data
 @app.get("/integrations/zammad/status")
 def zammad_status() -> dict[str, Any]:
-    """Prüft Erreichbarkeit und (falls gesetzt) API-Token gegen Zammad."""
+    """Prüft die Erreichbarkeit von Zammad und validiert optional das API-Token."""
     out: dict[str, Any] = {
         "base_url_configured": bool(ZAMMAD_BASE),
         "base_url": ZAMMAD_BASE,
@@ -67,7 +77,8 @@ def zammad_status() -> dict[str, Any]:
         out["detail"] = str(e)
     return out
 
-
+# Tickets über die Zammad REST API abrufen
+# https://docs.zammad.org/en/latest/api/ticket/index.html
 @app.get("/integrations/zammad/tickets")
 def zammad_tickets(limit: int = 10) -> dict[str, Any]:
     """Listet Tickets über die Zammad-API (benötigt ZAMMAD_API_TOKEN)."""
@@ -76,13 +87,13 @@ def zammad_tickets(limit: int = 10) -> dict[str, Any]:
             status_code=503,
             detail="ZAMMAD_API_TOKEN ist nicht gesetzt.",
         )
-    limit = max(1, min(limit, 100))
+    limit = max(1, min(limit, 100))     # Begrenzung des Limits zum Schutz vor zu großen API-Anfragen
     try:
         with httpx.Client(timeout=15.0) as client:
             r = client.get(
                 f"{ZAMMAD_BASE}/api/v1/tickets",
                 headers=_zammad_headers(),
-                params={"per_page": limit, "page": 1},
+                params={"per_page": limit, "page": 1},  # Lädt die erste Seite der Tickets mit begrenzter Anzahl
             )
             if r.status_code == 401:
                 raise HTTPException(status_code=502, detail="Zammad: ungültiger API-Token.")
