@@ -1,5 +1,13 @@
 # ai-ticket-management
 
+## Endpoints
+
+* ollama:           http://ollama:11434
+* Zammad-Frontend:  http://localhost:8080
+* Zammad-API:  http://localhost:8080/api/v1/...
+* streamlit:        http://localhost:8501
+* fastapi:          http://localhost:8000
+
 
 
 ## Getting started
