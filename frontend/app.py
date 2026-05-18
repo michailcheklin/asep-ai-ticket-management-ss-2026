@@ -1,5 +1,5 @@
 import streamlit as st
-
+import re
 
 # SPÄTERE BACKEND-/ZAMMAD-ANBINDUNG
 # Aktuell auskommentiert, da zunächst nur die Chatbot-
@@ -14,9 +14,9 @@ st.title("Support-Annahme über ZIM Helper")
 st.caption("Dein digitaler Assistent für Support-Anfragen")
 
 st.subheader("Deine Kontaktdaten")
-# TODO: Pflichtfelder noch prüfen bzw Validierung einbauen. 
-email = st.text_input("E-Mail-Adresse *")
-matrikelnummer = st.text_input("Matrikelnummer *")
+
+email = st.text_input("E-Mail-Adresse *", key="email_input" )
+matrikelnummer = st.text_input("Matrikelnummer *",  key="matrikelnummer_input" )
 
 st.divider()
 
@@ -34,7 +34,25 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.write(message["content"])
 
-user_input = st.chat_input("Beschreibe dein Anliegen...")
+# Prüfung, ob eine gültige E-Mail-Adresse und eine
+# gültige Matrikelnummer (Nur Zahlen) eingegeben wurde
+is_email_valid = bool(re.match(pattern=r"[a-zA-Z0-9\._-]+@[a-zA-Z0-9\._-]+\.[a-zA-Z0-9\._-]+", string=st.session_state["email_input"]))
+is_matrikelnummer_valid = bool(re.match(pattern=r"[0-9]+", string=st.session_state["matrikelnummer_input"]))
+
+# Ist die Matrikelnummer oder die E-Mail-Adresse
+# ungültig, kann der Benutzer keine Nachrichten an den Chatbot schreiben
+# denn sonst kann ein mögliches Ticket keiner Person zugeordnet werden
+# und das ZIM-Team kann keine Nachfragen per E-Mail stellen
+if not (is_email_valid and is_matrikelnummer_valid):
+    user_input = st.chat_input(
+        disabled=True,
+        placeholder="Bitte E-Mail-Adresse und Matrikelnummer eingeben",
+    )
+else:
+    user_input = st.chat_input(
+        disabled=False,
+        placeholder="Beschreibe dein Anliegen..."
+    )
 
 if user_input:
     st.session_state.messages.append(
