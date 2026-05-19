@@ -101,6 +101,13 @@ services:
       backend_app:
         condition: service_healthy
 
+  mailpit:
+    image: axllent/mailpit
+    restart: always
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
   zammad-backup:
     <<: *zammad-service
     command: ["zammad-backup"]
