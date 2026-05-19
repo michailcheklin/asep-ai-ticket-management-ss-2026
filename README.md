@@ -2,11 +2,17 @@
 
 ## Endpoints
 
-* ollama:           http://ollama:11434
-* Zammad-Frontend:  http://localhost:8080
-* Zammad-API:  http://localhost:8080/api/v1/...
-* streamlit:        http://localhost:8501
-* fastapi:          http://localhost:8000
+* Zammad Frontend:              http://localhost:8080
+* Zammad API:                   http://localhost:8080/api/v1/
+* Frontend App (Streamlit):     http://localhost:8501
+* Backend API (FastAPI):        http://localhost:8000
+* Mailpit UI:                   http://localhost:8025
+* Mailpit SMTP:                 localhost:1025
+
+## Run the Project
+```bash
+docker-compose --project-directory . -f zammad\docker-compose.yml -f docker-compose.yml up -d
+  ```
 
 
 
