@@ -1,0 +1,18 @@
+from typing import Annotated, TypedDict
+from langgraph.graph.message import add_messages
+
+
+class ChatbotState(TypedDict):
+    """
+    Defines the structured data schema the Chatbot is working with
+    """
+    # add_messages sorgt dafür, dass neue Chat-Nachrichten immer an die Liste angehängt werden
+    messages: Annotated[list, add_messages]
+
+    # Hier speichern wir die extrahierten Daten für Zammad
+    customer_name: str
+    matrikelnummer: str
+    issue_description: str
+
+    # Ein Signal für das Frontend, dass wir alle Daten haben
+    is_complete: bool
