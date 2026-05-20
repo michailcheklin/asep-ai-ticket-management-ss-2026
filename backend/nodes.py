@@ -1,7 +1,7 @@
 from typing import Optional, cast
 from pydantic import BaseModel, Field
 from langchain_ollama import ChatOllama
-from langchain_core.messages import SystemMessage, HumanMessage
+from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from state import ChatbotState
 
 # temperature 0.2 for less hallucination
@@ -12,7 +12,7 @@ class ExtractedTicketData(BaseModel):
     """
     Schema defining the structured ticket data to be extracted from user messages
     """
-    name: Optional[str] = Field(None, description="Der vollständige Vor- und Nachname des Users, falls genannt.")
+    email: Optional[str] = Field(None, description="Die E-Mail-Adresse des Users. Nur ausfüllen, wenn sie ein @-Zeichen enthält.")
     matrikelnummer: Optional[str] = Field(None,
                                           description="Die 7-stellige Matrikelnummer des Studenten, falls genannt.")
     problem: Optional[str] = Field(None, description="Das IT-Problem (z.B. 'WLAN geht nicht', 'Passwort vergessen', 'Moodle lädt nicht'). Auch kurze, umgangssprachliche Sätze zählen!")
@@ -32,7 +32,7 @@ def extract_information(state: ChatbotState):
 
     system_prompt = (
         "Du bist ein präziser Daten-Extraktor. Lies den Text des Users. "
-        "Finde den Namen, die Matrikelnummer und das IT-Problem. "
+        "Finde die email, die Matrikelnummer und das IT-Problem. "
         "Beispiele für ein Problem: 'Ich habe kein Internet', 'Mein Account ist gesperrt', 'WLAN kaputt'. "
         "WICHTIG: Wenn eine Information fehlt, setze das Feld zwingend auf null. Erfinde absolut nichts dazu!"
     )
@@ -45,8 +45,8 @@ def extract_information(state: ChatbotState):
 
     state_update = {}
 
-    if extracted_data.name:
-        state_update["customer_name"] = extracted_data.name
+    if extracted_data.email:
+        state_update["user_email"] = extracted_data.email
     if extracted_data.matrikelnummer:
         state_update["matrikelnummer"] = extracted_data.matrikelnummer
     if extracted_data.problem:
@@ -56,15 +56,15 @@ def extract_information(state: ChatbotState):
 
 
 
-def ask_for_name(state: ChatbotState):
+def ask_for_email(state: ChatbotState):
     """
-    Queries Llama 3.2 to politely ask the user for their missing name
+    Queries Llama 3.2 to politely ask the user for their missing email
     :param state: The current conversation and ticket state
     :return: A dictionary containing the newly extracted fields to update the state.
     """
     system_prompt = SystemMessage(content=(
-        "Du bist ein IT-Support-Bot. Dir fehlt noch der Vor- und Nachname des Users. "
-        "Frage kurz und höflich nach dem vollständigen Namen. Beantworte keine anderen Fragen "
+        "Du bist ein IT-Support-Bot. Dir fehlt noch die email des Users. "
+        "Frage kurz und höflich nach der Uni email Adresse. Beantworte keine anderen Fragen "
         "und wechsle nicht das Thema."
     ))
 
@@ -110,12 +110,50 @@ def ask_for_issue(state: ChatbotState):
 
 def finish_ticket(state: ChatbotState):
     """
-    Called when all information is collected. Prints a final message for the user
+    Finalizes the ticket creation process by generating a concise title
+    and preparing the payload for the Zammad API.
     """
+    # 1. KI generiert einen kurzen Titel aus der Problembeschreibung
+    title_prompt = (
+        f"Du bist ein IT-Support-Assistent. Fasse das folgende Problem in maximal "
+        f"4-5 Worten als Ticket-Betreff zusammen. Antworte NUR mit dem Betreff, ohne Anführungszeichen:\n"
+        f"{state['issue_description']}"
+    )
+    title_response = llm.invoke([HumanMessage(content=title_prompt)])
+    generated_title = title_response.content.strip()
 
-    final_message = SystemMessage(
-        content="Vielen Dank! Ich habe alle Daten erfasst. Ihr Ticket wird nun in Zammad erstellt."
+    # 2. Daten für Zammad formatieren (Matrikelnummer kommt in Titel UND Body für maximale Sichtbarkeit)
+    zammad_title = f"[{state['matrikelnummer']}] {generated_title}"
+    zammad_body = (
+        f"Matrikelnummer: {state['matrikelnummer']}\n"
+        f"E-Mail: {state['user_email']}\n\n"
+        f"Problembeschreibung des Nutzers:\n"
+        f"{state['issue_description']}"
     )
 
-    # Wir setzen is_complete auf True, was für das Frontend wichtig ist
-    return {"messages": [final_message], "is_complete": True}
+    # 3. Zammad API Aufruf (Vorab-Integration / Mock)
+    # -------------------------------------------------------------------------
+    # from zammad_api import create_ticket_by_user_email  <-- Später einkommentieren
+    #
+    # try:
+    #     create_ticket_by_user_email(
+    #         email=state["user_email"],
+    #         title=zammad_title,
+    #         body=zammad_body
+    #     )
+    #     final_message = "Perfekt! Dein Ticket wurde erfolgreich in Zammad erstellt. Ein Supporter meldet sich bald bei dir."
+    # except Exception as e:
+    #     final_message = "Dein Ticket ist fertiggestellt, aber es gab ein Problem bei der Übermittlung an Zammad. Bitte versuche es später noch einmal."
+    # -------------------------------------------------------------------------
+
+    # Für Sprint 1 (solange die API noch nicht aktiv ist):
+    final_message = (
+        f"Ticket erfolgreich vorbereitet!\n"
+        f"Titel: {zammad_title}\n"
+        f"Body: {zammad_body}"
+    )
+
+    return {
+        "messages": [AIMessage(content=final_message)],
+        "is_complete": True
+    }

@@ -13,7 +13,7 @@ class ChatRequest(BaseModel):
     """
     user_message: str
     history: List[Dict[str, str]]  # Format: [{"role": "user", "content": "Hallo"}, {"role": "bot", "content": "Hi"}]
-    customer_name: str = ""
+    user_email: str = ""
     matrikelnummer: str = ""
     issue_description: str = ""
 
@@ -37,7 +37,7 @@ async def chat_endpoint(request: ChatRequest):
 
     current_state = {
         "messages": langchain_messages,
-        "customer_name": request.customer_name,
+        "user_email": request.user_email,
         "matrikelnummer": request.matrikelnummer,
         "issue_description": request.issue_description,
         "is_complete": False
@@ -47,7 +47,7 @@ async def chat_endpoint(request: ChatRequest):
     bot_response = updated_state["messages"][-1].content
     return {
         "bot_response": bot_response,
-        "customer_name": updated_state.get("customer_name", ""),
+        "user_email": updated_state.get("user_email", ""),
         "matrikelnummer": updated_state.get("matrikelnummer", ""),
         "issue_description": updated_state.get("issue_description", ""),
         "is_complete": updated_state.get("is_complete", False)

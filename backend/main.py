@@ -4,7 +4,7 @@ from langchain_core.messages import HumanMessage
 from state import ChatbotState
 from nodes import (
     extract_information,
-    ask_for_name,
+    ask_for_email,
     ask_for_matrikelnummer,
     ask_for_issue,
     finish_ticket
@@ -15,8 +15,8 @@ def route_based_on_state(state: ChatbotState):
     """
     Checks state and decides which node is called next. Depended on missing relevant information
     """
-    if not state.get("customer_name"):
-        return "ask_name_node"
+    if not state.get("user_email"):
+        return "ask_email_node"
 
     elif not state.get("matrikelnummer"):
         return "ask_matrikel_node"
@@ -34,7 +34,7 @@ workflow = StateGraph(ChatbotState)
 
 # Register all functional nodes within the workflow
 workflow.add_node("extractor_node", extract_information)
-workflow.add_node("ask_name_node", ask_for_name)
+workflow.add_node("ask_email_node", ask_for_email)
 workflow.add_node("ask_matrikel_node", ask_for_matrikelnummer)
 workflow.add_node("ask_issue_node", ask_for_issue)
 workflow.add_node("finish_node", finish_ticket)
@@ -48,7 +48,7 @@ workflow.add_conditional_edges(
     route_based_on_state
 )
 
-workflow.add_edge("ask_name_node", END)
+workflow.add_edge("ask_email_node", END)
 workflow.add_edge("ask_matrikel_node", END)
 workflow.add_edge("ask_issue_node", END)
 workflow.add_edge("finish_node", END)
@@ -68,7 +68,7 @@ def run_local_chat():
 
     current_state = {
         "messages": [],
-        "customer_name": "",
+        "user_email": "",
         "matrikelnummer": "",
         "issue_description": "",
         "is_complete": False
@@ -86,7 +86,7 @@ def run_local_chat():
         bot_response = current_state["messages"][-1].content
         print(f"Bot: {bot_response}")
         print(
-            f"   [DEBUG STATE] Name: {current_state.get('customer_name')} | Matrikel: {current_state.get('matrikelnummer')} | Problem: {current_state.get('issue_description')}")
+            f"   [DEBUG STATE] email: {current_state.get('user_email')} | Matrikel: {current_state.get('matrikelnummer')} | Problem: {current_state.get('issue_description')}")
 
         if current_state.get("is_complete"):
             print("\n🎉 [SYSTEM]: backend feuert API-Call an Zammad!")

@@ -10,7 +10,7 @@ class ChatbotState(TypedDict):
     messages: Annotated[list, add_messages]
 
     # Hier speichern wir die extrahierten Daten für Zammad
-    customer_name: str
+    user_email: str
     matrikelnummer: str
     issue_description: str
 
