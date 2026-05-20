@@ -56,3 +56,42 @@ workflow.add_edge("finish_node", END)
 # Compile the graph architecture into an executable LangGraph application
 app = workflow.compile()
 
+def run_local_chat():
+    """
+        Provides a local terminal interface to test the chatbot workflow
+        without running the FastAPI server or an external frontend
+    """
+    print("\n========================================================")
+    print("🤖 IT-Support Bot V2 (Spoon-Feeding) gestartet")
+    print("Tippe 'exit' zum Beenden")
+    print("========================================================\n")
+
+    current_state = {
+        "messages": [],
+        "customer_name": "",
+        "matrikelnummer": "",
+        "issue_description": "",
+        "is_complete": False
+    }
+
+    print("Bot: Hallo! Willkommen beim IT-Support. Wie kann ich dir heute helfen?")
+
+    while True:
+        user_input = input("\nDu: ")
+        if user_input.lower() in ["exit", "quit", "q"]:
+            break
+
+        current_state["messages"].append(HumanMessage(content=user_input))
+        current_state = app.invoke(current_state)
+        bot_response = current_state["messages"][-1].content
+        print(f"Bot: {bot_response}")
+        print(
+            f"   [DEBUG STATE] Name: {current_state.get('customer_name')} | Matrikel: {current_state.get('matrikelnummer')} | Problem: {current_state.get('issue_description')}")
+
+        if current_state.get("is_complete"):
+            print("\n🎉 [SYSTEM]: Backend feuert API-Call an Zammad!")
+            break
+
+
+if __name__ == "__main__":
+    run_local_chat()
