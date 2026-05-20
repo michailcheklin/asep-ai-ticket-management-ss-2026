@@ -1,11 +1,18 @@
+import os
 from typing import Optional, cast
 from pydantic import BaseModel, Field
 from langchain_ollama import ChatOllama
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from state import ChatbotState
 
+ollama_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+
 # temperature 0.2 for less hallucination
-llm = ChatOllama(model="llama3.2", temperature=0.2)
+llm = ChatOllama(
+    model="llama3.2",
+    temperature=0.2,
+    base_url=ollama_url  # <-- Diese Zeile hinzufügen / anpassen
+)
 
 
 class ExtractedTicketData(BaseModel):
