@@ -113,7 +113,6 @@ def finish_ticket(state: ChatbotState):
     Finalizes the ticket creation process by generating a concise title
     and preparing the payload for the Zammad API.
     """
-    # 1. KI generiert einen kurzen Titel aus der Problembeschreibung
     title_prompt = (
         f"Du bist ein IT-Support-Assistent. Fasse das folgende Problem in maximal "
         f"4-5 Worten als Ticket-Betreff zusammen. Antworte NUR mit dem Betreff, ohne Anführungszeichen:\n"
@@ -122,7 +121,6 @@ def finish_ticket(state: ChatbotState):
     title_response = llm.invoke([HumanMessage(content=title_prompt)])
     generated_title = title_response.content.strip()
 
-    # 2. Daten für Zammad formatieren (Matrikelnummer kommt in Titel UND Body für maximale Sichtbarkeit)
     zammad_title = f"[{state['matrikelnummer']}] {generated_title}"
     zammad_body = (
         f"Matrikelnummer: {state['matrikelnummer']}\n"
@@ -131,9 +129,9 @@ def finish_ticket(state: ChatbotState):
         f"{state['issue_description']}"
     )
 
-    # 3. Zammad API Aufruf (Vorab-Integration / Mock)
-    # -------------------------------------------------------------------------
-    # from zammad_api import create_ticket_by_user_email  <-- Später einkommentieren
+    # Zammad API Aufruf (Mock)
+
+    # from zammad_api import create_ticket_by_user_email
     #
     # try:
     #     create_ticket_by_user_email(
@@ -144,9 +142,8 @@ def finish_ticket(state: ChatbotState):
     #     final_message = "Perfekt! Dein Ticket wurde erfolgreich in Zammad erstellt. Ein Supporter meldet sich bald bei dir."
     # except Exception as e:
     #     final_message = "Dein Ticket ist fertiggestellt, aber es gab ein Problem bei der Übermittlung an Zammad. Bitte versuche es später noch einmal."
-    # -------------------------------------------------------------------------
 
-    # Für Sprint 1 (solange die API noch nicht aktiv ist):
+    # Solange die API noch nicht aktiv ist
     final_message = (
         f"Ticket erfolgreich vorbereitet!\n"
         f"Titel: {zammad_title}\n"
