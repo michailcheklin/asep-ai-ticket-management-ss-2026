@@ -1,6 +1,6 @@
 # Chatbot Backend
 
-DThis is the backend code for the chatbot, based on LangGraph and FastAPI.
+This is the backend code for the chatbot, based on LangGraph and FastAPI.
 
 ## 1. Prerequisites
 
@@ -9,7 +9,12 @@ DThis is the backend code for the chatbot, based on LangGraph and FastAPI.
   ```bash
   ollama pull llama3.2
   
-## 2. Installation
+## 2. Installation & Setup
+* switch to right directory
+  ```bash
+  cd backend
+* Make sure you are operating within a Python Virtual Environment 
+(indicated by `(.venv)` at the beginning of your terminal prompt)
 * Install all required Python dependencies using the following command:
   ```bash
   pip install -r requirements.txt
@@ -24,7 +29,7 @@ DThis is the backend code for the chatbot, based on LangGraph and FastAPI.
   Strg + C/Control + C
 
 ## 4. API Interface
-* Post /chat
+* POST /chat
 * This endpoint processes the user's input and communicates with the AI model
 ### Expected Request
 ```json
