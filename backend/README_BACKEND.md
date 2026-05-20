@@ -1,25 +1,30 @@
 # Chatbot Backend
 
 This is the backend code for the chatbot, based on LangGraph and FastAPI.
-
-## 1. Prerequisites
-
-* **Ollama** must be installed on your system and running in the background.
-* Download the required language model once via your terminal:
-  ```bash
-  ollama pull llama3.2
   
-## 2. Installation & Setup
-* switch to right directory
+## 1. Installation & Setup
+* The chatbot relies on Zammad and the included Ollama container running within a Docker. 
+Therefore, these containers need to by started by:
+
+```bash
+$ cd zammad
+```
+and then:
+```bash
+docker compose -f docker-compose.yml -f scenarios/add-ollama.yml up -d
+```
+* after that switch to backend directory
   ```bash
-  cd backend
+  cd ../backend
+  ```
 * Make sure you are operating within a Python Virtual Environment 
 (indicated by `(.venv)` at the beginning of your terminal prompt)
 * Install all required Python dependencies using the following command:
   ```bash
   pip install -r requirements.txt
+  ```
   
-## 3. Starting the Local Server
+## 2. Starting the Local Server
 * Start the local FastAPI server via your terminal:
   ```bash 
   uvicorn api:app --reload
@@ -28,7 +33,7 @@ This is the backend code for the chatbot, based on LangGraph and FastAPI.
   ``` 
   Strg + C/Control + C
 
-## 4. API Interface
+## 3. API Interface
 * POST /chat
 * This endpoint processes the user's input and communicates with the AI model
 ### Expected Request
@@ -68,7 +73,7 @@ This is the backend code for the chatbot, based on LangGraph and FastAPI.
       "content": "Das tut mir leid. Um ein Ticket zu erstellen, benötige ich noch deine email und deine Matrikelnummer."
     }
   ],
-  "customer_name": "",
+  "customer_email": "",
   "matrikelnummer": "",
   "issue_description": "WLAN funktioniert nicht"
 }
