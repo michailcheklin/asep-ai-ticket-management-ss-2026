@@ -36,7 +36,7 @@ This is the backend code for the chatbot, based on LangGraph and FastAPI.
 {
   "user_message": "Meine Nachricht an den Bot",
   "history": [],
-  "customer_name": "",
+  "user_email": "",
   "matrikelnummer": "",
   "issue_description": ""
 }
@@ -46,18 +46,18 @@ This is the backend code for the chatbot, based on LangGraph and FastAPI.
 ```json
 {
   "bot_response": "Antwort der KI auf die Nachricht",
-  "customer_name": "abc",
+  "user_email": "abc",
   "matrikelnummer": "123",
   "issue_description": "WLAN funktioniert nicht",
   "is_complete": false
 }
 ```
-* The Fields **customer_name**, **matrikelnummer** and **issue_description** will be populated if this information was present in a message from the user
+* The Fields **user_email**, **matrikelnummer** and **issue_description** will be populated if this information was present in a message from the user
 
 ### Example of a Request with Populated History
 ```json
 {
-  "user_message": "Mein Name ist Peter und meine Matrikelnummer lautet 1234567.",
+  "user_message": "Meine email ist abc@stud.uni-due.de und meine Matrikelnummer lautet 1234567.",
   "history": [
     {
       "role": "user",
@@ -65,7 +65,7 @@ This is the backend code for the chatbot, based on LangGraph and FastAPI.
     },
     {
       "role": "bot",
-      "content": "Das tut mir leid. Um ein Ticket zu erstellen, benötige ich noch deinen Namen und deine Matrikelnummer."
+      "content": "Das tut mir leid. Um ein Ticket zu erstellen, benötige ich noch deine email und deine Matrikelnummer."
     }
   ],
   "customer_name": "",
