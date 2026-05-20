@@ -10,11 +10,20 @@
 * Mailpit SMTP:                 localhost:1025
 
 ## Run the Project
+### Start Zammad + Backend + Frontend
 ```bash
-docker-compose --project-directory . -f zammad\docker-compose.yml -f docker-compose.yml up -d
+docker compose -f docker-compose.yml -f zammad/docker-compose.yml up -d
+
+Older Docker Compose version:
+docker-compose -f zammad\docker-compose.yml -f docker-compose.yml up -d
   ```
+### Start Zammad + Backend + Frontend + Ollama
+```bash
+docker compose -f docker-compose.yml -f zammad/docker-compose.yml -f zammad/scenarios/add-ollama.yml up -d
 
-
+Older Docker Compose version:
+docker-compose -f docker-compose.yml -f zammad/docker-compose.yml -f zammad/scenarios/add-ollama.yml up -d
+  ```
 
 ## Getting started
 
