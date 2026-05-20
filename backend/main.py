@@ -89,7 +89,7 @@ def run_local_chat():
             f"   [DEBUG STATE] Name: {current_state.get('customer_name')} | Matrikel: {current_state.get('matrikelnummer')} | Problem: {current_state.get('issue_description')}")
 
         if current_state.get("is_complete"):
-            print("\n🎉 [SYSTEM]: Backend feuert API-Call an Zammad!")
+            print("\n🎉 [SYSTEM]: backend feuert API-Call an Zammad!")
             break
 
 
