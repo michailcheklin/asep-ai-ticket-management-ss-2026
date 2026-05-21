@@ -8,6 +8,7 @@
 * Backend API (FastAPI):        http://localhost:8000
 * Mailpit UI:                   http://localhost:8025
 * Mailpit SMTP:                 localhost:1025
+* Flask (fake Shibboleth login) http://localhost:5000
 
 ## Run the Project
 ### Start Zammad + Backend + Frontend
