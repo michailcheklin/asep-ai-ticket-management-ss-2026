@@ -127,32 +127,3 @@ if user_input:
 #             "und leite dein Anliegen weiter."
 #         )
 
-
-# Ticket manuell erstellen
-# (2. Idee wäre eher ein Schritt zurück.
-# Daher vielleicht doch eher die 1. Idee,
-# die eine manuelle Eingabe integriert.)
-# st.divider()
-# st.subheader("Kommst du mit dem Chatbot nicht weiter?")
-# st.write("Dann kannst du hier alternativ direkt ein Ticket erstellen.")
-#
-# if st.button("Ticket manuell erstellen"):
-#
-#     if not email or not matrikelnummer:
-#         st.error("Bitte E-Mail-Adresse und Matrikelnummer ausfüllen.")
-#
-#     else:
-#         body = "\n\n".join(
-#             [
-#                 f"{message['role']}: {message['content']}"
-#                 for message in st.session_state.messages
-#             ]
-#         )
-#
-#         create_ticket_by_user_email(
-#             email=email,
-#             title=f"Support-Anfrage von {matrikelnummer}",
-#             body=body
-#         )
-#
-#         st.success("Ticket wurde erfolgreich erstellt.")
