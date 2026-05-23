@@ -36,8 +36,8 @@ for message in st.session_state.messages:
 
 # Prüfung, ob eine gültige E-Mail-Adresse und eine
 # gültige Matrikelnummer (Nur Zahlen) eingegeben wurde
-is_email_valid = bool(re.match(pattern=r"[a-zA-Z0-9\._-]+@[a-zA-Z0-9\._-]+\.[a-zA-Z0-9\._-]+", string=st.session_state["email_input"]))
-is_matrikelnummer_valid = bool(re.match(pattern=r"[0-9]+", string=st.session_state["matrikelnummer_input"]))
+is_email_valid = bool(re.fullmatch(pattern=r"[a-zA-Z0-9\._-]+@[a-zA-Z0-9\._-]+\.[a-zA-Z0-9\._-]+", string=st.session_state["email_input"]))
+is_matrikelnummer_valid = bool(re.fullmatch(pattern=r"[0-9]+", string=st.session_state["matrikelnummer_input"]))
 
 # Ist die Matrikelnummer oder die E-Mail-Adresse
 # ungültig, kann der Benutzer keine Nachrichten an den Chatbot schreiben
