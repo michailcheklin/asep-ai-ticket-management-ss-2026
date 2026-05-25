@@ -1,0 +1,37 @@
+services:
+  backend_app:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      ZAMMAD_INTERNAL_URL: http://zammad-nginx:8080
+      ZAMMAD_API_TOKEN: ${ZAMMAD_API_TOKEN:-}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  frontend_app:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "8501:8501"
+      - "5000:5000"
+    environment:
+      BACKEND_URL: http://backend_app:8000
+      ZAMMAD_UI_URL: http://localhost:8080
+    depends_on:
+      backend_app:
+        condition: service_healthy
+
+  mailpit:
+    image: axllent/mailpit
+    restart: always
+    ports:
+      - "1025:1025"
+      - "8025:8025"
