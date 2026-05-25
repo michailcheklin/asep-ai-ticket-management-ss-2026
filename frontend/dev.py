@@ -16,25 +16,20 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 flask_proc = subprocess.Popen(
     [sys.executable, os.path.join(ROOT, "fake_idp.py")],
     env={**os.environ},
-) # nosec B603
-# "nosec B603" tells teamscale that the security issues that may arise by using 
-# a subprocess ahve been reviewed and do not represent a security threat since it
-# does not take any user inputs.
+)
 time.sleep(1)
 
 streamlit_proc = subprocess.Popen(
     [sys.executable, "-m", "streamlit", "run",
      os.path.join(ROOT, "app.py"), "--server.headless", "true"],
     env={**os.environ},
-) # nosec B603
+)
 time.sleep(2)
 
 webbrowser.open("http://localhost:5000/login?next=http://localhost:8501")
 
-"""
-Terminate all subprocesses when termination signal is received
-""" 
 def _shutdown(sig, frame):
+    """Terminate all subprocesses when termination signal is received"""
     flask_proc.terminate()
     streamlit_proc.terminate()
     sys.exit(0)
