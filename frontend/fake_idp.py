@@ -170,14 +170,14 @@ LOGIN_HTML = """<!doctype html>
 </html>"""
 
 
-# The user gets redirected from localhost:5000 to the correct login page
 @app.route("/")
 def index():
+    """The user gets redirected from localhost:5000 to the correct login page"""
     return redirect("/login?next=http://localhost:8501")
 
-# Login logic + creating email cookie
 @app.route("/login", methods=["GET", "POST"])
 def login():
+    """Login logic + creating email cookie"""
     next_url = request.args.get("next") or request.form.get("next") or "http://localhost:8501"
 
     if request.method == "POST":
