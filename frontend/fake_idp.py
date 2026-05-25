@@ -1,26 +1,8 @@
-"""
-fake_idp.py — fake Shibboleth login page for local development
---------------------------------------------------------------
-Mimics the real UDE Shibboleth login page (Bootstrap-based, 2024 layout).
 
-Images needed in a subfolder called  fake_idp_static/ :
-  - signet.png        UDE signet/logo (top-left)
-                      Get: https://www.uni-due.de → right-click the UDE logo signet → Save image
-                      Or use any square UDE logo you have. Rename to signet.png
+from flask import Flask, request, redirect, make_response, render_template_string
 
-  - background.jpg    The blurred campus background image
-                      Get: https://www.uni-due.de → right-click the hero/banner background → Save image
-                      Or any campus photo. Rename to background.jpg
 
-  - powered-by-ZIM.png  "powered by ZIM" badge (bottom-right)
-                      Get: visible on the real login page source at /resources/images/logo/powered-by-ZIM.png
-                      If unavailable, delete the <img> tag referencing it below — it is cosmetic only.
-
-Place all three in:  fake_idp_static/
-"""
-
-from flask import Flask, request, redirect, make_response, render_template_string, send_from_directory
-import os
+# fake_idp.py — fake Shibboleth login page for local development
 
 app = Flask(__name__, static_folder="fake_idp_static", static_url_path="/resources")
 
@@ -188,11 +170,12 @@ LOGIN_HTML = """<!doctype html>
 </html>"""
 
 
+# The user gets redirected from localhost:5000 to the correct login page
 @app.route("/")
 def index():
     return redirect("/login?next=http://localhost:8501")
 
-
+# Login logic + creating email cookie
 @app.route("/login", methods=["GET", "POST"])
 def login():
     next_url = request.args.get("next") or request.form.get("next") or "http://localhost:8501"
@@ -205,14 +188,6 @@ def login():
         return response
 
     return render_template_string(LOGIN_HTML, next=next_url)
-
-
-@app.route("/logout")
-def logout():
-    next_url = request.args.get("next") or "http://localhost:8501"
-    response = make_response(redirect(next_url))
-    response.delete_cookie(COOKIE_NAME)
-    return response
 
 
 if __name__ == "__main__":
