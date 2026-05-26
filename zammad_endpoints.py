@@ -7,6 +7,7 @@ load_dotenv()
 # gelesen werden ist in example.env beschrieben.
 server_address = os.getenv("ZAMMAD_SERVER_ADDRESS")
 admin_access_token = os.getenv("ZAMMAD_API_KEY_ADMIN")
+GENERAL_TIMEOUT = 5
 
 # Anmeldung über Token
 headers = {"Authorization": f"Token token={admin_access_token}",
@@ -15,7 +16,8 @@ headers = {"Authorization": f"Token token={admin_access_token}",
 # Anzeigen als welcher Benutzer ich aktuell angemeldet bin
 response = requests.get(
     url=f"{server_address}/api/v1/users/me",
-    headers = headers
+    headers = headers,
+    timeout=GENERAL_TIMEOUT
 )
 print(response.status_code)
 print(response.text)
@@ -56,7 +58,8 @@ def create_ticket_by_user_email(
 
     server_response = requests.post(url=f"{server_address}/api/v1/tickets",
                                     json=json_body_for_ticket,
-                                    headers=headers, )
+                                    headers=headers,
+                                    timeout=GENERAL_TIMEOUT)
 
     print(server_response.status_code)
     print(server_response.text)
