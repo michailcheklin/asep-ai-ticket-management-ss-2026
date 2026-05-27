@@ -96,14 +96,18 @@ if user_input:
 # st.subheader("Ticket Erstellung")
 #
 # st.info(
-#     f"""
+#     f" <-- Here should be 3 consecutive double quotes, if the code is not commented out anymore.
+#        This change was applied to address the Teamscale warning as described in
+#        https://gitlab.git.nrw/ude-sse/asep-sose26/team1-zim/ai-ticket-management/-/merge_requests/7#note_598152
 #     E-Mail: {email}
 #
 #     Matrikelnummer: {matrikelnummer}
 #
 #     Anliegen:
 #     {anliegen if anliegen else "Hier würde das Ergebnis der KI präsentiert werden."}
-#     """
+#     " <-- Here should be 3 consecutive double quotes, if the code is not commented out anymore.
+#          This change was applied to address the Teamscale warning as described in
+#          https://gitlab.git.nrw/ude-sse/asep-sose26/team1-zim/ai-ticket-management/-/merge_requests/7#note_598152
 # )
 #
 # feedback = st.radio(
