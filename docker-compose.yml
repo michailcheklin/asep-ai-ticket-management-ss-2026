@@ -8,6 +8,7 @@ services:
     environment:
       ZAMMAD_INTERNAL_URL: http://zammad-nginx:8080
       ZAMMAD_API_TOKEN: ${ZAMMAD_API_TOKEN:-}
+      OLLAMA_BASE_URL: http://ollama:11434
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
       interval: 10s
