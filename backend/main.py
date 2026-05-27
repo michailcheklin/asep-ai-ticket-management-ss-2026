@@ -3,7 +3,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from langgraph.graph import StateGraph, START, END
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, AIMessage
 from state import ChatbotState
 from nodes import (
     extract_information,
@@ -12,6 +12,8 @@ from nodes import (
     ask_for_issue,
     finish_ticket
 )
+from pydantic import BaseModel
+from typing import List, Dict
 
 # Create FastAPI application instance
 app = FastAPI(title="AI Ticket API", version="1.0.0")
@@ -64,6 +66,52 @@ def health():
         "healthy": True
     }
 
+class ChatRequest(BaseModel):
+    """
+    datastructure for frontend requests
+    """
+    user_message: str
+    history: List[Dict[str, str]]  # Format: [{"role": "user", "content": "Hallo"}, {"role": "bot", "content": "Hi"}]
+    user_email: str = ""
+    matrikelnummer: str = ""
+    issue_description: str = ""
+
+
+@app.post("/chat")
+async def chat_endpoint(request: ChatRequest):
+    """
+    API Endpoint to chat with the llm
+    :param request: the state of the conversation
+    :return: returns the updated state, after the llm processed the request
+    """
+    # translates JSON objects into LangChain objects
+    langchain_messages = []
+    for msg in request.history:
+        if msg["role"] == "user":
+            langchain_messages.append(HumanMessage(content=msg["content"]))
+        elif msg["role"] == "bot":
+            langchain_messages.append(AIMessage(content=msg["content"]))
+
+    langchain_messages.append(HumanMessage(content=request.user_message))
+
+    current_state = {
+        "messages": langchain_messages,
+        "user_email": request.user_email,
+        "matrikelnummer": request.matrikelnummer,
+        "issue_description": request.issue_description,
+        "is_complete": False
+    }
+
+    updated_state = graph.invoke(current_state)
+    bot_response = updated_state["messages"][-1].content
+    return {
+        "bot_response": bot_response,
+        "user_email": updated_state.get("user_email", ""),
+        "matrikelnummer": updated_state.get("matrikelnummer", ""),
+        "issue_description": updated_state.get("issue_description", ""),
+        "is_complete": updated_state.get("is_complete", False)
+    }
+
 def route_based_on_state(state: ChatbotState):
     """
     Checks state and decides which node is called next. Depended on missing relevant information
@@ -107,7 +155,7 @@ workflow.add_edge("ask_issue_node", END)
 workflow.add_edge("finish_node", END)
 
 # Compile the graph architecture into an executable LangGraph application
-app = workflow.compile()
+graph = workflow.compile()
 
 def run_local_chat():
     """
@@ -135,7 +183,7 @@ def run_local_chat():
             break
 
         current_state["messages"].append(HumanMessage(content=user_input))
-        current_state = app.invoke(current_state)
+        current_state = graph.invoke(current_state)
         bot_response = current_state["messages"][-1].content
         print(f"Bot: {bot_response}")
         print(
