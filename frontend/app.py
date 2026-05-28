@@ -2,6 +2,9 @@
 import os
 import streamlit as st
 import re
+import requests
+from requests import Response
+
 
 # SPÄTERE BACKEND-/ZAMMAD-ANBINDUNG
 # Aktuell auskommentiert, da zunächst nur die Chatbot-
@@ -11,6 +14,11 @@ import re
 # from zammad_endpoints import create_ticket_by_user_email
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000").rstrip("/")
 ZAMMAD_UI_URL = os.getenv("ZAMMAD_UI_URL", "http://localhost:8080").rstrip("/")
+
+# Timeout bei jeder KI-Anfrage auf 20 Minuten gesetzt,
+# denn die Verarbeitung der Prompts erfordert insbesondere
+# mit langen Chatverläufen viel Rechenleistung
+AI_COMMUNICATION_TIMEOUT_IN_SECONDS:int = 1200
 
 st.set_page_config(page_title="Support-Annahme über ZIM Helper", layout="centered")
 
@@ -26,6 +34,7 @@ st.divider()
 
 st.header("ZIM Helper")
 
+# Erste Nachricht
 if "messages" not in st.session_state:
     st.session_state.messages = [
         {
@@ -34,9 +43,20 @@ if "messages" not in st.session_state:
         }
     ]
 
+# Bilde die Darstellung des Chatfensters
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.write(message["content"])
+
+# Interne History für Ollama, damit der Kontext
+# für zukünftige Chatnachrichten verwendet werden kann
+if "chatbot_history" not in st.session_state:
+    st.session_state.chatbot_history: list[dict[str, str]] = []
+
+# Hier wird die Information, die der Bot aus der Benutzernachricht extrahieren konnte
+# als Text gespeichert
+if "issue_description" not in st.session_state:
+    st.session_state.issue_description: str = ""
 
 # Prüfung, ob eine gültige E-Mail-Adresse und eine
 # gültige Matrikelnummer (Nur Zahlen) eingegeben wurde
@@ -58,22 +78,56 @@ else:
         placeholder="Beschreibe dein Anliegen..."
     )
 
+
+# Wenn Nutzer etwas in den Chat eintippt, wird dies ausgeführt
 if user_input:
+    user_input_history_entry = {"role": "user", "content": user_input}
+
     st.session_state.messages.append(
-        {"role": "user", "content": user_input}
+        user_input_history_entry
     )
+    st.session_state.chatbot_history.append(user_input_history_entry)
 
     with st.chat_message("user"):
         st.write(user_input)
 
-    bot_answer = (
-        "Danke für deine Nachricht. "
-        "Ich nehme dein Anliegen auf."
+    # TODO: Solange der Bot die Nachricht generiert,
+    #  das Chatfenster sperren und wenn der Bot fertig ist,
+    #  dann wieder entsperren
+    # Hier wird die Bot-Antwort generiert
+    bot_answer_http_response:Response = requests.post(
+        url=f"{BACKEND_URL}/chat",
+        json={
+            "user_message": user_input,
+            "history": st.session_state.chatbot_history,
+            "user_email": st.session_state["email_input"],
+            "matrikelnummer": st.session_state["matrikelnummer_input"],
+            "issue_description": st.session_state.issue_description,
+
+        },
+        timeout=AI_COMMUNICATION_TIMEOUT_IN_SECONDS,
     )
 
+    # Hier werden die Informationen aus dem JSON-Objekt,
+    # womit auf den POST-Request geantwortet wurde, extrahiert
+    bot_answer_http_response_json:dict = bot_answer_http_response.json()
+    bot_answer:str = bot_answer_http_response_json["bot_response"]
+    # Vor jeden Zeilenumbruch werden 2 Leerzeichen eingefügt, damit die
+    # Bot-Antwort korrekt im Chatfenster dargestellt werden kann.
+    # Die Streamlit-Funktion st.write() schreibt ein Markdown-Objekt,
+    # wenn ein String übergeben wird (s. https://docs.streamlit.io/develop/api-reference/write-magic/st.write)
+    # Der Markdown-Standard fordert, um einen Zeilenumbruch zu erzwingen, 2 Leerzeichen davor
+    # (s. https://markdown-guide.readthedocs.io/en/latest/basics.html#line-return)
+    bot_answer = bot_answer.replace("\n", "  \n")
+    st.session_state.issue_description = bot_answer_http_response_json["issue_description"]
+
+    bot_answer_history_entry_for_chat = {"role": "assistant", "content": bot_answer}
+    bot_answer_history_entry_for_bot_history = {"role": "bot", "content": bot_answer}
     st.session_state.messages.append(
-        {"role": "assistant", "content": bot_answer}
+        bot_answer_history_entry_for_chat
     )
+
+    st.session_state.chatbot_history.append(bot_answer_history_entry_for_bot_history)
 
     with st.chat_message("assistant"):
         st.write(bot_answer)
@@ -134,4 +188,3 @@ if user_input:
 #             "Ich berücksichtige deine Ergänzung "
 #             "und leite dein Anliegen weiter."
 #         )
-
