@@ -9,6 +9,8 @@ import re
 # um automatisch Tickets in Zammad anzulegen.
 # Die KI Anbindungen kommt dann natürlich auch noch später.
 # from zammad_endpoints import create_ticket_by_user_email
+BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000").rstrip("/")
+ZAMMAD_UI_URL = os.getenv("ZAMMAD_UI_URL", "http://localhost:8080").rstrip("/")
 
 st.set_page_config(page_title="Support-Annahme über ZIM Helper", layout="centered")
 
@@ -133,8 +135,3 @@ if user_input:
 #             "und leite dein Anliegen weiter."
 #         )
 
-BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000").rstrip("/")
-ZAMMAD_UI_URL = os.getenv("ZAMMAD_UI_URL", "http://localhost:8080").rstrip("/")
-
-# st.set_page_config(page_title="AI Ticket System", layout="wide")
-st.title("AI Ticket System")
