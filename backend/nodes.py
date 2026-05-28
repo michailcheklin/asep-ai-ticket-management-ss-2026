@@ -152,9 +152,10 @@ def finish_ticket(state: ChatbotState):
 
     # Solange die API noch nicht aktiv ist
     final_message = (
-        f"Ticket erfolgreich vorbereitet!\n"
-        f"Titel: {zammad_title}\n"
-        f"Body: {zammad_body}"
+        f"Perfekt! Dein Ticket wurde erfolgreich erstellt. Ein Supporter meldet sich bald bei dir.\n"
+        f"**Deine Ticket-Übersicht:**\n"
+        f"**Betreff:** {zammad_title}\n"
+        f"**Inhalt:** {zammad_body}"
     )
 
     return {
