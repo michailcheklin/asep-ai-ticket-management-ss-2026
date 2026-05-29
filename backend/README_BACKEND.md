@@ -7,33 +7,22 @@ This is the backend code for the chatbot, based on LangGraph and FastAPI.
 Therefore, these containers need to by started by:
 
 ```bash
-$ cd zammad
+$ cd ../zammad
 ```
 and then:
 ```bash
 docker compose -f docker-compose.yml -f scenarios/add-ollama.yml up -d
 ```
-* after that switch to backend directory
+after that switch to base directory
   ```bash
-  cd ../backend
+  cd ../
   ```
-* Make sure you are operating within a Python Virtual Environment 
-(indicated by `(.venv)` at the beginning of your terminal prompt)
-* Install all required Python dependencies using the following command:
-  ```bash
-  pip install -r requirements.txt
-  ```
-  
-## 2. Starting the Local Server
-* Start the local FastAPI server via your terminal:
-  ```bash 
-  uvicorn api:app --reload
-* The server is now accessible at http://127.0.0.1:8000
-* The Server can be stopped via:
-  ``` 
-  Strg + C/Control + C
+then start the ai-ticket-management container
+```bash
+docker compose up -d --build
+```
 
-## 3. API Interface
+## 2. API Interface
 * POST /chat
 * This endpoint processes the user's input and communicates with the AI model
 ### Expected Request

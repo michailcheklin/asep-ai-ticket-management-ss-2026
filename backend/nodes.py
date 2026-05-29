@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 from langchain_ollama import ChatOllama
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from state import ChatbotState
+from zammad_endpoints import create_ticket_by_user_email
 
 ollama_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 
@@ -11,7 +12,7 @@ ollama_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 llm = ChatOllama(
     model="llama3.2",
     temperature=0.2,
-    base_url=ollama_url  # <-- Diese Zeile hinzufügen / anpassen
+    base_url=ollama_url
 )
 
 
@@ -136,27 +137,16 @@ def finish_ticket(state: ChatbotState):
         f"{state['issue_description']}"
     )
 
-    # Zammad API Aufruf (Mock)
-
-    # from zammad_api import create_ticket_by_user_email
-    #
-    # try:
-    #     create_ticket_by_user_email(
-    #         email=state["user_email"],
-    #         title=zammad_title,
-    #         body=zammad_body
-    #     )
-    #     final_message = "Perfekt! Dein Ticket wurde erfolgreich in Zammad erstellt. Ein Supporter meldet sich bald bei dir."
-    # except Exception as e:
-    #     final_message = "Dein Ticket ist fertiggestellt, aber es gab ein Problem bei der Übermittlung an Zammad. Bitte versuche es später noch einmal."
-
-    # Solange die API noch nicht aktiv ist
-    final_message = (
-        f"Perfekt! Dein Ticket wurde erfolgreich erstellt. Ein Supporter meldet sich bald bei dir.\n"
-        f"**Deine Ticket-Übersicht:**\n"
-        f"**Betreff:** {zammad_title}\n"
-        f"**Inhalt:** {zammad_body}"
-    )
+    try:
+        create_ticket_by_user_email(
+            email=state["user_email"],
+            title=zammad_title,
+            body=zammad_body
+        )
+        final_message = "Perfekt! Dein Ticket wurde erfolgreich in Zammad erstellt. Ein Supporter meldet sich bald bei dir."
+    except Exception as e:
+        print(f"🚨 [FEHLER] Zammad API-Aufruf fehlgeschlagen: {e}")
+        final_message = "Dein Ticket ist fertiggestellt, aber es gab ein Problem bei der Übermittlung an Zammad. Bitte versuche es später noch einmal."
 
     return {
         "messages": [AIMessage(content=final_message)],
