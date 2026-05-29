@@ -47,7 +47,11 @@ if "messages" not in st.session_state:
 if "bot_thinking" not in st.session_state:
     st.session_state.bot_thinking: bool = False
 
-def bot_starting_thinking():
+def bot_starting_thinking() -> None:
+    """
+    Diese Methode wird aufgerufen, sobald der Kunde die Chatnachricht abgeschickt hat,
+    damit das Chatfenster während der Generierung der Bot-Antwort gesperrt werden kann.
+    """
     st.session_state.bot_thinking = True
 
 
