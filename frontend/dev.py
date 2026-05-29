@@ -1,9 +1,13 @@
 """
-dev.py — single entry point for local development
-Run with: python dev.py
+Script that starts the frontend alongside Flask in the backgroud for the login
 """
 
-import os, sys, subprocess, signal, time, webbrowser
+import os
+import sys
+import subprocess
+import signal
+import time
+import webbrowser
 
 os.environ["FAKE_IDP"] = "1"
 
@@ -25,6 +29,7 @@ time.sleep(2)
 webbrowser.open("http://localhost:5000/login?next=http://localhost:8501")
 
 def _shutdown(sig, frame):
+    """Terminate all subprocesses when termination signal is received"""
     flask_proc.terminate()
     streamlit_proc.terminate()
     sys.exit(0)
