@@ -2,6 +2,9 @@
 import os
 import streamlit as st
 import re
+import requests
+from requests import Response
+
 
 # SPÄTERE BACKEND-/ZAMMAD-ANBINDUNG
 # Aktuell auskommentiert, da zunächst nur die Chatbot-
@@ -11,6 +14,11 @@ import re
 # from zammad_endpoints import create_ticket_by_user_email
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000").rstrip("/")
 ZAMMAD_UI_URL = os.getenv("ZAMMAD_UI_URL", "http://localhost:8080").rstrip("/")
+
+# Timeout bei jeder KI-Anfrage auf 20 Minuten gesetzt,
+# denn die Verarbeitung der Prompts erfordert insbesondere
+# mit langen Chatverläufen viel Rechenleistung
+AI_COMMUNICATION_TIMEOUT_IN_SECONDS:int = 1200
 
 st.set_page_config(page_title="Support-Annahme über ZIM Helper", layout="centered")
 
@@ -26,6 +34,7 @@ st.divider()
 
 st.header("ZIM Helper")
 
+# Erste Nachricht
 if "messages" not in st.session_state:
     st.session_state.messages = [
         {
@@ -34,9 +43,32 @@ if "messages" not in st.session_state:
         }
     ]
 
+# Mithilfe dieses State-Keys wird die Sperrung des Chatfensters gesteuert.
+if "bot_thinking" not in st.session_state:
+    st.session_state.bot_thinking: bool = False
+
+def bot_starting_thinking() -> None:
+    """
+    Diese Methode wird aufgerufen, sobald der Kunde die Chatnachricht abgeschickt hat,
+    damit das Chatfenster während der Generierung der Bot-Antwort gesperrt werden kann.
+    """
+    st.session_state.bot_thinking = True
+
+
+# Bilde die Darstellung des Chatfensters
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.write(message["content"])
+
+# Interne History für Ollama, damit der Kontext
+# für zukünftige Chatnachrichten verwendet werden kann
+if "chatbot_history" not in st.session_state:
+    st.session_state.chatbot_history: list[dict[str, str]] = []
+
+# Hier wird die Information, die der Bot aus der Benutzernachricht extrahieren konnte
+# als Text gespeichert
+if "issue_description" not in st.session_state:
+    st.session_state.issue_description: str = ""
 
 # Prüfung, ob eine gültige E-Mail-Adresse und eine
 # gültige Matrikelnummer (Nur Zahlen) eingegeben wurde
@@ -47,37 +79,71 @@ is_matrikelnummer_valid = bool(re.fullmatch(pattern=r"[0-9]+", string=st.session
 # ungültig, kann der Benutzer keine Nachrichten an den Chatbot schreiben
 # denn sonst kann ein mögliches Ticket keiner Person zugeordnet werden
 # und das ZIM-Team kann keine Nachfragen per E-Mail stellen
-if not (is_email_valid and is_matrikelnummer_valid):
-    user_input = st.chat_input(
-        disabled=True,
-        placeholder="Bitte E-Mail-Adresse und Matrikelnummer eingeben",
-    )
-else:
-    user_input = st.chat_input(
-        disabled=False,
-        placeholder="Beschreibe dein Anliegen..."
-    )
+# Wenn Nutzer nach Eingabe der E-Mail-Adresse und der Matrikelnummer
+# etwas in den Chat eintippt, beginnt die Generierung der Antwort auf die Eingabe des Nutzers.
+# Direkt nach der Eingabe wird das Chatfenster gesperrt, bis der Bot geantwortet hat (s. Methode bot_starting_thinking()).
+if user_input:= st.chat_input(
+    placeholder = "Bitte E-Mail-Adresse und Matrikelnummer eingeben" if not (is_email_valid and is_matrikelnummer_valid)
+    else "Beschreibe dein Anliegen...",
+    disabled=st.session_state.bot_thinking or not (is_email_valid and is_matrikelnummer_valid),
+    on_submit=bot_starting_thinking
+):
 
-if user_input:
-    st.session_state.messages.append(
-        {"role": "user", "content": user_input}
-    )
 
     with st.chat_message("user"):
         st.write(user_input)
-
-    bot_answer = (
-        "Danke für deine Nachricht. "
-        "Ich nehme dein Anliegen auf."
-    )
-
-    st.session_state.messages.append(
-        {"role": "assistant", "content": bot_answer}
-    )
+        user_input_history_entry = {"role": "user", "content": user_input}
+        st.session_state.messages.append(user_input_history_entry)
+        st.session_state.chatbot_history.append(user_input_history_entry)
 
     with st.chat_message("assistant"):
+        # Hier wird die Bot-Antwort generiert. Während die Antwort generiert wird,
+        # wird ein grauer Platzhaltertext bei der Bot-Antwort erscheinen, bis
+        # der Bot geantwortet hat.
+        #
+        # Die Streamlit-Funktion st.write() schreibt ein Markdown-Objekt, wenn ein String übergeben wird
+        # (s. https://docs.streamlit.io/develop/api-reference/write-magic/st.write)
+        # Der Markdown-Standard erfordert folgende Sytnax für die Färbung von Text:
+        # :color[Text]{foreground="<Farbcode in Hex>"}.
+        # Ein Sternchen an beiden Seiten des Textes macht diesen kursiv.
+        st.write('*:color[Bitte warten. Antwort wird generiert...]{foreground="#888888"}*')
+        bot_answer_http_response:Response = requests.post(
+            url=f"{BACKEND_URL}/chat",
+            json={
+                "user_message": user_input,
+                "history": st.session_state.chatbot_history,
+                "user_email": st.session_state["email_input"],
+                "matrikelnummer": st.session_state["matrikelnummer_input"],
+                "issue_description": st.session_state.issue_description,
+
+            },
+            timeout=AI_COMMUNICATION_TIMEOUT_IN_SECONDS,
+        )
+
+        # Sobald der Bot geantwortet hat, werden die Informationen aus dem JSON-Objekt
+        # womit auf den POST-Request geantwortet wurde, extrahiert
+        bot_answer_http_response_json:dict = bot_answer_http_response.json()
+        bot_answer:str = bot_answer_http_response_json["bot_response"]
+
+        # Vor jeden Zeilenumbruch werden 2 Leerzeichen eingefügt, damit die
+        # Bot-Antwort korrekt im Chatfenster dargestellt werden kann.
+        # Die Streamlit-Funktion st.write() schreibt ein Markdown-Objekt, wenn ein String übergeben wird
+        # (s. https://docs.streamlit.io/develop/api-reference/write-magic/st.write)
+        # Der Markdown-Standard fordert, um einen Zeilenumbruch zu erzwingen, 2 Leerzeichen davor
+        # (s. https://markdown-guide.readthedocs.io/en/latest/basics.html#line-return)
+        bot_answer = bot_answer.replace("\n", "  \n")
+        st.session_state.issue_description = bot_answer_http_response_json["issue_description"]
+
+        bot_answer_history_entry_for_chat = {"role": "assistant", "content": bot_answer}
+        bot_answer_history_entry_for_bot_history = {"role": "bot", "content": bot_answer}
+
+        st.session_state.messages.append(bot_answer_history_entry_for_chat)
+        st.session_state.chatbot_history.append(bot_answer_history_entry_for_bot_history)
         st.write(bot_answer)
 
+    # Hier wird das Chatfenster wieder entsperrt
+    st.session_state.bot_thinking = False
+    st.rerun()
 
 # Geplante Logik für die spätere Ticket-Erstellung:
 
@@ -134,4 +200,3 @@ if user_input:
 #             "Ich berücksichtige deine Ergänzung "
 #             "und leite dein Anliegen weiter."
 #         )
-

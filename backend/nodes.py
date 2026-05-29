@@ -143,7 +143,10 @@ def finish_ticket(state: ChatbotState):
             title=zammad_title,
             body=zammad_body
         )
-        final_message = "Perfekt! Dein Ticket wurde erfolgreich in Zammad erstellt. Ein Supporter meldet sich bald bei dir."
+        final_message = (f"Perfekt! Dein Ticket wurde erfolgreich erstellt. Ein Supporter meldet sich bald bei dir.\n"
+        f"**Deine Ticket-Übersicht:**\n"
+        f"**Betreff:** {zammad_title}\n"
+        f"**Inhalt:** {zammad_body}")
     except Exception as e:
         print(f"🚨 [FEHLER] Zammad API-Aufruf fehlgeschlagen: {e}")
         final_message = "Dein Ticket ist fertiggestellt, aber es gab ein Problem bei der Übermittlung an Zammad. Bitte versuche es später noch einmal."
