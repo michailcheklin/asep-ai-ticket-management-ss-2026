@@ -22,7 +22,7 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8501:8501"
-      - "5000:5000"
+      - "4999:5000"
     environment:
       BACKEND_URL: http://backend_app:8000
       ZAMMAD_UI_URL: http://localhost:8080
@@ -36,3 +36,7 @@ services:
     ports:
       - "1025:1025"
       - "8025:8025"
+networks:
+  default:
+    name: zammad_default
+    external: true
