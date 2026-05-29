@@ -34,3 +34,57 @@ services:
     ports:
       - "1025:1025"
       - "8025:8025"
+    environment:
+      MP_DATABASE: /data/mailpit.db
+      MP_MAX_MESSAGES: 5000
+    volumes:
+      - mailpit-data:/data
+
+  zammad_bootstrap:
+    image: ${IMAGE_REPO:-ghcr.io/zammad/zammad}:${VERSION:-7.0.1-0035}
+    restart: "no"
+    depends_on:
+      - zammad-railsserver
+      - mailpit
+    environment:
+      APP_ENV: ${APP_ENV:-local}
+      MEMCACHE_SERVERS: ${MEMCACHE_SERVERS:-zammad-memcached:11211}
+      POSTGRESQL_DB: ${POSTGRES_DB:-zammad_production}
+      POSTGRESQL_HOST: ${POSTGRES_HOST:-zammad-postgresql}
+      POSTGRESQL_USER: ${POSTGRES_USER:-zammad}
+      POSTGRESQL_PASS: ${POSTGRES_PASS:-zammad}
+      POSTGRESQL_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRESQL_OPTIONS: ${POSTGRESQL_OPTIONS:-?pool=50}
+      REDIS_URL: ${REDIS_URL:-redis://zammad-redis:6379}
+      TZ: "${TZ:-Europe/Berlin}"
+
+      ZAMMAD_SUPPORT_EMAIL: ${ZAMMAD_SUPPORT_EMAIL:?Set ZAMMAD_SUPPORT_EMAIL in .env}
+      ZAMMAD_SUPPORT_NAME: ${ZAMMAD_SUPPORT_NAME:?Set ZAMMAD_SUPPORT_NAME in .env}
+      ZAMMAD_SUPPORT_GROUP: ${ZAMMAD_SUPPORT_GROUP:?Set ZAMMAD_SUPPORT_GROUP in .env}
+
+      ZAMMAD_SMTP_HOST: ${ZAMMAD_SMTP_HOST:?Set ZAMMAD_SMTP_HOST in .env}
+      ZAMMAD_SMTP_PORT: ${ZAMMAD_SMTP_PORT:?Set ZAMMAD_SMTP_PORT in .env}
+      ZAMMAD_SMTP_USER: ${ZAMMAD_SMTP_USER:-}
+      ZAMMAD_SMTP_PASSWORD: ${ZAMMAD_SMTP_PASSWORD:-}
+      ZAMMAD_SMTP_DOMAIN: ${ZAMMAD_SMTP_DOMAIN:-}
+
+    volumes:
+      - zammad-storage:/opt/zammad/storage
+      - ./zammad/bootstrap:/opt/zammad/bootstrap:ro
+    command:
+      - bash
+      - -lc
+      - |
+        for i in $(seq 1 60); do
+          if /opt/zammad/bin/rails runner "exit(Setting.get('system_init_done') && Group.find_by(name: ENV.fetch('ZAMMAD_SUPPORT_GROUP')) ? 0 : 1)" >/dev/null 2>&1; then
+            /opt/zammad/bin/rails runner /opt/zammad/bootstrap/configure_email.rb
+            exit 0
+          fi
+          sleep 5
+        done
+        echo "Zammad bootstrap timed out waiting for initialization." >&2
+        exit 1
+
+volumes:
+  zammad-storage:
+  mailpit-data:
