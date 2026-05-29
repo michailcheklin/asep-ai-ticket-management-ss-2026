@@ -28,7 +28,7 @@ def create_ticket_by_user_email(
         title:str,
         body:str,
         group:str = "Users",
-        article_type:str = "note",
+        article_type:str = "web",
         internal:bool = False
 ):
     """
