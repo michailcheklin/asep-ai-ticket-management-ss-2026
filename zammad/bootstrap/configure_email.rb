@@ -2,6 +2,12 @@ close_trigger_name = ENV.fetch("ZAMMAD_CLOSE_TRIGGER_NAME")
 reopen_trigger_name = ENV.fetch("ZAMMAD_REOPEN_TRIGGER_NAME")
 reopen_marker_tag = ENV.fetch("ZAMMAD_REOPEN_MARKER_TAG")
 
+# Erweiterungen Z.5-10 im Rahmen des Tests 
+support_email = ENV.fetch("ZAMMAD_SUPPORT_EMAIL")
+support_name = ENV.fetch("ZAMMAD_SUPPORT_NAME")
+support_group = ENV.fetch("ZAMMAD_SUPPORT_GROUP")
+smtp_host = ENV.fetch("ZAMMAD_SMTP_HOST")
+smtp_port = ENV.fetch("ZAMMAD_SMTP_PORT")
 
 closed_state = Ticket::State.find_by!(name: "closed")
 open_state = Ticket::State.find_by!(name: "open")
