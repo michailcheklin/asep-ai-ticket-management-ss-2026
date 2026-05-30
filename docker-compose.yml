@@ -86,11 +86,6 @@ services:
         echo "Zammad bootstrap timed out waiting for initialization." >&2
         exit 1
 
-networks:
-  default:
-    name: zammad_default
-    external: true
-
 volumes:
   zammad-storage:
   mailpit-data:
