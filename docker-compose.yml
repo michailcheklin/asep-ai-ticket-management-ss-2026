@@ -8,6 +8,7 @@ services:
     environment:
       ZAMMAD_INTERNAL_URL: http://zammad-nginx:8080
       ZAMMAD_API_TOKEN: ${ZAMMAD_API_TOKEN:-}
+      OLLAMA_BASE_URL: http://ollama:11434
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
       interval: 10s
@@ -21,7 +22,7 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8501:8501"
-      - "5000:5000"
+      - "4999:5000"
     environment:
       BACKEND_URL: http://backend_app:8000
       ZAMMAD_UI_URL: http://localhost:8080
@@ -85,11 +86,6 @@ services:
         done
         echo "Zammad bootstrap timed out waiting for initialization." >&2
         exit 1
-
-networks:
-  default:
-    name: zammad_default
-    external: true
 
 volumes:
   zammad-storage:
