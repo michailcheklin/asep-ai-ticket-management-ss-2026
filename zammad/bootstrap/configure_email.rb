@@ -1,11 +1,10 @@
 # Configures the local development Zammad instance so agents can reply to tickets.
 # The script is idempotent and can be executed on every container start.
 
+# Umgebungsvariablen aus Docker in das Bootstrap-Skript ziehen
 close_trigger_name = ENV.fetch("ZAMMAD_CLOSE_TRIGGER_NAME")
 reopen_trigger_name = ENV.fetch("ZAMMAD_REOPEN_TRIGGER_NAME")
 reopen_marker_tag = ENV.fetch("ZAMMAD_REOPEN_MARKER_TAG")
-
-# Erweiterungen Z.5-10 im Rahmen des Tests
 support_email = ENV.fetch("ZAMMAD_SUPPORT_EMAIL")
 support_name = ENV.fetch("ZAMMAD_SUPPORT_NAME")
 support_group = ENV.fetch("ZAMMAD_SUPPORT_GROUP")
@@ -13,6 +12,7 @@ smtp_host = ENV.fetch("ZAMMAD_SMTP_HOST")
 smtp_port = ENV.fetch("ZAMMAD_SMTP_PORT")
 environment = ENV.fetch("APP_ENV", "local")
 
+# SMTP-Setup
 smtp_options =
   if environment == "production"
     {
@@ -36,6 +36,7 @@ smtp_options =
     }
   end
 
+# Zammad-Channel-Setup
 channel = Channel.find_by(area: "Email::Notification", active: true) ||
           Channel.find_by(area: "Email::Notification")
 
@@ -52,6 +53,8 @@ channel.update!(
   updated_by_id: 1
 )
 
+# Setup der E-Mail-Adresse, von der das Zammad-System
+# die automatischen E-Mails schickt
 address = EmailAddress.find_or_initialize_by(email: support_email)
 address.assign_attributes(
   name: support_name,
@@ -62,9 +65,12 @@ address.assign_attributes(
 address.created_by_id ||= 1
 address.save!
 
+# Setup der Gruppe des Support-Systems
 group = Group.find_by!(name: support_group)
 group.update!(email_address_id: address.id, updated_by_id: 1)
 
+# Setup der Statusmeldungen, wenn ein Ticket
+# geschlossen oder wieder geöffnet wird
 closed_state = Ticket::State.find_by!(name: "closed")
 open_state = Ticket::State.find_by!(name: "open")
 close_subject = 'Ihr Ticket wurde geschlossen (#{ticket.title})'
@@ -88,6 +94,7 @@ reopen_body = <<~'HTML'
   <div>Ihr #{config.product_name} Team</div>
 HTML
 
+# Setup der Trigger, wann welche Statusmeldung per E-Mail verschickt werden soll
 close_trigger = Trigger.find_or_initialize_by(name: close_trigger_name)
 close_trigger.assign_attributes(
   condition: {
