@@ -12,6 +12,7 @@ from nodes import (
     ask_for_issue,
     finish_ticket
 )
+from setup_prompt_checking_pipeline import initialize_models
 from pydantic import BaseModel
 from typing import List, Dict
 
@@ -32,6 +33,8 @@ ZAMMAD_BASE = os.getenv("ZAMMAD_INTERNAL_URL", "").rstrip("/")
 ZAMMAD_TOKEN = os.getenv("ZAMMAD_API_TOKEN", "").strip()
 ZAMMAD_GROUP_ID = int(os.getenv("ZAMMAD_DEFAULT_GROUP_ID", "1"))
 
+# Load the Hugging Face models for the prompt safety checks
+topic_classifier, translator_tokenizer, translator, prompt_injection_detector = initialize_models()
 
 
 def _zammad_headers() -> dict[str, str]:
@@ -111,6 +114,9 @@ async def chat_endpoint(request: ChatRequest):
         "issue_description": updated_state.get("issue_description", ""),
         "is_complete": updated_state.get("is_complete", False)
     }
+
+
+# TODO: Prüfung des Prompts aus dem Mock-Prototyp in einen Endpunkt im Backend übertragen
 
 def route_based_on_state(state: ChatbotState):
     """
