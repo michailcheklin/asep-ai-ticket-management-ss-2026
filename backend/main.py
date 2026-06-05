@@ -82,20 +82,11 @@ class ChatRequest(BaseModel):
     matrikelnummer: str = ""
     issue_description: str = ""
 
-
-@app.post("/chat")
-async def chat_endpoint(request: ChatRequest):
-    """
-    API Endpoint to chat with the llm
-    :param request: the state of the conversation
-    :return: returns the updated state, after the llm processed the request
-    """
-
+def __check_prompt (prompt:str) -> list[dict]:
     # Validate the user input for potential prompt injection attempts before
     # passing it to the chatbot workflow. If the request is classified as unsafe
-    # it is blocked and not forwarded to the chatbot or the RAG-based knowledge base. 
+    # it is blocked and not forwarded to the chatbot or the RAG-based knowledge base.
     # Execute the checks all at the same time
-    prompt:str = request.user_message
     with (concurrent.futures.ThreadPoolExecutor() as executor):
         prompt_injection_detection = executor.submit(evaluate_prompt_injection, prompt)
         illegal_topics_detection = executor.submit(evaluate_legality, prompt)
@@ -110,6 +101,19 @@ async def chat_endpoint(request: ChatRequest):
         illegal_topics_detection_result,
         off_topic_detection_result
     ]
+
+    return complete_evaluation
+
+
+@app.post("/chat")
+async def chat_endpoint(request: ChatRequest):
+    """
+    API Endpoint to chat with the llm
+    :param request: the state of the conversation
+    :return: returns the updated state, after the llm processed the request
+    """
+
+    complete_evaluation = check_prompt(request.user_message)
 
     indications = [not evaluation_result["allowed"] for evaluation_result in complete_evaluation]
 
@@ -230,21 +234,7 @@ def run_local_chat():
 
         # Validate the user input for potential prompt injection attempts
         # before passing it to the chatbot workflow.
-        prompt: str = user_input
-        with (concurrent.futures.ThreadPoolExecutor() as executor):
-            prompt_injection_detection = executor.submit(evaluate_prompt_injection, prompt)
-            illegal_topics_detection = executor.submit(evaluate_legality, prompt)
-            off_topic_detection = executor.submit(evaluate_off_topic, prompt)
-
-            prompt_injection_detection_result = prompt_injection_detection.result()
-            illegal_topics_detection_result = illegal_topics_detection.result()
-            off_topic_detection_result = off_topic_detection.result()
-
-        complete_evaluation = [
-            prompt_injection_detection_result,
-            illegal_topics_detection_result,
-            off_topic_detection_result
-        ]
+        complete_evaluation = check_prompt(user_input)
 
         indications = [not evaluation_result["allowed"] for evaluation_result in complete_evaluation]
 
