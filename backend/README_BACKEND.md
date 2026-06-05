@@ -32,6 +32,7 @@ docker compose up -d --build
   "history": [],
   "user_email": "",
   "matrikelnummer": "",
+  "additional_info": [],
   "issue_description": ""
 }
 ```
@@ -39,11 +40,15 @@ docker compose up -d --build
 ### Response from the Server
 ```json
 {
-  "bot_response": "Antwort der KI auf die Nachricht",
-  "user_email": "abc",
-  "matrikelnummer": "123",
-  "issue_description": "WLAN funktioniert nicht",
-  "is_complete": false
+  "bot_response": "Dein Ticket ist fertiggestellt...", 
+  "user_email": "peter@uni.de",
+  "matrikelnummer": "1234567",
+  "issue_description": "WLAN Problem",
+  "additional_info": [
+    "Essen",
+    "Gebäude R14"
+  ],
+  "is_complete": true
 }
 ```
 * The Fields **user_email**, **matrikelnummer** and **issue_description** will be populated if this information was present in a message from the user
@@ -51,20 +56,21 @@ docker compose up -d --build
 ### Example of a Request with Populated History
 ```json
 {
-  "user_message": "Meine email ist abc@stud.uni-due.de und meine Matrikelnummer lautet 1234567.",
+  "user_message": "es handelt sich um ein wlan problem, ich bin in essen im gebäude R14 und ich habe noch keine schritte unternommen",
   "history": [
     {
       "role": "user",
-      "content": "Hallo, mein WLAN funktioniert seit heute Morgen nicht mehr."
+      "content": "Hallo, meine email ist peter@uni.de, meine matrikelnummer ist 1234567 und ich habe internet probleme"
     },
     {
       "role": "bot",
-      "content": "Das tut mir leid. Um ein Ticket zu erstellen, benötige ich noch deine email und deine Matrikelnummer."
+      "content": "Könnten Sie uns bitte mehr Details zu Ihrem Internetproblem geben? Zum Beispiel, ob es sich um ein WLAN- oder ein kabelgebundenes Problem handelt, welcher Ort oder welches Gebäude betroffen ist..."
     }
   ],
-  "customer_email": "",
-  "matrikelnummer": "",
-  "issue_description": "WLAN funktioniert nicht"
+  "user_email": "peter@uni.de",
+  "matrikelnummer": "1234567",
+  "issue_description": "internet probleme",
+  "additional_info": []
 }
 ```
 * Requests must always include the existing history with role and content for the bot to function correctly
