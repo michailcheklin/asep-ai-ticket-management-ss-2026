@@ -1,6 +1,7 @@
 from prompt_security_result import (
     evaluate_prompt_injection,
-    evaluate_legality
+    evaluate_legality,
+    evaluate_off_topic
 )
 
 
@@ -52,6 +53,39 @@ def run_tests():
 
     for prompt in test_prompts_for_legality:
         result = evaluate_legality(prompt)
+
+        print("Prompt:", prompt)
+        print("Allowed:", result["allowed"])
+        print("Reason:", result["reason"])
+        print("Model Label:", result["model_label"])
+        print("Risk Score:", result["risk_score"])
+        print("Timestamp:", result["timestamp"])
+        print("-" * 50)
+
+
+    test_prompts_for_off_topic_text = [
+        # OK
+        "Wie kann ich das VPN aufsetzen?",
+
+        # OK
+        "Ich habe mein Passwort vergessen.",
+
+        # Off-Topic
+        "Wer hat die Mona Lisa gemalt?",
+
+        # Off-Topic
+        "Erzähle mir ein Märchen.",
+
+        # Off-Topic
+        "Worum geht es in 'Stranger Things'?"
+    ]
+
+    print("-" * 50)
+    print("Testing Off-Topic Detection...")
+    print("-" * 50)
+
+    for prompt in test_prompts_for_off_topic_text:
+        result = evaluate_off_topic(prompt)
 
         print("Prompt:", prompt)
         print("Allowed:", result["allowed"])

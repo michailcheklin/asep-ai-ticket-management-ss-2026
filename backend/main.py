@@ -17,7 +17,8 @@ from pydantic import BaseModel
 from typing import List, Dict
 from prompt_security_result import (
     evaluate_prompt_injection,
-    evaluate_legality
+    evaluate_legality,
+    evaluate_off_topic
 )
 
 # Create FastAPI application instance
@@ -98,13 +99,16 @@ async def chat_endpoint(request: ChatRequest):
     with (concurrent.futures.ThreadPoolExecutor() as executor):
         prompt_injection_detection = executor.submit(evaluate_prompt_injection, prompt)
         illegal_topics_detection = executor.submit(evaluate_legality, prompt)
+        off_topic_detection = executor.submit(evaluate_off_topic, prompt)
 
         prompt_injection_detection_result = prompt_injection_detection.result()
         illegal_topics_detection_result = illegal_topics_detection.result()
+        off_topic_detection_result = off_topic_detection.result()
 
     complete_evaluation = [
         prompt_injection_detection_result,
-        illegal_topics_detection_result
+        illegal_topics_detection_result,
+        off_topic_detection_result
     ]
 
     indications = [not evaluation_result["allowed"] for evaluation_result in complete_evaluation]
@@ -230,13 +234,16 @@ def run_local_chat():
         with (concurrent.futures.ThreadPoolExecutor() as executor):
             prompt_injection_detection = executor.submit(evaluate_prompt_injection, prompt)
             illegal_topics_detection = executor.submit(evaluate_legality, prompt)
+            off_topic_detection = executor.submit(evaluate_off_topic, prompt)
 
             prompt_injection_detection_result = prompt_injection_detection.result()
             illegal_topics_detection_result = illegal_topics_detection.result()
+            off_topic_detection_result = off_topic_detection.result()
 
         complete_evaluation = [
             prompt_injection_detection_result,
-            illegal_topics_detection_result
+            illegal_topics_detection_result,
+            off_topic_detection_result
         ]
 
         indications = [not evaluation_result["allowed"] for evaluation_result in complete_evaluation]
