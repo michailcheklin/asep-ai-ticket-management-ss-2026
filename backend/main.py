@@ -15,6 +15,7 @@ from nodes import (
 from setup_prompt_checking_pipeline import initialize_models
 from pydantic import BaseModel
 from typing import List, Dict
+from prompt_security_result import evaluate_prompt_injection
 
 # Create FastAPI application instance
 app = FastAPI(title="AI Ticket API", version="1.0.0")
@@ -87,6 +88,28 @@ async def chat_endpoint(request: ChatRequest):
     :param request: the state of the conversation
     :return: returns the updated state, after the llm processed the request
     """
+
+    # Validate the user input for potential prompt injection attempts before
+    # passing it to the chatbot workflow. If the request is classified as unsafe
+    # it is blocked and not forwarded to the chatbot or the RAG-based knowledge base. 
+    security_result = evaluate_prompt_injection(
+        request.user_message,
+        prompt_injection_detector
+    )
+
+    if not security_result["allowed"]:
+        return {
+            "bot_response": "Diese Anfrage wurde aus Sicherheitsgründen blockiert. Bitte formuliere eine normale Anfrage zu einem ZIM-Thema.",
+            "security": security_result,
+            "user_email": request.user_email,
+            "matrikelnummer": request.matrikelnummer,
+            "issue_description": request.issue_description,
+            "is_complete": False
+        }
+  
+
+
+    
     # translates JSON objects into LangChain objects
     langchain_messages = []
     for msg in request.history:
@@ -185,15 +208,35 @@ def run_local_chat():
 
     while True:
         user_input = input("\nDu: ")
+
         if user_input.lower() in ["exit", "quit", "q"]:
             break
 
+        # Validate the user input for potential prompt injection attempts
+        # before passing it to the chatbot workflow.
+        security_result = evaluate_prompt_injection(
+            user_input,
+            prompt_injection_detector
+        )
+
+        if not security_result["allowed"]:
+            print(
+                "Bot: Diese Anfrage wurde aus Sicherheitsgründen blockiert. "
+                "Bitte formuliere eine normale Anfrage zu einem ZIM-Thema."
+            )
+            print(f"   [SECURITY DEBUG] {security_result}")
+            continue
+
         current_state["messages"].append(HumanMessage(content=user_input))
         current_state = graph.invoke(current_state)
+
         bot_response = current_state["messages"][-1].content
         print(f"Bot: {bot_response}")
         print(
-            f"   [DEBUG STATE] email: {current_state.get('user_email')} | Matrikel: {current_state.get('matrikelnummer')} | Problem: {current_state.get('issue_description')}")
+            f"   [DEBUG STATE] email: {current_state.get('user_email')} | "
+            f"Matrikel: {current_state.get('matrikelnummer')} | "
+            f"Problem: {current_state.get('issue_description')}"
+        )
 
         if current_state.get("is_complete"):
             print("\n🎉 [SYSTEM]: backend feuert API-Call an Zammad!")
@@ -201,4 +244,4 @@ def run_local_chat():
 
 
 if __name__ == "__main__":
-    run_local_chat()
+    run_local_chat() 
