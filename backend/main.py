@@ -1,4 +1,5 @@
 """API für AI Ticket System; optionale Anbindung an Zammad (REST)."""
+import concurrent.futures
 import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,12 +15,9 @@ from nodes import (
 )
 from pydantic import BaseModel
 from typing import List, Dict
-from prompt_security_result import evaluate_prompt_injection
-from prompt_check_pipeline import (
-    translator,
-    translator_tokenizer,
-    prompt_injection_detector,
-    topic_classifier
+from prompt_security_result import (
+    evaluate_prompt_injection,
+    evaluate_legality
 )
 
 # Create FastAPI application instance
@@ -95,15 +93,26 @@ async def chat_endpoint(request: ChatRequest):
     # Validate the user input for potential prompt injection attempts before
     # passing it to the chatbot workflow. If the request is classified as unsafe
     # it is blocked and not forwarded to the chatbot or the RAG-based knowledge base. 
-    security_result = evaluate_prompt_injection(
-        request.user_message,
-        prompt_injection_detector
-    )
+    # Execute the checks all at the same time
+    prompt:str = request.user_message
+    with (concurrent.futures.ThreadPoolExecutor() as executor):
+        prompt_injection_detection = executor.submit(evaluate_prompt_injection, prompt)
+        illegal_topics_detection = executor.submit(evaluate_legality, prompt)
 
-    if not security_result["allowed"]:
+        prompt_injection_detection_result = prompt_injection_detection.result()
+        illegal_topics_detection_result = illegal_topics_detection.result()
+
+    complete_evaluation = [
+        prompt_injection_detection_result,
+        illegal_topics_detection_result
+    ]
+
+    indications = [not evaluation_result["allowed"] for evaluation_result in complete_evaluation]
+
+    if len([indication for indication in indications if indication]) > 0:
         return {
             "bot_response": "Diese Anfrage wurde aus Sicherheitsgründen blockiert. Bitte formuliere eine normale Anfrage zu einem ZIM-Thema.",
-            "security": security_result,
+            "security": complete_evaluation,
             "user_email": request.user_email,
             "matrikelnummer": request.matrikelnummer,
             "issue_description": request.issue_description,
@@ -217,17 +226,27 @@ def run_local_chat():
 
         # Validate the user input for potential prompt injection attempts
         # before passing it to the chatbot workflow.
-        security_result = evaluate_prompt_injection(
-            user_input,
-            prompt_injection_detector
-        )
+        prompt: str = user_input
+        with (concurrent.futures.ThreadPoolExecutor() as executor):
+            prompt_injection_detection = executor.submit(evaluate_prompt_injection, prompt)
+            illegal_topics_detection = executor.submit(evaluate_legality, prompt)
 
-        if not security_result["allowed"]:
+            prompt_injection_detection_result = prompt_injection_detection.result()
+            illegal_topics_detection_result = illegal_topics_detection.result()
+
+        complete_evaluation = [
+            prompt_injection_detection_result,
+            illegal_topics_detection_result
+        ]
+
+        indications = [not evaluation_result["allowed"] for evaluation_result in complete_evaluation]
+
+        if len([indication for indication in indications if indication]) > 0:
             print(
                 "Bot: Diese Anfrage wurde aus Sicherheitsgründen blockiert. "
                 "Bitte formuliere eine normale Anfrage zu einem ZIM-Thema."
             )
-            print(f"   [SECURITY DEBUG] {security_result}")
+            print(f"   [SECURITY DEBUG] {complete_evaluation}")
             continue
 
         current_state["messages"].append(HumanMessage(content=user_input))
