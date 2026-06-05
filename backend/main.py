@@ -12,10 +12,15 @@ from nodes import (
     ask_for_issue,
     finish_ticket
 )
-from setup_prompt_checking_pipeline import initialize_models
 from pydantic import BaseModel
 from typing import List, Dict
 from prompt_security_result import evaluate_prompt_injection
+from prompt_check_pipeline import (
+    translator,
+    translator_tokenizer,
+    prompt_injection_detector,
+    topic_classifier
+)
 
 # Create FastAPI application instance
 app = FastAPI(title="AI Ticket API", version="1.0.0")
@@ -34,8 +39,6 @@ ZAMMAD_BASE = os.getenv("ZAMMAD_INTERNAL_URL", "").rstrip("/")
 ZAMMAD_TOKEN = os.getenv("ZAMMAD_API_TOKEN", "").strip()
 ZAMMAD_GROUP_ID = int(os.getenv("ZAMMAD_DEFAULT_GROUP_ID", "1"))
 
-# Load the Hugging Face models for the prompt safety checks
-topic_classifier, translator_tokenizer, translator, prompt_injection_detector = initialize_models()
 
 
 def _zammad_headers() -> dict[str, str]:

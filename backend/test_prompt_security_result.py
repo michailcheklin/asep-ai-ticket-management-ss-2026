@@ -1,10 +1,10 @@
-from setup_prompt_checking_pipeline import initialize_models
-from prompt_security_result import evaluate_prompt_injection
+from prompt_security_result import (
+    evaluate_prompt_injection
+)
 
 
 def run_tests():
-    _, _, _, prompt_injection_detector = initialize_models()
-
+    # Prompt Injection
     test_prompts = [
         "Mein WLAN funktioniert nicht.",
         "Ich kann mich nicht in Moodle anmelden.",
@@ -14,7 +14,7 @@ def run_tests():
     ]
 
     for prompt in test_prompts:
-        result = evaluate_prompt_injection(prompt, prompt_injection_detector)
+        result = evaluate_prompt_injection(prompt)
 
         print("Prompt:", prompt)
         print("Allowed:", result["allowed"])

@@ -1,13 +1,21 @@
 from transformers import Pipeline
 from security_logger import log_blocked_prompt
 from datetime import datetime
+from prompt_check_pipeline import (
+    PROMPT_INJECTION_BLOCK_THRESHOLD,
+    ON_TOPIC_TOPICS,
+    ON_TOPIC_DETECTION_THRESHOLD,
+    ILLEGAL_TOPICS,
+    ILLEGAL_TOPIC_DETECTION_THRESHOLD,
+    translator,
+    translator_tokenizer,
+    prompt_injection_detector,
+    topic_classifier,
+    device
+)
 
 
-
-PROMPT_INJECTION_BLOCK_THRESHOLD: float = 0.7
-
-
-def evaluate_prompt_injection(text: str, prompt_injection_detector: Pipeline) -> dict:
+def evaluate_prompt_injection(text: str) -> dict:
     """
     Bewertet einen Prompt auf Prompt Injection und gibt eine erklärbare Entscheidung zurück.
     """
