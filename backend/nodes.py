@@ -1,5 +1,5 @@
 import os
-from typing import Optional, cast
+from typing import Optional, cast, List
 from pydantic import BaseModel, Field, SecretStr
 from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
@@ -14,13 +14,13 @@ USE_SAIA = os.getenv("USE_SAIA_API", "false").lower() == "true"
 # Defaults to 'false' to avoid useing up the monthly SAIA limit (3000 requests)
 # during standard code development and pipeline testing
 if USE_SAIA:
-    raw_key = os.getenv("SAIA_API_KEY", "")
+    raw_key =os.getenv("SAIA_API_KEY", "")
     # LangChain requires API keys to be wrapped in a Pydantic 'SecretStr' type
     # This prevents the key from being exposed in plain text within logs
     # if the application crashes or the 'llm' object is accidentally printed to the terminal
     secure_saia_api_key = SecretStr(raw_key) if raw_key else None
     llm = ChatOpenAI(
-        model="llama-3.3-70b-instruct",
+        model="deepseek-r1-distill-llama-70b",
         api_key=secure_saia_api_key,
         base_url="https://chat-ai.academiccloud.de/v1",
         temperature=0.2
@@ -38,10 +38,24 @@ class ExtractedTicketData(BaseModel):
     """
     Schema defining the structured ticket data to be extracted from user messages
     """
-    email: Optional[str] = Field(None, description="Die E-Mail-Adresse des Users. Nur ausfüllen, wenn sie ein @-Zeichen enthält.")
+    email: Optional[str] = Field(None,
+                                 description="Die E-Mail-Adresse des Users. Nur ausfüllen, wenn sie ein @-Zeichen enthält.")
     matrikelnummer: Optional[str] = Field(None,
                                           description="Die 7-stellige Matrikelnummer des Studenten, falls genannt.")
-    problem: Optional[str] = Field(None, description="Das IT-Problem (z.B. 'WLAN geht nicht', 'Passwort vergessen', 'Moodle lädt nicht'). Auch kurze, umgangssprachliche Sätze zählen!")
+    problem: Optional[str] = Field(None,
+                                   description="Das IT-Problem (z.B. 'WLAN geht nicht', 'Passwort vergessen', 'Moodle lädt nicht'). Auch kurze, umgangssprachliche Sätze zählen!")
+    additional_info: Optional[List[str]] = Field(default_factory=list,
+                                                 description="Eine Liste von spezifischen Zusatzinformationen, die für den IT-Support an einer Universität relevant sind (z.B. Gebäude, Raumnummer, Fehlermeldung, Gerätetyp, OS). Keine Füllwörter."
+    )
+
+class AdditionalInfoDecision(BaseModel):
+    """Schema decision, if additional info is needed for effective problem treatment"""
+    is_complete: bool = Field(
+        description="True, wenn die Zusatzinfos ausreichen, um das Problem zu bearbeiten. False, wenn wichtige Details fehlen (z.B. bei 'WLAN kaputt' fehlt das Gebäude)."
+    )
+    follow_up_question: Optional[str] = Field(
+        description="Wenn is_complete False ist: Eine kurze, höfliche Frage an den User, um die fehlenden Details herauszufinden. Wenn is_complete True ist, lasse dieses Feld leer (null)."
+    )
 
 
 # Forces the LLM to return data strictly matching the ExtractedTicketData schema in JSON format
@@ -56,11 +70,14 @@ def extract_information(state: ChatbotState):
     """
     last_user_message = [msg for msg in state["messages"] if isinstance(msg, HumanMessage)][-1]
 
-    system_prompt = (
-        "Du bist ein präziser Daten-Extraktor. Lies den Text des Users. "
-        "Finde die email, die Matrikelnummer und das IT-Problem. "
-        "Beispiele für ein Problem: 'Ich habe kein Internet', 'Mein Account ist gesperrt', 'WLAN kaputt'. "
-        "WICHTIG: Wenn eine Information fehlt, setze das Feld zwingend auf null. Erfinde absolut nichts dazu!"
+    system_prompt = ("""Du bist ein hochpräziser KI-Daten-Extraktor für ein IT-Support-Unternehmen, das exklusiv mit Universitäten zusammenarbeitet.
+    Deine Aufgabe ist es, aus den eingehenden Chat-Nachrichten von Studierenden und Mitarbeitern strukturierte Ticket-Daten zu extrahieren.
+    EXTRAKTIONS-REGELN:
+    1. Basis-Daten (Textfelder): Suche nach der 'email', der 'matrikelnummer' und dem Haupt-'problem' und speichere diese ausschließlich in ihren jeweiligen Textfeldern.
+    2. Zusatzinformationen (Listen-Feld): Extrahiere alle weiteren technischen oder lokalen Details, die für die Lösung des Problems nützlich sein könnten, und weise sie dem Feld 'additional_info' zu.
+    - Beispiele für wertvolle Details: Orte (z.B. 'Gebäude LF', 'Bibliothek'), Geräte/Systeme (z.B. 'MacBook', 'Windows 11'), betroffene Services (z.B. 'eduroam', 'VPN') oder spezifische Fehlercodes.
+    - FORMAT: Speichere diese Zusatzinfos als einzelne, kompakte Strings innerhalb der Liste (z.B. ["Gebäude LF", "MacBook", "eduroam"]).
+    3. Strikte Wahrheit: Wenn eine Information fehlt, setze das entsprechende Feld zwingend auf null (bzw. lasse die Liste leer). Erfinde unter keinen Umständen Daten dazu!"""
     )
 
     # Telling python to treat output from structured llm as ExtractedTicketData instance
@@ -77,6 +94,8 @@ def extract_information(state: ChatbotState):
         state_update["matrikelnummer"] = extracted_data.matrikelnummer
     if extracted_data.problem:
         state_update["issue_description"] = extracted_data.problem
+    if extracted_data.additional_info:
+        state_update["additional_info"] = extracted_data.additional_info
 
     return state_update
 
@@ -84,7 +103,7 @@ def extract_information(state: ChatbotState):
 
 def ask_for_email(state: ChatbotState):
     """
-    Queries Llama 3.2 to politely ask the user for their missing email
+    Queries Llama to politely ask the user for their missing email
     :param state: The current conversation and ticket state
     :return: A dictionary containing the newly extracted fields to update the state.
     """
@@ -102,7 +121,7 @@ def ask_for_email(state: ChatbotState):
 
 def ask_for_matrikelnummer(state: ChatbotState):
     """
-    Queries Llama 3.2 to politely ask the user for their missing matrikelnummer
+    Queries Llama to politely ask the user for their missing matrikelnummer
     :param state: The current conversation and ticket state
     :return: A dictionary containing the newly extracted fields to update the state.
     """
@@ -119,7 +138,7 @@ def ask_for_matrikelnummer(state: ChatbotState):
 
 def ask_for_issue(state: ChatbotState):
     """
-    Queries Llama 3.2 to politely ask the user for the missing problem description
+    Queries Llama to politely ask the user for the missing problem description
     :param state: The current conversation and ticket state
     :return: A dictionary containing the newly extracted fields to update the state.
     """
@@ -132,6 +151,46 @@ def ask_for_issue(state: ChatbotState):
     response = llm.invoke(full_messages)
 
     return {"messages": [response]}
+
+def ask_for_additional_info(state: ChatbotState):
+    """
+    Queries Llama to politely ask the user for the missing additional info, if needed
+    :param state: The current conversation and ticket state
+    :return: A dictionary containing the newly extracted fields to update the state.
+    """
+
+    problem = state.get("issue_description", "")
+    infos = state.get("additional_info", [])
+
+    aditionalInfo_llm = llm.with_structured_output(AdditionalInfoDecision)
+    system_prompt = SystemMessage(content=(
+        f"""
+        Du bist ein technischer Dispatcher im IT-Support einer Universität.
+        Dein Ziel ist es zu prüfen, ob die vorliegenden Informationen für das genannte Problem ausreichen, 
+        um ein vollständiges Ticket zu erstellen.
+        
+        AKTUELLES PROBLEM: {problem}
+        BEREITS BEKANNTE ZUSATZINFOS: {infos}
+        
+        REGELN:
+        1. Überlege, ob für dieses spezifische Problem essenzielle Details fehlen. 
+           (Beispiele: Bei WLAN-Problemen braucht man den Ort/das Gebäude. Bei Software-Problemen das Betriebssystem).
+        2. Wenn alles Wichtige da ist, setze is_complete auf True.
+        3. Wenn wichtige Details fehlen, setze is_complete auf False und formuliere 
+           eine kurze, freundliche follow_up_question an den User.
+        """
+    ))
+
+    decision = cast(AdditionalInfoDecision, aditionalInfo_llm.invoke([system_prompt]))
+
+    # Logic switch if all information needed is collected or not
+    if decision.is_complete:
+        return {"is_complete": True}
+    else:
+        return {
+            "is_complete": False,
+            "messages": [AIMessage(content=decision.follow_up_question)]
+        }
 
 
 def finish_ticket(state: ChatbotState):

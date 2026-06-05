@@ -10,7 +10,8 @@ from nodes import (
     ask_for_email,
     ask_for_matrikelnummer,
     ask_for_issue,
-    finish_ticket
+    finish_ticket,
+    ask_for_additional_info
 )
 from pydantic import BaseModel
 from typing import List, Dict
@@ -75,6 +76,7 @@ class ChatRequest(BaseModel):
     user_email: str = ""
     matrikelnummer: str = ""
     issue_description: str = ""
+    additional_info: List[str] = []
 
 
 @app.post("/chat")
@@ -99,6 +101,7 @@ async def chat_endpoint(request: ChatRequest):
         "user_email": request.user_email,
         "matrikelnummer": request.matrikelnummer,
         "issue_description": request.issue_description,
+        "additional_info": request.additional_info,
         "is_complete": False
     }
 
@@ -109,6 +112,7 @@ async def chat_endpoint(request: ChatRequest):
         "user_email": updated_state.get("user_email", ""),
         "matrikelnummer": updated_state.get("matrikelnummer", ""),
         "issue_description": updated_state.get("issue_description", ""),
+        "additional_info": updated_state.get("additional_info", []),
         "is_complete": updated_state.get("is_complete", False)
     }
 
@@ -126,7 +130,17 @@ def route_based_on_state(state: ChatbotState):
         return "ask_issue_node"
 
     else:
+        return "ask_for_additional_info"
+
+def route_after_evaluator(state: ChatbotState):
+    """
+    Checks result of additional information node. If all needed information are collected the finish node
+    is called, otherwise the workflow start all over again
+    """
+    if state.get("is_complete"):
         return "finish_node"
+    else:
+        return END
 
 
 
@@ -138,6 +152,7 @@ workflow.add_node("extractor_node", extract_information)
 workflow.add_node("ask_email_node", ask_for_email)
 workflow.add_node("ask_matrikel_node", ask_for_matrikelnummer)
 workflow.add_node("ask_issue_node", ask_for_issue)
+workflow.add_node("ask_for_additional_info", ask_for_additional_info)
 workflow.add_node("finish_node", finish_ticket)
 
 # Set the mandatory entry point of the graph execution
@@ -147,6 +162,12 @@ workflow.add_edge(START, "extractor_node")
 workflow.add_conditional_edges(
     "extractor_node",
     route_based_on_state
+)
+
+# Switch after the additional information node
+workflow.add_conditional_edges(
+    "ask_for_additional_info",
+    route_after_evaluator
 )
 
 workflow.add_edge("ask_email_node", END)
@@ -172,6 +193,7 @@ def run_local_chat():
         "user_email": "",
         "matrikelnummer": "",
         "issue_description": "",
+        "additional_info": [],
         "is_complete": False
     }
 
@@ -187,7 +209,7 @@ def run_local_chat():
         bot_response = current_state["messages"][-1].content
         print(f"Bot: {bot_response}")
         print(
-            f"   [DEBUG STATE] email: {current_state.get('user_email')} | Matrikel: {current_state.get('matrikelnummer')} | Problem: {current_state.get('issue_description')}")
+            f"   [DEBUG STATE] email: {current_state.get('user_email')} | Matrikel: {current_state.get('matrikelnummer')} | Problem: {current_state.get('issue_description')} | Additional Info: {current_state.get('additional_info')}")
 
         if current_state.get("is_complete"):
             print("\n🎉 [SYSTEM]: backend feuert API-Call an Zammad!")
