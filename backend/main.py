@@ -115,11 +115,17 @@ async def chat_endpoint(request: ChatRequest):
 
     complete_evaluation = __check_prompt(request.user_message)
 
-    indications = [not evaluation_result["allowed"] for evaluation_result in complete_evaluation]
+    failed_checks = [check_result for check_result in complete_evaluation if not check_result["allowed"]]
+    if len(failed_checks) > 0:
+        print(failed_checks)
+        reason = ""
+        if failed_checks[0]["checked_for"] in ["prompt injection", "legality of prompt"]:
+            reason = "Diese Anfrage wurde aus Sicherheitsgründen blockiert."
+        elif failed_checks[0]["checked_for"] in ["off-topic"]:
+            reason = "Diese Anfrage hat keinen Bezug zum Thema ZIM."
 
-    if len([indication for indication in indications if indication]) > 0:
         return {
-            "bot_response": "Diese Anfrage wurde aus Sicherheitsgründen blockiert. Bitte formuliere eine normale Anfrage zu einem ZIM-Thema.",
+            "bot_response": f"{reason} Bitte formuliere eine normale Anfrage zu einem ZIM-Thema.",
             "security": complete_evaluation,
             "user_email": request.user_email,
             "matrikelnummer": request.matrikelnummer,
@@ -235,12 +241,17 @@ def run_local_chat():
         # Validate the user input for potential prompt injection attempts
         # before passing it to the chatbot workflow.
         complete_evaluation = __check_prompt(user_input)
+        failed_checks = [check_result for check_result in complete_evaluation if not check_result["allowed"]]
+        if len(failed_checks) > 0:
+            print(failed_checks)
+            reason = ""
+            if failed_checks[0]["checked_for"] in ["prompt injection", "legality of prompt"]:
+                reason = "Diese Anfrage wurde aus Sicherheitsgründen blockiert."
+            elif failed_checks[0]["checked_for"] in ["off-topic"]:
+                reason = "Diese Anfrage hat keinen Bezug zum Thema ZIM."
 
-        indications = [not evaluation_result["allowed"] for evaluation_result in complete_evaluation]
-
-        if len([indication for indication in indications if indication]) > 0:
             print(
-                "Bot: Diese Anfrage wurde aus Sicherheitsgründen blockiert. "
+                f"Bot: {reason} "
                 "Bitte formuliere eine normale Anfrage zu einem ZIM-Thema."
             )
             print(f"   [SECURITY DEBUG] {complete_evaluation}")
