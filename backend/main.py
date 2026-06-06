@@ -106,6 +106,8 @@ def __check_prompt (prompt:str) -> list[dict]:
 
 def __formulate_prompt_rejection_reason(failed_checks:list[dict]) -> str:
     reason = ""
+    if len(failed_checks) == 0:
+        return ""
     if failed_checks[0]["checked_for"] == "legality of prompt":
         reason = "Diese Anfrage wurde aus Sicherheitsgründen blockiert, da diese illegale Themen enthält."
     elif failed_checks[0]["checked_for"] == "prompt injection":
