@@ -104,6 +104,15 @@ def __check_prompt (prompt:str) -> list[dict]:
 
     return complete_evaluation
 
+def __formulate_prompt_rejection_reason(failed_checks:list[dict]) -> str:
+    reason = ""
+    if failed_checks[0]["checked_for"] == "legality of prompt":
+        reason = "Diese Anfrage wurde aus Sicherheitsgründen blockiert, da diese illegale Themen enthält."
+    elif failed_checks[0]["checked_for"] == "prompt injection":
+        reason = "Diese Anfrage wurde aus Sicherheitsgründen blockiert, da der Chatbot nicht von seinen internen Vorgaben abweichen darf."
+    elif failed_checks[0]["checked_for"] == "off-topic":
+        reason = "Diese Anfrage hat keinen Bezug zum Thema ZIM."
+    return reason
 
 @app.post("/chat")
 async def chat_endpoint(request: ChatRequest):
@@ -118,11 +127,7 @@ async def chat_endpoint(request: ChatRequest):
     failed_checks = [check_result for check_result in complete_evaluation if not check_result["allowed"]]
     if len(failed_checks) > 0:
         print(failed_checks)
-        reason = ""
-        if failed_checks[0]["checked_for"] in ["prompt injection", "legality of prompt"]:
-            reason = "Diese Anfrage wurde aus Sicherheitsgründen blockiert."
-        elif failed_checks[0]["checked_for"] in ["off-topic"]:
-            reason = "Diese Anfrage hat keinen Bezug zum Thema ZIM."
+        reason = __formulate_prompt_rejection_reason(failed_checks)
 
         return {
             "bot_response": f"{reason} Bitte formuliere eine normale Anfrage zu einem ZIM-Thema.",
@@ -244,11 +249,7 @@ def run_local_chat():
         failed_checks = [check_result for check_result in complete_evaluation if not check_result["allowed"]]
         if len(failed_checks) > 0:
             print(failed_checks)
-            reason = ""
-            if failed_checks[0]["checked_for"] in ["prompt injection", "legality of prompt"]:
-                reason = "Diese Anfrage wurde aus Sicherheitsgründen blockiert."
-            elif failed_checks[0]["checked_for"] in ["off-topic"]:
-                reason = "Diese Anfrage hat keinen Bezug zum Thema ZIM."
+            reason = __formulate_prompt_rejection_reason(failed_checks)
 
             print(
                 f"Bot: {reason} "
