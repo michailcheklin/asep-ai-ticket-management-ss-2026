@@ -25,6 +25,17 @@ docker compose up -d --build
 ## 2. API Interface
 * POST /chat
 * This endpoint processes the user's input and communicates with the AI model
+
+
+### Security Checks
+
+Before a user message is processed by the chatbot workflow, it is checked for potential prompt injection attempts.
+
+If a message is classified as a prompt injection attack, it is blocked and not forwarded to the chatbot or the future RAG-based knowledge base.
+
+Blocked requests are logged together with a timestamp, a risk score and the detected security classification. The security checks are evaluated before the chatbot workflow is executed.
+
+
 ### Expected Request
 ```json
 {
