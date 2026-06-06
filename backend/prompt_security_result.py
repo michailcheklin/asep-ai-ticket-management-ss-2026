@@ -89,7 +89,7 @@ def evaluate_legality(text:str) -> dict:
     return result
 
 
-def evaluate_off_topic(text:str) -> bool:
+def evaluate_off_topic(text:str) -> dict:
     """
     Diese Methode prüft, ob ein Prompt nichts mit dem ZIM zu tun hat
     :param text: Der zu prüfende Text (auf Englisch)

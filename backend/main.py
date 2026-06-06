@@ -113,7 +113,7 @@ async def chat_endpoint(request: ChatRequest):
     :return: returns the updated state, after the llm processed the request
     """
 
-    complete_evaluation = check_prompt(request.user_message)
+    complete_evaluation = __check_prompt(request.user_message)
 
     indications = [not evaluation_result["allowed"] for evaluation_result in complete_evaluation]
 
@@ -234,7 +234,7 @@ def run_local_chat():
 
         # Validate the user input for potential prompt injection attempts
         # before passing it to the chatbot workflow.
-        complete_evaluation = check_prompt(user_input)
+        complete_evaluation = __check_prompt(user_input)
 
         indications = [not evaluation_result["allowed"] for evaluation_result in complete_evaluation]
 
