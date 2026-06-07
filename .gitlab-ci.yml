@@ -1,0 +1,26 @@
+image: python:3.11
+
+stages:
+  - test
+
+run_tests:
+  stage: test
+  tags:
+    - shared
+    - docker
+    - PoC
+    - pilot
+  only:
+    - 114-Implement-test-cases-in-CI
+  # Use a specific Python image for a predictable runtime
+  image: python:3.11
+  before_script:
+    - python --version
+    - pip install --upgrade pip
+    # Install backend requirements if the file exists;
+    - if [ -f backend/requirements.txt ]; then pip install -r backend/requirements.txt; fi
+  script:
+    - cd backend
+    # Execute the provided test script. It imports from main.py, so run from backend directory.
+    - python test_prompt_security_result.py
+
