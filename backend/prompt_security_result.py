@@ -19,6 +19,7 @@ def evaluate_prompt_injection(text: str) -> dict:
     """
     Bewertet einen Prompt auf Prompt Injection und gibt eine erklärbare Entscheidung zurück.
     """
+    text = __translate_from_german_into_english(text)
     output = prompt_injection_detector(text)[0]
 
     label = output.get("label", "")
