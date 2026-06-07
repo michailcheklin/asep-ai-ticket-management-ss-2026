@@ -4,7 +4,7 @@ from transformers import pipeline, Pipeline, MarianTokenizer, MarianMTModel
 
 huggingface_model_folder = os.getenv("HF_HOME", "/models")
 
-ILLEGAL_TOPICS:list[str] = ["terrorism", "violence", "crime"]
+ILLEGAL_TOPICS:list[str] = ["terrorism", "violence", "crime", "copyright infringement"]
 ILLEGAL_TOPIC_DETECTION_THRESHOLD:float = 0.5
 
 # Quelle: https://www.uni-due.de/zim/hilfecenter/faqs.php
