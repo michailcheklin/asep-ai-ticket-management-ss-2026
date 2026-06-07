@@ -105,15 +105,18 @@ def __check_prompt (prompt:str) -> list[dict]:
     return complete_evaluation
 
 def __formulate_prompt_rejection_reason(failed_checks:list[dict]) -> str:
+
+    # Leaing the code format like that, so that if separate user-visible rejection messages
+    # are needed, only the return strings have to be changed here.
     reason = ""
     if len(failed_checks) == 0:
         return ""
     if failed_checks[0]["checked_for"] == "legality of prompt":
-        reason = "Diese Anfrage wurde aus Sicherheitsgründen blockiert, da diese illegale Themen enthält."
+        reason = "Diese Anfrage wurde blockiert, weil diese gegen die Richtlinien des Chatbots verstößt."
     elif failed_checks[0]["checked_for"] == "prompt injection":
-        reason = "Diese Anfrage wurde aus Sicherheitsgründen blockiert, da der Chatbot nicht von seinen internen Vorgaben abweichen darf."
+        reason = "Diese Anfrage wurde blockiert, weil diese gegen die Richtlinien des Chatbots verstößt."
     elif failed_checks[0]["checked_for"] == "off-topic":
-        reason = "Diese Anfrage hat keinen Bezug zum Thema ZIM."
+        reason = "Diese Anfrage wurde blockiert, weil diese gegen die Richtlinien des Chatbots verstößt."
     return reason
 
 @app.post("/chat")
