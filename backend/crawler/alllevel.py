@@ -22,10 +22,10 @@ for a in rahmen.select("a[href]"):
     text = a.get_text(strip=True)
 
     if re.match(r"^\d{2}\s", text):
-        print(text.split()[0])
-        print(text)
-        print(urljoin(BASE_URL, a["href"]))
-        print("-"*50)
+        # print(text.split()[0])
+        # print(text)
+        # print(urljoin(BASE_URL, a["href"]))
+        # print("-"*50)
         categories.append({
             "code": text.split()[0],
             "title": text,
@@ -118,9 +118,9 @@ for e in level3:
             gesehenLevel3.add(name)
             zwischenergebnisLevel3.append(item)
 
-print("Now printing Zwischenergebnis level 3")
-for e in zwischenergebnisLevel3:
-    print(e)
+# print("Now printing Zwischenergebnis level 3")
+# for e in zwischenergebnisLevel3:
+#     print(e)
 
 
 name_url_level3 = []
@@ -136,8 +136,8 @@ for e in zwischenergebnisLevel3:
         "url": url
     })
 
-for e in name_url_level3:
-    print(e)
+# for e in name_url_level3:
+#     print(e)
 
 for e in name_url_level3:
     if e not in name_url:
