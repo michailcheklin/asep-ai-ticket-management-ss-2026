@@ -63,8 +63,8 @@ for cat in categories:
 
     soup = get_soup(cat["url"])
     items = soup.select("a[name]")
-    print(items)
-    print("-"*50)
+    # print(items)
+    # print("-"*50)
 
     for item in items:
         name = item.get("name")
@@ -86,8 +86,8 @@ for e in zwischenergebnis:
         "url": url
     })
 
-for e in name_url:
-    print(e)
+# for e in name_url:
+#     print(e)
 
 level3 = []
 
@@ -102,14 +102,14 @@ for entry in name_url:
 zwischenergebnisLevel3 = []
 gesehenLevel3 = set()
 
-print("Now printing level 3")
+# print("Now printing level 3")
 for e in level3:
-    print(e)
+    # print(e)
 
     soup = get_soup(e["url"])
     items = soup.select("a[name]")
-    print(items)
-    print("-"*50)
+    # print(items)
+    # print("-"*50)
 
     for item in items:
         name = item.get("name")
