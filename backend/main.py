@@ -83,6 +83,12 @@ class ChatRequest(BaseModel):
     issue_description: str = ""
 
 def __check_prompt (prompt:str) -> list[dict]:
+    """
+    Diese Methode prüft einen Prompt auf Prompt Injection, illegale Themen
+    und auf nicht-ZIM-bezogene Themen und gibt für die Logs eine strukturierte Ausgabe
+    :param prompt: Der Prompt, der auf seine Sicherheit geprüft werden soll
+    :return: Die Ergebnisse als eine Liste von Objekten, die jeweils beschreiben was und mit welchem Ergebnis der Prompt geprüft wird
+    """
     # Validate the user input for potential prompt injection attempts before
     # passing it to the chatbot workflow. If the request is classified as unsafe
     # it is blocked and not forwarded to the chatbot or the RAG-based knowledge base.
@@ -105,8 +111,16 @@ def __check_prompt (prompt:str) -> list[dict]:
     return complete_evaluation
 
 def __formulate_prompt_rejection_reason(failed_checks:list[dict]) -> str:
+    """
+    Diese Methode formuliert basierend darauf, warum der Prompt abgelehnt wurde,
+    den Grund als Text.
+    :param failed_checks: Die Liste der nicht bestandenen Sicherheitschecks, die
+    aus der Liste, die nach der Nutzung der __check_prompt-Methode entsteht,
+    gefiltert wurde
+    :return: Der Grund, warum ein Prompt abgelehnt wurde als Text
+    """
 
-    # Leaing the code format like that, so that if separate user-visible rejection messages
+    # Leaving the code format like that, so that if separate user-visible rejection messages
     # are needed, only the return strings have to be changed here.
     reason = ""
     if len(failed_checks) == 0:
@@ -174,8 +188,6 @@ async def chat_endpoint(request: ChatRequest):
         "is_complete": updated_state.get("is_complete", False)
     }
 
-
-# TODO: Prüfung des Prompts aus dem Mock-Prototyp in einen Endpunkt im Backend übertragen
 
 def route_based_on_state(state: ChatbotState):
     """

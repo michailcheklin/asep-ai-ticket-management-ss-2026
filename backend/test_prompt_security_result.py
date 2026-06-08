@@ -4,6 +4,12 @@ from main import (
 
 
 def run_tests():
+    """
+    Diese Methode führt die Testfälle für den Test, ob die Prompt-Sicherheitschecks
+    zuverlässig und möglichst korrekt funktionieren, aus, indem die Prompt-Checks,
+    die der Chat-Endpoint eigentlich aufruft, hier direkt aufgerufen werden.
+    :return:
+    """
     # Führe die komplette Prüfung des Prompts durch
     test_prompts = [
         # OK

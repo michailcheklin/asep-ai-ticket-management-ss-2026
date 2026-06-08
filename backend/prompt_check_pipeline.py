@@ -1,6 +1,6 @@
 ﻿import torch
 import os
-from transformers import pipeline, Pipeline, MarianTokenizer, MarianMTModel
+from transformers import pipeline, MarianTokenizer, MarianMTModel
 
 huggingface_model_folder = os.getenv("HF_HOME", "/models")
 
