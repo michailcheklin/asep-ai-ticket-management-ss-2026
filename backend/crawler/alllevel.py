@@ -22,10 +22,6 @@ for a in rahmen.select("a[href]"):
     text = a.get_text(strip=True)
 
     if re.match(r"^\d{2}\s", text):
-        # print(text.split()[0])
-        # print(text)
-        # print(urljoin(BASE_URL, a["href"]))
-        # print("-"*50)
         categories.append({
             "code": text.split()[0],
             "title": text,
@@ -63,8 +59,6 @@ for cat in categories:
 
     soup = get_soup(cat["url"])
     items = soup.select("a[name]")
-    # print(items)
-    # print("-"*50)
 
     for item in items:
         name = item.get("name")
@@ -76,18 +70,11 @@ for cat in categories:
 name_url = []
 
 for e in zwischenergebnis:
-    # print(e)
-    # print("-"*50)
     url = urljoin(BASE_URL, e["href"])
-    # print(url)
-    # print("-"*50)
     name_url.append({
         "name": e,
         "url": url
     })
-
-# for e in name_url:
-#     print(e)
 
 level3 = []
 
@@ -102,14 +89,10 @@ for entry in name_url:
 zwischenergebnisLevel3 = []
 gesehenLevel3 = set()
 
-# print("Now printing level 3")
 for e in level3:
-    # print(e)
 
     soup = get_soup(e["url"])
     items = soup.select("a[name]")
-    # print(items)
-    # print("-"*50)
 
     for item in items:
         name = item.get("name")
@@ -118,31 +101,21 @@ for e in level3:
             gesehenLevel3.add(name)
             zwischenergebnisLevel3.append(item)
 
-# print("Now printing Zwischenergebnis level 3")
-# for e in zwischenergebnisLevel3:
-#     print(e)
-
 
 name_url_level3 = []
 
 for e in zwischenergebnisLevel3:
-    # print(e)
-    # print("-"*50)
     url = urljoin(BASE_URL, e["href"])
-    # print(url)
-    # print("-"*50)
     name_url_level3.append({
         "name": e,
         "url": url
     })
 
-# for e in name_url_level3:
-#     print(e)
-
 for e in name_url_level3:
     if e not in name_url:
         name_url.append(e)
 
+print("-"*100)
 
 print("Now printing final")
 for e in name_url:
