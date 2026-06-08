@@ -156,11 +156,22 @@ async def chat_endpoint(request: ChatRequest):
             "issue_description": request.issue_description,
             "is_complete": False
         }
+
+
+    return __execute_langchain_workflow(request)
   
 
 
     
-    # translates JSON objects into LangChain objects
+
+
+def __execute_langchain_workflow(request: ChatRequest):
+    """
+    Diese Methode generiert eine Antwort basierend auf dem Chatverlauf und dem Prompt. Diese Methode wird nur dann ausgeführt,
+    wenn der Prompt alle Sicherheitschecks bestanden hat.
+    :param request: Das JSON-Objekt, das an den Chat-Endpoint gesendet wurde
+    :return: Das Antwort-JSON-Objekt, nachdem darauf der Langchain-Workflow ausgeführt wurde
+    """
     langchain_messages = []
     for msg in request.history:
         if msg["role"] == "user":
@@ -187,7 +198,6 @@ async def chat_endpoint(request: ChatRequest):
         "issue_description": updated_state.get("issue_description", ""),
         "is_complete": updated_state.get("is_complete", False)
     }
-
 
 def route_based_on_state(state: ChatbotState):
     """
