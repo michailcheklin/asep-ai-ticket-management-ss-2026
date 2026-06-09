@@ -94,7 +94,7 @@ if user_input:= st.chat_input(
         st.write(user_input)
         user_input_history_entry = {"role": "user", "content": user_input}
         st.session_state.messages.append(user_input_history_entry)
-        st.session_state.chatbot_history.append(user_input_history_entry)
+
 
     with st.chat_message("assistant"):
         # Hier wird die Bot-Antwort generiert. Während die Antwort generiert wird,
@@ -124,6 +124,9 @@ if user_input:= st.chat_input(
         # womit auf den POST-Request geantwortet wurde, extrahiert
         bot_answer_http_response_json:dict = bot_answer_http_response.json()
         bot_answer:str = bot_answer_http_response_json["bot_response"]
+        # Wenn ein Prompt den Sicherheitscheck nicht bestanden hat, hat die JSON-Antwort
+        # das Feld "security", sonst nicht
+        prompt_safety_checks_passed:bool = "security" not in bot_answer_http_response_json
 
         # Vor jeden Zeilenumbruch werden 2 Leerzeichen eingefügt, damit die
         # Bot-Antwort korrekt im Chatfenster dargestellt werden kann.
@@ -135,10 +138,18 @@ if user_input:= st.chat_input(
         st.session_state.issue_description = bot_answer_http_response_json["issue_description"]
 
         bot_answer_history_entry_for_chat = {"role": "assistant", "content": bot_answer}
-        bot_answer_history_entry_for_bot_history = {"role": "bot", "content": bot_answer}
-
         st.session_state.messages.append(bot_answer_history_entry_for_chat)
-        st.session_state.chatbot_history.append(bot_answer_history_entry_for_bot_history)
+
+        # Wenn ein Prompt den Sicherheitscheck nicht bestand, wird dieser nicht in den Bot-Kontext
+        # geschrieben, damit der Nutzer noch die Chance hat, einen zulässigen Prompt zu schreiben
+        # Erfüllt das Acceptance Criterion
+        # "Prompts that trigger the detection do not get written into the chatbot history for the backend
+        # to not pollute the context if a legit prompt is sent afterwards" aus Issue #111
+        if prompt_safety_checks_passed:
+            st.session_state.chatbot_history.append(user_input_history_entry)
+            bot_answer_history_entry_for_bot_history = {"role": "bot", "content": bot_answer}
+            st.session_state.chatbot_history.append(bot_answer_history_entry_for_bot_history)
+
         st.write(bot_answer)
 
     # Hier wird das Chatfenster wieder entsperrt

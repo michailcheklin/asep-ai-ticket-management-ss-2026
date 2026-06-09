@@ -25,6 +25,41 @@ docker compose up -d --build
 ## 2. API Interface
 * POST /chat
 * This endpoint processes the user's input and communicates with the AI model
+
+
+### Security Checks
+
+Before a user message is processed by the chatbot workflow, multiple security checks are performed.
+
+The backend currently validates:
+
+* Prompt Injection attempts
+* Illegal or harmful topics
+* Off-topic requests unrelated to ZIM support
+
+If a request violates one of these security checks, it is blocked and not forwarded to the chatbot workflow.
+
+Blocked requests are logged together with:
+
+* timestamp
+* detected category
+* model classification
+* risk score
+
+The security layer is executed before any chatbot processing or future RAG-based retrieval takes place.
+
+#### Current Limitations
+
+The prompt injection detector (`deepset/deberta-v3-base-injection`) occasionally produces false positives for legitimate ZIM support requests.
+
+To mitigate this issue, additional rule-based validation is currently used.
+
+The legality check also contains a temporary keyword-based workaround for ZIM-related requests because the zero-shot classifier may incorrectly classify legitimate support tickets as harmful or unrelated.
+
+These workarounds should be replaced by a more robust classifier-based solution in future iterations.
+
+
+
 ### Expected Request
 ```json
 {
@@ -32,7 +67,8 @@ docker compose up -d --build
   "history": [],
   "user_email": "",
   "matrikelnummer": "",
-  "issue_description": ""
+  "issue_description": "",
+  "priority": 0
 }
 ```
 
@@ -43,6 +79,7 @@ docker compose up -d --build
   "user_email": "abc",
   "matrikelnummer": "123",
   "issue_description": "WLAN funktioniert nicht",
+  "priority": 1,
   "is_complete": false
 }
 ```

@@ -15,6 +15,8 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+    volumes:
+      - huggingface-models:/models
 
   frontend_app:
     build:
@@ -90,3 +92,6 @@ services:
 volumes:
   zammad-storage:
   mailpit-data:
+  huggingface-models:
+    # In diesem Volume werden die Huggingface-Modelle persistent gespeichert, damit diese nicht bei jedem Programmstart
+    # neu heruntergeladen werden müssen
