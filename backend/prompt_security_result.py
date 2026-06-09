@@ -25,14 +25,28 @@ def evaluate_prompt_injection(text: str) -> dict:
     label = output.get("label", "")
     score = float(output.get("score", 0.0))
 
-# Verhindert False Positives:
-# Hohe Scores allein reichen nicht aus, da auch legitime Anfragen
-# (Label "LEGIT") mit hoher Sicherheit erkannt werden können.
-# Es muss sowohl das Label "INJECTION" als auch ein ausreichend hoher
-# Confidence-Score vorliegen.
+   
+    print("Injection Output:", output)
 
-    blocked = label.upper() == "INJECTION" and score >= PROMPT_INJECTION_BLOCK_THRESHOLD
+    dangerous_patterns = [
+        "ignore previous instructions",
+        "ignore all instructions",
+        "reveal your system prompt",
+        "show your system prompt",
+        "developer message",
+        "system message",
+        "bypass security",
+        "act as developer",
+        "jailbreak",
+        "print hidden instructions",
+    ]
+
+    text_lower = text.lower()
+    has_attack_pattern = any(pattern in text_lower for pattern in dangerous_patterns)
+
+    blocked = has_attack_pattern    
     
+
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     result = {
@@ -68,7 +82,27 @@ def evaluate_legality(text:str) -> dict:
     topics_and_scores = sorted(topics_and_scores, key=lambda x: x[1], reverse=True)
     most_relevant_topic, most_relevant_score = topics_and_scores[0]
 
-    blocked = len([x for x in output["scores"] if x > ILLEGAL_TOPIC_DETECTION_THRESHOLD]) > 0
+    
+    # TODO:
+    # Die Keyword-Erkennung dient aktuell nur als Übergangslösung,
+    # um False Positives bei legitimen ZIM-Anfragen zu reduzieren.
+    # Diese Logik muss später durch eine robustere Bewertung ersetzt werden,
+    # da Keywords allein keine sichere Unterscheidung zwischen normalen
+    # Supportanfragen und gemischten/gefährlichen Anfragen garantieren.
+
+    zim_keywords = [
+        "wlan", "moodle", "account", "login", "einloggen",
+        "register", "anmelden", "passwort", "e-mail", "email",
+        "matrikelnummer", "drucker", "vpn", "exam", "prüfung"
+    ]
+
+    is_zim_ticket = any(keyword in text.lower() for keyword in zim_keywords)
+
+    blocked = (
+        not is_zim_ticket
+        and len([x for x in output["scores"] if x > ILLEGAL_TOPIC_DETECTION_THRESHOLD]) > 0
+    )
+
 
     result = {
         "checked_for":"legality of prompt",

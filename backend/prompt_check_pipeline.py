@@ -4,7 +4,7 @@ from transformers import pipeline, MarianTokenizer, MarianMTModel
 
 huggingface_model_folder = os.getenv("HF_HOME", "/models")
 
-ILLEGAL_TOPICS:list[str] = ["terrorism", "violence", "crime", "copyright infringement"]
+ILLEGAL_TOPICS:list[str] = ["terrorism", "crime", "copyright infringement"]
 ILLEGAL_TOPIC_DETECTION_THRESHOLD:float = 0.5
 
 # Quelle: https://www.uni-due.de/zim/hilfecenter/faqs.php
@@ -14,7 +14,8 @@ ILLEGAL_TOPIC_DETECTION_THRESHOLD:float = 0.5
 ON_TOPIC_TOPICS:list[str] = ["computer problem", "network", "email", "moodle", "media technology", "system management"]
 ON_TOPIC_DETECTION_THRESHOLD:float = 0.5
 
-# Wenn der Text als nicht Prompt Injection gesehen wird, aber die
+# Wenn der 
+# Text als nicht Prompt Injection gesehen wird, aber die
 # Confidence unter dieser Schwelle liegt, soll der Text trotzdem abgelehnt werden
 PROMPT_INJECTION_BLOCK_THRESHOLD:float = 0.7
 

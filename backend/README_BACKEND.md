@@ -29,11 +29,35 @@ docker compose up -d --build
 
 ### Security Checks
 
-Before a user message is processed by the chatbot workflow, it is checked for potential prompt injection attempts.
+Before a user message is processed by the chatbot workflow, multiple security checks are performed.
 
-If a message is classified as a prompt injection attack, it is blocked and not forwarded to the chatbot or the future RAG-based knowledge base.
+The backend currently validates:
 
-Blocked requests are logged together with a timestamp, a risk score and the detected security classification. The security checks are evaluated before the chatbot workflow is executed.
+* Prompt Injection attempts
+* Illegal or harmful topics
+* Off-topic requests unrelated to ZIM support
+
+If a request violates one of these security checks, it is blocked and not forwarded to the chatbot workflow.
+
+Blocked requests are logged together with:
+
+* timestamp
+* detected category
+* model classification
+* risk score
+
+The security layer is executed before any chatbot processing or future RAG-based retrieval takes place.
+
+#### Current Limitations
+
+The prompt injection detector (`deepset/deberta-v3-base-injection`) occasionally produces false positives for legitimate ZIM support requests.
+
+To mitigate this issue, additional rule-based validation is currently used.
+
+The legality check also contains a temporary keyword-based workaround for ZIM-related requests because the zero-shot classifier may incorrectly classify legitimate support tickets as harmful or unrelated.
+
+These workarounds should be replaced by a more robust classifier-based solution in future iterations.
+
 
 
 ### Expected Request
@@ -43,7 +67,8 @@ Blocked requests are logged together with a timestamp, a risk score and the dete
   "history": [],
   "user_email": "",
   "matrikelnummer": "",
-  "issue_description": ""
+  "issue_description": "",
+  "priority": 0
 }
 ```
 
@@ -54,6 +79,7 @@ Blocked requests are logged together with a timestamp, a risk score and the dete
   "user_email": "abc",
   "matrikelnummer": "123",
   "issue_description": "WLAN funktioniert nicht",
+  "priority": 1,
   "is_complete": false
 }
 ```
