@@ -3,7 +3,6 @@ import torch
 from security_logger import log_blocked_prompt
 from datetime import datetime
 from prompt_check_pipeline import (
-    PROMPT_INJECTION_BLOCK_THRESHOLD,
     ZIM_KEYWORDS,
     DANGEROUS_PATTERNS,
     ON_TOPIC_TOPICS,
@@ -73,9 +72,6 @@ def evaluate_legality(text:str) -> dict:
     topics_and_scores = list(zip(output["labels"], output["scores"]))
     topics_and_scores = sorted(topics_and_scores, key=lambda x: x[1], reverse=True)
     most_relevant_topic, most_relevant_score = topics_and_scores[0]
-
-    
-    # TODO:
     # Die Keyword-Erkennung dient aktuell nur als Übergangslösung,
     # um False Positives bei legitimen ZIM-Anfragen zu reduzieren.
     # Diese Logik muss später durch eine robustere Bewertung ersetzt werden,
