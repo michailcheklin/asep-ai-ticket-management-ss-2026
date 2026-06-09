@@ -14,5 +14,8 @@ class ChatbotState(TypedDict):
     matrikelnummer: str
     issue_description: str
 
+    #Priority of the ticket:0 =non-ungent/normal, 1 = urgent/important
+    priority:int
+
     # Ein Signal für das Frontend, dass wir alle Daten haben
     is_complete: bool

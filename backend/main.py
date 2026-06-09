@@ -81,6 +81,7 @@ class ChatRequest(BaseModel):
     user_email: str = ""
     matrikelnummer: str = ""
     issue_description: str = ""
+    priority: int = 0
 
 def __check_prompt (prompt:str) -> list[dict]:
     """
@@ -154,7 +155,8 @@ async def chat_endpoint(request: ChatRequest):
             "user_email": request.user_email,
             "matrikelnummer": request.matrikelnummer,
             "issue_description": request.issue_description,
-            "is_complete": False
+            "is_complete": False,
+            "priority": request.priority,
         }
 
 
@@ -186,7 +188,8 @@ def __execute_langchain_workflow(request: ChatRequest):
         "user_email": request.user_email,
         "matrikelnummer": request.matrikelnummer,
         "issue_description": request.issue_description,
-        "is_complete": False
+        "is_complete": False,
+        "priority": request.priority
     }
 
     updated_state = graph.invoke(current_state)
@@ -196,7 +199,8 @@ def __execute_langchain_workflow(request: ChatRequest):
         "user_email": updated_state.get("user_email", ""),
         "matrikelnummer": updated_state.get("matrikelnummer", ""),
         "issue_description": updated_state.get("issue_description", ""),
-        "is_complete": updated_state.get("is_complete", False)
+        "is_complete": updated_state.get("is_complete", False),
+        "priority": updated_state.get("priority", 0),
     }
 
 def route_based_on_state(state: ChatbotState):

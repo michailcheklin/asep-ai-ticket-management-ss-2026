@@ -26,6 +26,16 @@ class ExtractedTicketData(BaseModel):
     problem: Optional[str] = Field(None, description="Das IT-Problem (z.B. 'WLAN geht nicht', 'Passwort vergessen', 'Moodle lädt nicht'). Auch kurze, umgangssprachliche Sätze zählen!")
 
 
+    priority: Optional[int] = Field(
+    None,
+    description=(
+        "Priority of the ticket. Use 1 for urgent or important issues, "
+        "for example locked account, no login possible, exam or deadline affected, "
+        "complete outage. Use 0 for normal or non-urgent issues."
+    )
+)
+
+
 # Forces the LLM to return data strictly matching the ExtractedTicketData schema in JSON format
 structured_llm = llm.with_structured_output(ExtractedTicketData)
 
@@ -43,6 +53,10 @@ def extract_information(state: ChatbotState):
         "Finde die email, die Matrikelnummer und das IT-Problem. "
         "Beispiele für ein Problem: 'Ich habe kein Internet', 'Mein Account ist gesperrt', 'WLAN kaputt'. "
         "WICHTIG: Wenn eine Information fehlt, setze das Feld zwingend auf null. Erfinde absolut nichts dazu!"
+        "Bewerte zusätzlich die Priorität des Problems. "
+        "Setze priority auf 1 bei dringenden Problemen wie gesperrtem Account, "
+        "Login nicht möglich, Prüfungs-/Abgabeproblemen oder komplettem Ausfall. "
+        "Setze priority auf 0 bei normalen oder weniger dringenden Problemen. "
     )
 
     # Telling python to treat output from structured llm as ExtractedTicketData instance
@@ -50,6 +64,11 @@ def extract_information(state: ChatbotState):
         SystemMessage(content=system_prompt),
         last_user_message
     ]))
+
+    print("\n===== EXTRACTED DATA =====")
+    print(extracted_data)
+    print("==========================\n")
+
 
     state_update = {}
 
@@ -59,6 +78,8 @@ def extract_information(state: ChatbotState):
         state_update["matrikelnummer"] = extracted_data.matrikelnummer
     if extracted_data.problem:
         state_update["issue_description"] = extracted_data.problem
+    if extracted_data.priority is not None:
+        state_update["priority"] = extracted_data.priority
 
     return state_update
 
@@ -133,6 +154,7 @@ def finish_ticket(state: ChatbotState):
     zammad_body = (
         f"Matrikelnummer: {state['matrikelnummer']}\n"
         f"E-Mail: {state['user_email']}\n\n"
+        f"Priorität: {'urgent' if state.get('priority') == 1 else 'normal'}\n"
         f"Problembeschreibung des Nutzers:\n"
         f"{state['issue_description']}"
     )
