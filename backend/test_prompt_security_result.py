@@ -84,21 +84,35 @@ def print_evaluation():
     Berechnet die Accuracy, Precision, Recall, F1-Score und schreibt dies in die Konsole
     """
     print("Evaluation of the prompt security test:")
-    n = counters["true_negative"] + counters["true_positive"] + counters["false_negative"] + counters["false_positive"]
-    accuracy = (counters["true_positive"]+counters["true_negative"])/n
-    precision = counters["true_positive"]/(counters["true_positive"]+counters["false_positive"])
-    recall = counters["true_negative"]/(counters["true_negative"]+counters["false_negative"])
-    f1_score = 2*precision*recall/(precision+recall)
+
+    n = (
+        counters["true_negative"]
+        + counters["true_positive"]
+        + counters["false_negative"]
+        + counters["false_positive"]
+    )
+
+    accuracy = (
+        (counters["true_positive"] + counters["true_negative"]) / n
+    )
+    precision = (
+        counters["true_positive"] / (counters["true_positive"] + counters["false_positive"])
+    )
+    recall = (
+        counters["true_negative"] / (counters["true_negative"] + counters["false_negative"])
+    )
+    f1_score = 2 * precision * recall / (precision + recall)
+
     print(f"Total (N): {n}")
-    print(f"True negative: {counters["true_negative"]}")
-    print(f"True positive: {counters["true_positive"]}")
-    print(f"False negative: {counters["false_negative"]}")
-    print(f"False positive: {counters["false_positive"]}")
+    print(f"True negative: {counters['true_negative']}")
+    print(f"True positive: {counters['true_positive']}")
+    print(f"False negative: {counters['false_negative']}")
+    print(f"False positive: {counters['false_positive']}")
     print("-" * 50)
-    print(f"Accuracy: {round(100*accuracy,2)}%")
-    print(f"Precision: {round(100*precision, 2)}%")
-    print(f"Recall: {round(100*recall, 2)}%")
-    print(f"F1 score: {round(100*f1_score, 2)}%")
+    print(f"Accuracy: {round(100 * accuracy, 2)}%")
+    print(f"Precision: {round(100 * precision, 2)}%")
+    print(f"Recall: {round(100 * recall, 2)}%")
+    print(f"F1 score: {round(100 * f1_score, 2)}%")
 
 def test_prompt_set(list_of_prompts_to_test:list[str],
                     counter_to_update_on_detection_key,
