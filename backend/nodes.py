@@ -163,7 +163,8 @@ def finish_ticket(state: ChatbotState):
         create_ticket_by_user_email(
             email=state["user_email"],
             title=zammad_title,
-            body=zammad_body
+            body=zammad_body,
+            priority=state["priority"],
         )
         final_message = (f"Perfekt! Dein Ticket wurde erfolgreich erstellt. Ein Supporter meldet sich bald bei dir.\n"
         f"**Deine Ticket-Übersicht:**\n"
