@@ -2,6 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 import re
+import json
 
 BASE_URL = "https://www.uni-due.de/zim/hilfecenter/faqs.php"
 
@@ -117,6 +118,20 @@ for e in name_url_level3:
 
 print("-"*100)
 
-print("Now printing final")
+# print("Now printing final")
+# for e in name_url:
+#     print(e)
+
+json_data = []
 for e in name_url:
-    print(e)
+    b = e["name"].find("b")
+
+    json_data.append({
+        "title": b.get_text(strip=True) if b else e["name"].get_text(strip=True),
+        "url": e["url"]
+    })
+
+with open("faqs.json", "w", encoding="utf-8") as f:
+    json.dump(json_data, f, ensure_ascii=False, indent=2)
+
+print(f"{len(json_data)} Urls with names from FAQ stored in faqs.json.")
