@@ -17,7 +17,7 @@ The output json has the following attributes:
     }
 """
 
-def load_links(filepath='./links.json'):
+def load_links(filepath='./faqs.json'):
     """Load links from the properly formatted links.json file"""
     with open(filepath, 'r', encoding='utf-8') as f:
         data = json.load(f)
@@ -152,7 +152,7 @@ def build_faq_entry(idx, link, content):
 
 
 def main():
-    all_links = load_links('./links.json')
+    all_links = load_links('./faqs.json')
     # links = all_links[:15]
     links = all_links
 
