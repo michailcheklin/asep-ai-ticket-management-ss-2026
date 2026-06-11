@@ -5,8 +5,8 @@ import time
 import re
 
 """
-This script takes all links from the lilnks.json file and creates a json file with all the problems and solutions from scraped pages.
-The output json has teh following attributes:
+This script takes all links from the links.json file and creates a json file with all the problems and solutions from scraped pages.
+The output json has the following attributes:
     {
       "id": "Subsubsection title",
       "context": "Section > subsection",
@@ -18,23 +18,20 @@ The output json has teh following attributes:
 """
 
 def load_links(filepath='./links.json'):
-    """Parse the malformed links.json file"""
+    """Load links from the properly formatted links.json file"""
     with open(filepath, 'r', encoding='utf-8') as f:
-        content = f.read()
+        data = json.load(f)
 
     links = []
-    
-    urls = re.findall(r"'url':\s*'(https?://[^']+)'", content)
-    names_raw = re.findall(r"'name':\s*(<a[^}]+?>.*?</a>)", content)
-    
-    for name_html, url in zip(names_raw, urls):
-        soup = BeautifulSoup(name_html, 'html.parser')
-        name_text = soup.get_text(strip=True)
-        links.append({
-            'name': name_text,
-            'url': url
-        })
-    
+    for item in data:
+        title = item.get('title', '').strip()
+        url   = item.get('url', '').strip()
+        if title and url:
+            links.append({
+                'name': title,
+                'url':  url
+            })
+
     print(f"[INFO] Loaded {len(links)} links from {filepath}")
     return links
 
@@ -74,9 +71,9 @@ def extract_faq_content(url):
         }
         response = requests.get(url, headers=headers, timeout=10)
         response.raise_for_status()
-        
+
         soup = BeautifulSoup(response.text, 'html.parser')
-        
+
         result = {
             'title':    None,
             'context':  None,
@@ -123,7 +120,6 @@ def extract_faq_content(url):
             if 'problem' in label_lower:
                 result['problem'] = content
             elif 'lösung' in label_lower:
-                # Get full solution text including any links
                 result['solution'] = content_div.get_text(separator=' ', strip=True)
             elif 'aktualisiert' in content.lower():
                 result['updated'] = content
@@ -214,7 +210,7 @@ def main():
 
     print(f"\n{'='*60}")
     print(f"Done. {len(faq_entries)} entries saved, {len(skipped)} skipped.")
-    print(f"Output: faq_extracted.json")
+    print(f"Output: faq_extracted_full.json")
 
 
 if __name__ == "__main__":
