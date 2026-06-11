@@ -211,7 +211,9 @@ def finish_ticket(state: ChatbotState):
         f"Matrikelnummer: {state['matrikelnummer']}\n"
         f"E-Mail: {state['user_email']}\n\n"
         f"Problembeschreibung des Nutzers:\n"
-        f"{state['issue_description']}"
+        f"{state['issue_description']}\n\n"
+        f"Zusätzliche Infos (automatisch extrahiert durch den Chatbot):\n"
+        f"{state['additional_info']}"
     )
 
     try:
