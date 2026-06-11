@@ -166,10 +166,19 @@ def finish_ticket(state: ChatbotState):
             body=zammad_body,
             priority=state["priority"],
         )
-        final_message = (f"Perfekt! Dein Ticket wurde erfolgreich erstellt. Ein Supporter meldet sich bald bei dir.\n"
+        user_visible_body = (
+        f"Matrikelnummer: {state['matrikelnummer']}\n"
+        f"E-Mail: {state['user_email']}\n\n"
+        f"Problembeschreibung des Nutzers:\n"
+        f"{state['issue_description']}"
+    )
+
+        final_message = (
+        f"Perfekt! Dein Ticket wurde erfolgreich erstellt. Ein Supporter meldet sich bald bei dir.\n"
         f"**Deine Ticket-Übersicht:**\n"
         f"**Betreff:** {zammad_title}\n"
-        f"**Inhalt:** {zammad_body}")
+        f"**Inhalt:** {user_visible_body}"
+)
     except Exception as e:
         print(f"🚨 [FEHLER] Zammad API-Aufruf fehlgeschlagen: {e}")
         final_message = "Dein Ticket ist fertiggestellt, aber es gab ein Problem bei der Übermittlung an Zammad. Bitte versuche es später noch einmal."
