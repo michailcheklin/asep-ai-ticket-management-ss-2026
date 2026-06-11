@@ -42,6 +42,39 @@ After copying the token, go to .env and paste it inside the `ZAMMAD_API_TOKEN` f
 
 GREAT! You are all set up and free to use Zammad.
 
+
+## Troubleshooting
+
+### Backend cannot reach Zammad during local end-to-end testing
+
+During local end-to-end testing, the chatbot backend was unable to communicate with the Zammad instance although both applications were running.
+
+The reason was that the backend container and the Zammad containers were attached to different Docker networks. Because of this network isolation, the backend could not resolve or reach the Zammad services.
+
+To enable communication between both environments, the backend was temporarily connected to the external Docker network created by the Zammad stack:
+
+```yaml
+backend_app:
+  networks:
+    - default
+    - zammad_default
+```
+
+The external network also had to be declared in the compose configuration:
+
+```yaml
+networks:
+  zammad_default:
+    external: true
+```
+
+Additionally, the `zammad_bootstrap` service was temporarily disabled during testing because it caused issues while rebuilding the local environment.
+
+After applying these changes and rebuilding the containers, communication between the backend and Zammad was possible and end-to-end ticket creation could be tested successfully.
+
+**Important:** These changes were introduced as a local development workaround. It is currently unclear whether this issue affects all development environments or only specific local Docker setups.
+
+
 ## AI Ticket Creation
 To create a ticket, go to `localhost:8501`. After typing your mail address and your matriculation number, you can use the ZIM Helper to create a ticket by describing your concern.  
 By typing in your credentials, our backend automatically creates a user account if you do not have one yet.  
