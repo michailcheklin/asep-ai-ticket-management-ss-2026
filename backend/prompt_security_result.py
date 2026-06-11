@@ -1,8 +1,10 @@
 import torch
+
 from security_logger import log_blocked_prompt
 from datetime import datetime
 from prompt_check_pipeline import (
-    PROMPT_INJECTION_BLOCK_THRESHOLD,
+    ZIM_KEYWORDS,
+    DANGEROUS_PATTERNS,
     ON_TOPIC_TOPICS,
     ON_TOPIC_DETECTION_THRESHOLD,
     ILLEGAL_TOPICS,
@@ -28,21 +30,10 @@ def evaluate_prompt_injection(text: str) -> dict:
    
     print("Injection Output:", output)
 
-    dangerous_patterns = [
-        "ignore previous instructions",
-        "ignore all instructions",
-        "reveal your system prompt",
-        "show your system prompt",
-        "developer message",
-        "system message",
-        "bypass security",
-        "act as developer",
-        "jailbreak",
-        "print hidden instructions",
-    ]
+
 
     text_lower = text.lower()
-    has_attack_pattern = any(pattern in text_lower for pattern in dangerous_patterns)
+    has_attack_pattern = any(pattern in text_lower for pattern in DANGEROUS_PATTERNS)
 
     blocked = has_attack_pattern    
     
@@ -81,22 +72,15 @@ def evaluate_legality(text:str) -> dict:
     topics_and_scores = list(zip(output["labels"], output["scores"]))
     topics_and_scores = sorted(topics_and_scores, key=lambda x: x[1], reverse=True)
     most_relevant_topic, most_relevant_score = topics_and_scores[0]
-
-    
-    # TODO:
     # Die Keyword-Erkennung dient aktuell nur als Übergangslösung,
     # um False Positives bei legitimen ZIM-Anfragen zu reduzieren.
     # Diese Logik muss später durch eine robustere Bewertung ersetzt werden,
     # da Keywords allein keine sichere Unterscheidung zwischen normalen
     # Supportanfragen und gemischten/gefährlichen Anfragen garantieren.
 
-    zim_keywords = [
-        "wlan", "moodle", "account", "login", "einloggen",
-        "register", "anmelden", "passwort", "e-mail", "email",
-        "matrikelnummer", "drucker", "vpn", "exam", "prüfung"
-    ]
 
-    is_zim_ticket = any(keyword in text.lower() for keyword in zim_keywords)
+
+    is_zim_ticket = any(keyword in text.lower() for keyword in ZIM_KEYWORDS)
 
     blocked = (
         not is_zim_ticket

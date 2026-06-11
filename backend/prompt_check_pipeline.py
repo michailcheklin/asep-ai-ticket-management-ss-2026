@@ -6,6 +6,19 @@ huggingface_model_folder = os.getenv("HF_HOME", "/models")
 
 ILLEGAL_TOPICS:list[str] = ["terrorism", "crime", "copyright infringement"]
 ILLEGAL_TOPIC_DETECTION_THRESHOLD:float = 0.5
+DANGEROUS_PATTERNS = [
+    "ignore previous instructions",
+    "ignore all instructions",
+    "reveal your system prompt",
+    "show your system prompt",
+    "developer message",
+    "system message",
+    "bypass security",
+    "act as developer",
+    "jailbreak",
+    "print hidden instructions",
+]
+
 
 # Quelle: https://www.uni-due.de/zim/hilfecenter/faqs.php
 # Versuchen, eine kleinstmögliche Liste von Labels zu definieren,
@@ -13,7 +26,12 @@ ILLEGAL_TOPIC_DETECTION_THRESHOLD:float = 0.5
 # ob die Nachricht themenfremd ist
 ON_TOPIC_TOPICS:list[str] = ["computer problem", "network", "email", "moodle", "media technology", "system management"]
 ON_TOPIC_DETECTION_THRESHOLD:float = 0.5
-
+ZIM_KEYWORDS = [
+        "wlan", "moodle", "account", "login", "einloggen",
+        "register", "anmelden", "passwort", "password", "e-mail", "email",
+        "matrikelnummer", "matrictlation number", "printer", "drucker",
+        "vpn", "exam", "prüfung"
+]
 # Wenn der 
 # Text als nicht Prompt Injection gesehen wird, aber die
 # Confidence unter dieser Schwelle liegt, soll der Text trotzdem abgelehnt werden
