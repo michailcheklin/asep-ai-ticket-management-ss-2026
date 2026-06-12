@@ -22,11 +22,18 @@ headers = {"Authorization": f"Token token={admin_access_token}",
 #print(response.status_code)
 #print(response.text)
 
+# Map von unseren Priority-Nummern zu den Zammad-Priority-Nummern
+priority_number_to_zammad_priority_id_map = {
+    0:2, # normal / non-urgent
+    1:3  # high / urgent
+}
+
 
 def create_ticket_by_user_email(
         email:str,
         title:str,
         body:str,
+        priority:int=0,
         group:str = "Users",
         article_type:str = "web",
         internal:bool = False
@@ -39,6 +46,7 @@ def create_ticket_by_user_email(
     :arg email: E-Mail-Adresse des Kunden
     :arg title: Betreff des Tickets
     :arg body: Text im Ticket
+    :arg priority: Die Priorität des Tickets, d. h. 0 = normal/non-urgent und 1 = high/urgent
     :arg group: Gruppe des Kunden (i. d. R. Users)
     :arg article_type: Typ des Artikels (erste Nachricht im Ticket,
         s. https://docs.zammad.org/en/latest/api/ticket/articles.html#general-information-about-ticket-articles) (i. d. R. note)
@@ -53,7 +61,8 @@ def create_ticket_by_user_email(
             "type": f"{article_type}",
             "internal": internal,
             "sender": "Customer",
-        }
+        },
+        "priority_id": priority_number_to_zammad_priority_id_map[priority],
     }
 
     server_response = requests.post(url=f"{server_address}/api/v1/tickets",
