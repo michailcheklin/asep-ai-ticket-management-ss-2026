@@ -16,5 +16,8 @@ class ChatbotState(TypedDict):
     issue_description: str
     additional_info: Annotated[list[str], operator.add]
 
+    #Priority of the ticket:0 =non-ungent/normal, 1 = urgent/important
+    priority:int
+
     # signal if ticket is complete
     is_complete: bool

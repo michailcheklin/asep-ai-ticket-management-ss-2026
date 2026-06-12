@@ -38,8 +38,7 @@ class ExtractedTicketData(BaseModel):
     """
     Schema defining the structured ticket data to be extracted from user messages
     """
-    email: Optional[str] = Field(None,
-                                 description="Die E-Mail-Adresse des Users. Nur ausfüllen, wenn sie ein @-Zeichen enthält.")
+    email: Optional[str] = Field(None, description="Die E-Mail-Adresse des Users. Nur ausfüllen, wenn sie ein @-Zeichen enthält.")
     matrikelnummer: Optional[str] = Field(None,
                                           description="Die 7-stellige Matrikelnummer des Studenten, falls genannt.")
     problem: Optional[str] = Field(None,
@@ -47,6 +46,14 @@ class ExtractedTicketData(BaseModel):
     additional_info: Optional[List[str]] = Field(default_factory=list,
                                                  description="Eine Liste von spezifischen Zusatzinformationen, die für den IT-Support an einer Universität relevant sind (z.B. Gebäude, Raumnummer, Fehlermeldung, Gerätetyp, OS). Keine Füllwörter."
     )
+    priority: Optional[int] = Field(
+    None,
+    description=(
+        "Priority of the ticket. Use 1 for urgent or important issues, "
+        "for example locked account, no login possible, exam or deadline affected, "
+        "complete outage. Use 0 for normal or non-urgent issues."
+    )
+)
 
 class AdditionalInfoDecision(BaseModel):
     """Schema decision, if additional info is needed for effective problem treatment"""
@@ -71,20 +78,29 @@ def extract_information(state: ChatbotState):
     last_user_message = [msg for msg in state["messages"] if isinstance(msg, HumanMessage)][-1]
 
     system_prompt = ("""Du bist ein hochpräziser KI-Daten-Extraktor für ein IT-Support-Unternehmen, das exklusiv mit Universitäten zusammenarbeitet.
-    Deine Aufgabe ist es, aus den eingehenden Chat-Nachrichten von Studierenden und Mitarbeitern strukturierte Ticket-Daten zu extrahieren.
-    EXTRAKTIONS-REGELN:
-    1. Basis-Daten (Textfelder): Suche nach der 'email', der 'matrikelnummer' und dem Haupt-'problem' und speichere diese ausschließlich in ihren jeweiligen Textfeldern.
-    2. Zusatzinformationen (Listen-Feld): Extrahiere alle weiteren technischen oder lokalen Details, die für die Lösung des Problems nützlich sein könnten, und weise sie dem Feld 'additional_info' zu.
-    - Beispiele für wertvolle Details: Orte (z.B. 'Gebäude LF', 'Bibliothek'), Geräte/Systeme (z.B. 'MacBook', 'Windows 11'), betroffene Services (z.B. 'eduroam', 'VPN') oder spezifische Fehlercodes.
-    - FORMAT: Speichere diese Zusatzinfos als einzelne, kompakte Strings innerhalb der Liste (z.B. ["Gebäude LF", "MacBook", "eduroam"]).
-    3. Strikte Wahrheit: Wenn eine Information fehlt, setze das entsprechende Feld zwingend auf null (bzw. lasse die Liste leer). Erfinde unter keinen Umständen Daten dazu!"""
-    )
+        Deine Aufgabe ist es, aus den eingehenden Chat-Nachrichten von Studierenden und Mitarbeitern strukturierte Ticket-Daten zu extrahieren.
+        EXTRAKTIONS-REGELN:
+        1. Basis-Daten (Textfelder): Suche nach der 'email', der 'matrikelnummer' und dem Haupt-'problem' und speichere diese ausschließlich in ihren jeweiligen Textfeldern.
+        2. Zusatzinformationen (Listen-Feld): Extrahiere alle weiteren technischen oder lokalen Details, die für die Lösung des Problems nützlich sein könnten, und weise sie dem Feld 'additional_info' zu.
+        - Beispiele für wertvolle Details: Orte (z.B. 'Gebäude LF', 'Bibliothek'), Geräte/Systeme (z.B. 'MacBook', 'Windows 11'), betroffene Services (z.B. 'eduroam', 'VPN') oder spezifische Fehlercodes.
+        - FORMAT: Speichere diese Zusatzinfos als einzelne, kompakte Strings innerhalb der Liste (z.B. ["Gebäude LF", "MacBook", "eduroam"]).
+        3. Strikte Wahrheit: Wenn eine Information fehlt, setze das entsprechende Feld zwingend auf null (bzw. lasse die Liste leer). Erfinde unter keinen Umständen Daten dazu!
+    	Bewerte zusätzlich die Priorität des Problems.
+        Setze priority auf 1 bei dringenden Problemen wie gesperrtem Account,
+        Login nicht möglich, Prüfungs-/Abgabeproblemen oder komplettem Ausfall.
+        Setze priority auf 0 bei normalen oder weniger dringenden Problemen.
+    	""")
 
     # Telling python to treat output from structured llm as ExtractedTicketData instance
     extracted_data = cast(ExtractedTicketData, structured_llm.invoke([
         SystemMessage(content=system_prompt),
         last_user_message
     ]))
+
+    print("\n===== EXTRACTED DATA =====")
+    print(extracted_data)
+    print("==========================\n")
+
 
     state_update = {}
 
@@ -96,6 +112,8 @@ def extract_information(state: ChatbotState):
         state_update["issue_description"] = extracted_data.problem
     if extracted_data.additional_info:
         state_update["additional_info"] = extracted_data.additional_info
+    if extracted_data.priority is not None:
+        state_update["priority"] = extracted_data.priority
 
     return state_update
 
@@ -210,6 +228,7 @@ def finish_ticket(state: ChatbotState):
     zammad_body = (
         f"Matrikelnummer: {state['matrikelnummer']}\n"
         f"E-Mail: {state['user_email']}\n\n"
+        f"Priorität: {'urgent' if state.get('priority') == 1 else 'normal'}\n"
         f"Problembeschreibung des Nutzers:\n"
         f"{state['issue_description']}\n\n"
         f"Zusätzliche Infos (automatisch extrahiert durch den Chatbot):\n"
@@ -220,12 +239,22 @@ def finish_ticket(state: ChatbotState):
         create_ticket_by_user_email(
             email=state["user_email"],
             title=zammad_title,
-            body=zammad_body
+            body=zammad_body,
+            priority=state["priority"],
         )
-        final_message = (f"Perfekt! Dein Ticket wurde erfolgreich erstellt. Ein Supporter meldet sich bald bei dir.\n"
+        user_visible_body = (
+        f"Matrikelnummer: {state['matrikelnummer']}\n"
+        f"E-Mail: {state['user_email']}\n\n"
+        f"Problembeschreibung des Nutzers:\n"
+        f"{state['issue_description']}"
+    )
+
+        final_message = (
+        f"Perfekt! Dein Ticket wurde erfolgreich erstellt. Ein Supporter meldet sich bald bei dir.\n"
         f"**Deine Ticket-Übersicht:**\n"
         f"**Betreff:** {zammad_title}\n"
-        f"**Inhalt:** {zammad_body}")
+        f"**Inhalt:** {user_visible_body}"
+)
     except Exception as e:
         print(f"🚨 [FEHLER] Zammad API-Aufruf fehlgeschlagen: {e}")
         final_message = "Dein Ticket ist fertiggestellt, aber es gab ein Problem bei der Übermittlung an Zammad. Bitte versuche es später noch einmal."
