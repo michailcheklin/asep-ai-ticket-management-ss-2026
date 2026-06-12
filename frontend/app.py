@@ -70,6 +70,16 @@ if "chatbot_history" not in st.session_state:
 if "issue_description" not in st.session_state:
     st.session_state.issue_description: str = ""
 
+# Hier werden die zusätzlichen Infos, die das LLM extrahieren konnte,
+# gespeichert, damit diese bei nachfolgenden Anfragen verwendet werden können
+if "additional_info" not in st.session_state:
+    st.session_state.additional_info: list[str] = []
+
+# Hier wird die Priorität gespeichert, damit diese nicht
+# über Nachrichten hinweg verloren geht
+if "priority" not in st.session_state:
+    st.session_state.priority: int = 0
+
 # Prüfung, ob eine gültige E-Mail-Adresse und eine
 # gültige Matrikelnummer (Nur Zahlen) eingegeben wurde
 is_email_valid = bool(re.fullmatch(pattern=r"[a-zA-Z0-9\._-]+@[a-zA-Z0-9\._-]+\.[a-zA-Z0-9\._-]+", string=st.session_state["email_input"]))
@@ -115,6 +125,8 @@ if user_input:= st.chat_input(
                 "user_email": st.session_state["email_input"],
                 "matrikelnummer": st.session_state["matrikelnummer_input"],
                 "issue_description": st.session_state.issue_description,
+                "additional_info": st.session_state.additional_info,
+                "priority": st.session_state.priority,
 
             },
             timeout=AI_COMMUNICATION_TIMEOUT_IN_SECONDS,
@@ -124,6 +136,8 @@ if user_input:= st.chat_input(
         # womit auf den POST-Request geantwortet wurde, extrahiert
         bot_answer_http_response_json:dict = bot_answer_http_response.json()
         bot_answer:str = bot_answer_http_response_json["bot_response"]
+        print(f"The bot answered '{bot_answer}'.")
+
         # Wenn ein Prompt den Sicherheitscheck nicht bestanden hat, hat die JSON-Antwort
         # das Feld "security", sonst nicht
         prompt_safety_checks_passed:bool = "security" not in bot_answer_http_response_json
@@ -136,6 +150,9 @@ if user_input:= st.chat_input(
         # (s. https://markdown-guide.readthedocs.io/en/latest/basics.html#line-return)
         bot_answer = bot_answer.replace("\n", "  \n")
         st.session_state.issue_description = bot_answer_http_response_json["issue_description"]
+        st.session_state.additional_info = bot_answer_http_response_json["additional_info"]
+        st.session_state.priority = bot_answer_http_response_json["priority"]
+
 
         bot_answer_history_entry_for_chat = {"role": "assistant", "content": bot_answer}
         st.session_state.messages.append(bot_answer_history_entry_for_chat)
