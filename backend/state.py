@@ -1,5 +1,6 @@
 from typing import Annotated, TypedDict
 from langgraph.graph.message import add_messages
+import operator
 
 
 class ChatbotState(TypedDict):
@@ -9,13 +10,14 @@ class ChatbotState(TypedDict):
     # add_messages sorgt dafür, dass neue Chat-Nachrichten immer an die Liste angehängt werden
     messages: Annotated[list, add_messages]
 
-    # Hier speichern wir die extrahierten Daten für Zammad
+    # ticket data
     user_email: str
     matrikelnummer: str
     issue_description: str
+    additional_info: Annotated[list[str], operator.add]
 
     #Priority of the ticket:0 =non-ungent/normal, 1 = urgent/important
     priority:int
 
-    # Ein Signal für das Frontend, dass wir alle Daten haben
+    # signal if ticket is complete
     is_complete: bool

@@ -79,3 +79,13 @@ After applying these changes and rebuilding the containers, communication betwee
 To create a ticket, go to `localhost:8501`. After typing your mail address and your matriculation number, you can use the ZIM Helper to create a ticket by describing your concern.  
 By typing in your credentials, our backend automatically creates a user account if you do not have one yet.  
 After creating a ticket, you will get a mail from our Mailpit server, which you can observe on `localhost:8025`.
+
+## Choose LLM Model (llama 3.2 3b vs. llama 3.3 70b (SAIA))
+The backend supports seamless switching between our local model and the powerful SAIA model provided by the Academic Cloud. This is controlled via your local `.env` file (use the variables in the `example.env` as a reference).
+
+* **`USE_SAIA_API=true`**: Activates the large, intelligent Llama-3.3-70B model via the SAIA API. (Requirement: A valid `SAIA_API_KEY` must be set in your `.env` file).
+* **`USE_SAIA_API=false`** (or unset): Uses the local Ollama model as a fallback.
+>  **IMPORTANT  RULE REGARDING THE API LIMIT!**
+> We have a strict limit of **3,000 requests per month** for the SAIA API. To ensure we don't exhaust this quota in the middle of a sprint, please adhere to the following rule:
+> * **Local Development & Debugging:** Always use Ollama (`USE_SAIA_API=false`) to verify that the code runs, pipelines are working, or the UI is loading.
+> * **Quality Testing:** **Only** enable the SAIA API (`USE_SAIA_API=true`) when you specifically need to evaluate the quality of the AI responses or during a final feature review.
