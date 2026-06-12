@@ -85,6 +85,26 @@ These workarounds should be replaced by a more robust classifier-based solution 
 ```
 * The Fields **user_email**, **matrikelnummer** and **issue_description** will be populated if this information was present in a message from the user
 
+
+### Ticket Prioritization
+
+The chatbot automatically classifies tickets into two priority levels:
+
+| Priority | Meaning                   |
+| -------- | ------------------------- |
+| 0        | Normal / non-urgent issue |
+| 1        | Urgent / important issue  |
+
+Examples for urgent tickets include:
+
+* User cannot log in
+* Exam or deadline is affected
+* Complete service outage
+* Critical account access problems
+
+The priority is extracted together with the ticket information and is included in the chatbot state and API response. The value can later be used when creating tickets in Zammad to assign a higher ticket priority.
+
+
 ### Example of a Request with Populated History
 ```json
 {
