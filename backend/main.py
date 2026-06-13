@@ -144,6 +144,9 @@ async def chat_endpoint(request: ChatRequest):
     :return: returns the updated state, after the llm processed the request
     """
 
+    # Temporarily disabled our own security implementation
+    # Now the chatbot's AI model itself stops bad prompts
+    """
     complete_evaluation = __check_prompt(request.user_message)
 
     failed_checks = [check_result for check_result in complete_evaluation if not check_result["allowed"]]
@@ -160,6 +163,8 @@ async def chat_endpoint(request: ChatRequest):
             "is_complete": False,
             "priority": request.priority,
         }
+
+    """
 
 
     return __execute_langchain_workflow(request)
