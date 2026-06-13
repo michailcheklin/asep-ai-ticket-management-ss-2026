@@ -117,9 +117,7 @@ if user_input:= st.chat_input(
         # :color[Text]{foreground="<Farbcode in Hex>"}.
         # Ein Sternchen an beiden Seiten des Textes macht diesen kursiv.
         st.write('*:color[Bitte warten. Antwort wird generiert...]{foreground="#888888"}*')
-        bot_answer_http_response:Response = requests.post(
-            url=f"{BACKEND_URL}/chat",
-            json={
+        json_body_for_request = {
                 "user_message": user_input,
                 "history": st.session_state.chatbot_history,
                 "user_email": st.session_state["email_input"],
@@ -128,14 +126,26 @@ if user_input:= st.chat_input(
                 "additional_info": st.session_state.additional_info,
                 "priority": st.session_state.priority,
 
-            },
+            }
+
+        print(f"Sending the request to the chatbot with {str(json_body_for_request)}")
+
+        bot_answer_http_response:Response = requests.post(
+            url=f"{BACKEND_URL}/chat",
+            json=json_body_for_request,
             timeout=AI_COMMUNICATION_TIMEOUT_IN_SECONDS,
         )
 
+        print(f"The HTTP response: {str(bot_answer_http_response)}")
+
         # Sobald der Bot geantwortet hat, werden die Informationen aus dem JSON-Objekt
         # womit auf den POST-Request geantwortet wurde, extrahiert
-        bot_answer_http_response_json:dict = bot_answer_http_response.json()
-        bot_answer:str = bot_answer_http_response_json["bot_response"]
+        bot_answer_http_response_json: dict ={}
+        try:
+            bot_answer_http_response_json = bot_answer_http_response.json()
+            bot_answer: str = bot_answer_http_response_json["bot_response"]
+        except requests.exceptions.JSONDecodeError:
+            bot_answer = str(bot_answer_http_response.text)
         print(f"The bot answered '{bot_answer}'.")
 
         # Wenn ein Prompt den Sicherheitscheck nicht bestanden hat, hat die JSON-Antwort
@@ -149,9 +159,9 @@ if user_input:= st.chat_input(
         # Der Markdown-Standard fordert, um einen Zeilenumbruch zu erzwingen, 2 Leerzeichen davor
         # (s. https://markdown-guide.readthedocs.io/en/latest/basics.html#line-return)
         bot_answer = bot_answer.replace("\n", "  \n")
-        st.session_state.issue_description = bot_answer_http_response_json["issue_description"]
-        st.session_state.additional_info = bot_answer_http_response_json["additional_info"]
-        st.session_state.priority = bot_answer_http_response_json["priority"]
+        st.session_state.issue_description = bot_answer_http_response_json.get("issue_description", st.session_state.issue_description)
+        st.session_state.additional_info = bot_answer_http_response_json.get("additional_info", st.session_state.additional_info)
+        st.session_state.priority = bot_answer_http_response_json.get("priority", st.session_state.priority)
 
 
         bot_answer_history_entry_for_chat = {"role": "assistant", "content": bot_answer}
