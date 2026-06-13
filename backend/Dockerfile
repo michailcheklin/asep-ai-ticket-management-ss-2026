@@ -8,7 +8,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 COPY requirements.txt .
-RUN pip install --upgrade pip && pip install -r requirements.txt
+RUN pip install --upgrade pip && \
+    pip install -r requirements.txt && \
+    python -m spacy download en_core_web_lg
 
 # Hier kommen die Hugging Face-Models rein, die für die Vorab-Überprüfung des Prompts
 # zuständig sind
