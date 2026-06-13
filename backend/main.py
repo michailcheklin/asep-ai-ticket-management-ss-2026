@@ -11,8 +11,9 @@ from nodes import (
     ask_for_email,
     ask_for_matrikelnummer,
     ask_for_issue,
-    finish_ticket,
-    ask_for_additional_info
+    ask_for_additional_info,
+    give_solutions,
+    finish_ticket
 )
 from pydantic import BaseModel
 from typing import List, Dict
@@ -84,6 +85,7 @@ class ChatRequest(BaseModel):
     issue_description: str = ""
     additional_info: List[str] = []
     priority: int = 0
+
 
 def __check_prompt (prompt:str) -> list[dict]:
     """
@@ -163,10 +165,6 @@ async def chat_endpoint(request: ChatRequest):
 
 
     return __execute_langchain_workflow(request)
-  
-
-
-    
 
 
 def __execute_langchain_workflow(request: ChatRequest):
@@ -192,7 +190,7 @@ def __execute_langchain_workflow(request: ChatRequest):
         "issue_description": request.issue_description,
         "additional_info": request.additional_info,
         "is_complete": False,
-        "priority": request.priority
+        "priority": request.priority,
     }
 
     updated_state = graph.invoke(current_state)
@@ -205,6 +203,7 @@ def __execute_langchain_workflow(request: ChatRequest):
         "additional_info": updated_state.get("additional_info", []),
         "is_complete": updated_state.get("is_complete", False),
         "priority": updated_state.get("priority", 0),
+        "solutions": updated_state.get("solutions", [])
     }
 
 def route_based_on_state(state: ChatbotState):
@@ -225,13 +224,27 @@ def route_based_on_state(state: ChatbotState):
 
 def route_after_evaluator(state: ChatbotState):
     """
-    Checks result of additional information node. If all needed information are collected the finish node
-    is called, otherwise the workflow start all over again
+    Checks result of additional information node.
+    If all needed information are collected, we search for suitable solutions from RAG.
+    Otherwise, we ask for more additional information by END.
     """
     if state.get("is_complete"):
-        return "finish_node"
+        return "give_solutions_node"
     else:
         return END
+
+def route_after_solutions(state: ChatbotState):
+    """
+    Checks result of give solutions node.
+    If there are solutions, then END in order to return solutions.
+    Otherwise: Create a ticket with finish_node.
+    :param state: The current conversation and ticket state
+    :return: The next node to execute
+    """
+    if state.get("solutions"):
+        return END
+    else:
+        return "finish_node"
 
 
 
@@ -244,6 +257,7 @@ workflow.add_node("ask_email_node", ask_for_email)
 workflow.add_node("ask_matrikel_node", ask_for_matrikelnummer)
 workflow.add_node("ask_issue_node", ask_for_issue)
 workflow.add_node("ask_for_additional_info", ask_for_additional_info)
+workflow.add_node("give_solutions_node", give_solutions)
 workflow.add_node("finish_node", finish_ticket)
 
 # Set the mandatory entry point of the graph execution
@@ -260,6 +274,13 @@ workflow.add_conditional_edges(
     "ask_for_additional_info",
     route_after_evaluator
 )
+
+workflow.add_conditional_edges(
+    "give_solutions_node",
+    route_after_solutions
+)
+
+# Switch after giving solutions between finish_node (ticekt)
 
 workflow.add_edge("ask_email_node", END)
 workflow.add_edge("ask_matrikel_node", END)
@@ -342,4 +363,4 @@ def __local_chat_greet_user():
 
 
 if __name__ == "__main__":
-    run_local_chat() 
+    run_local_chat()

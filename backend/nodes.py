@@ -7,14 +7,13 @@ from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from state import ChatbotState
 from zammad_endpoints import create_ticket_by_user_email
 
-
 USE_SAIA = os.getenv("USE_SAIA_API", "false").lower() == "true"
 # temperature 0.2 for less hallucination
 # Toggles between the SAIA API model (70B) and local Ollama (3B).
 # Defaults to 'false' to avoid useing up the monthly SAIA limit (3000 requests)
 # during standard code development and pipeline testing
 if USE_SAIA:
-    raw_key =os.getenv("SAIA_API_KEY", "")
+    raw_key = os.getenv("SAIA_API_KEY", "")
     # LangChain requires API keys to be wrapped in a Pydantic 'SecretStr' type
     # This prevents the key from being exposed in plain text within logs
     # if the application crashes or the 'llm' object is accidentally printed to the terminal
@@ -28,7 +27,7 @@ if USE_SAIA:
 else:
     ollama_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
     llm = ChatOllama(
-        model="llama3.2",
+        model="qwen3:8b",
         temperature=0.2,
         base_url=ollama_url
     )
@@ -38,22 +37,24 @@ class ExtractedTicketData(BaseModel):
     """
     Schema defining the structured ticket data to be extracted from user messages
     """
-    email: Optional[str] = Field(None, description="Die E-Mail-Adresse des Users. Nur ausfüllen, wenn sie ein @-Zeichen enthält.")
+    email: Optional[str] = Field(None,
+                                 description="Die E-Mail-Adresse des Users. Nur ausfüllen, wenn sie ein @-Zeichen enthält.")
     matrikelnummer: Optional[str] = Field(None,
                                           description="Die 7-stellige Matrikelnummer des Studenten, falls genannt.")
     problem: Optional[str] = Field(None,
                                    description="Das IT-Problem (z.B. 'WLAN geht nicht', 'Passwort vergessen', 'Moodle lädt nicht'). Auch kurze, umgangssprachliche Sätze zählen!")
     additional_info: Optional[List[str]] = Field(default_factory=list,
                                                  description="Eine Liste von spezifischen Zusatzinformationen, die für den IT-Support an einer Universität relevant sind (z.B. Gebäude, Raumnummer, Fehlermeldung, Gerätetyp, OS). Keine Füllwörter."
-    )
+                                                 )
     priority: Optional[int] = Field(
-    None,
-    description=(
-        "Priority of the ticket. Use 1 for urgent or important issues, "
-        "for example locked account, no login possible, exam or deadline affected, "
-        "complete outage. Use 0 for normal or non-urgent issues."
+        None,
+        description=(
+            "Priority of the ticket. Use 1 for urgent or important issues, "
+            "for example locked account, no login possible, exam or deadline affected, "
+            "complete outage. Use 0 for normal or non-urgent issues."
+        )
     )
-)
+
 
 class AdditionalInfoDecision(BaseModel):
     """Schema decision, if additional info is needed for effective problem treatment"""
@@ -101,7 +102,6 @@ def extract_information(state: ChatbotState):
     print(extracted_data)
     print("==========================\n")
 
-
     state_update = {}
 
     if extracted_data.email:
@@ -116,7 +116,6 @@ def extract_information(state: ChatbotState):
         state_update["priority"] = extracted_data.priority
 
     return state_update
-
 
 
 def ask_for_email(state: ChatbotState):
@@ -170,6 +169,7 @@ def ask_for_issue(state: ChatbotState):
 
     return {"messages": [response]}
 
+
 def ask_for_additional_info(state: ChatbotState):
     """
     Queries Llama to politely ask the user for the missing additional info, if needed
@@ -186,10 +186,10 @@ def ask_for_additional_info(state: ChatbotState):
         Du bist ein technischer Dispatcher im IT-Support einer Universität.
         Dein Ziel ist es zu prüfen, ob die vorliegenden Informationen für das genannte Problem ausreichen, 
         um ein vollständiges Ticket zu erstellen.
-        
+
         AKTUELLES PROBLEM: {problem}
         BEREITS BEKANNTE ZUSATZINFOS: {infos}
-        
+
         REGELN:
         1. Überlege, ob für dieses spezifische Problem essenzielle Details fehlen. 
            (Beispiele: Bei WLAN-Problemen braucht man den Ort/das Gebäude. Bei Software-Problemen das Betriebssystem).
@@ -209,6 +209,50 @@ def ask_for_additional_info(state: ChatbotState):
             "is_complete": False,
             "messages": [AIMessage(content=decision.follow_up_question)]
         }
+
+
+def give_solutions(state: ChatbotState):
+    """
+    Gives two solutions to the request of the user from RAG.
+    :param state: Current conversation and ticket state
+    :return:
+        solutions[list{title, description}] - two best solutions given from RAG
+
+        in postman:
+        {
+            "bot_response": "Folgende Lösungen bieten sich für dein Anliegen an: ",
+            "user_email": "peter@uni.de",
+            "matrikelnummer": "1234567",
+            "issue_description": "WLAN problem",
+            "additional_info": [
+                "Essen, Gebäude R14"
+            ],
+            "is_complete": true,
+            "priority": 0,
+            "solutions": [
+                {
+                    "title": "Lösung 1",
+                    "description": "Beschreibung 1"
+                },
+                {
+                    "title": "Lösung 2",
+                    "description": "Beschreibung 2"
+                }
+            ]
+        }
+    """
+
+    solutions = [
+        {"title": "Lösung 1", "description": "Beschreibung 1"},
+        {"title": "Lösung 2", "description": "Beschreibung 2"}
+    ]
+
+    message_text = "Folgende Lösungen bieten sich für dein Anliegen an: "
+    # placeholder without logic
+    return {
+        "messages": [AIMessage(content=message_text)],
+        "solutions": solutions
+    }
 
 
 def finish_ticket(state: ChatbotState):
@@ -243,18 +287,18 @@ def finish_ticket(state: ChatbotState):
             priority=state["priority"],
         )
         user_visible_body = (
-        f"Matrikelnummer: {state['matrikelnummer']}\n"
-        f"E-Mail: {state['user_email']}\n\n"
-        f"Problembeschreibung des Nutzers:\n"
-        f"{state['issue_description']}"
-    )
+            f"Matrikelnummer: {state['matrikelnummer']}\n"
+            f"E-Mail: {state['user_email']}\n\n"
+            f"Problembeschreibung des Nutzers:\n"
+            f"{state['issue_description']}"
+        )
 
         final_message = (
-        f"Perfekt! Dein Ticket wurde erfolgreich erstellt. Ein Supporter meldet sich bald bei dir.\n"
-        f"**Deine Ticket-Übersicht:**\n"
-        f"**Betreff:** {zammad_title}\n"
-        f"**Inhalt:** {user_visible_body}"
-)
+            f"Perfekt! Dein Ticket wurde erfolgreich erstellt. Ein Supporter meldet sich bald bei dir.\n"
+            f"**Deine Ticket-Übersicht:**\n"
+            f"**Betreff:** {zammad_title}\n"
+            f"**Inhalt:** {user_visible_body}"
+        )
     except Exception as e:
         print(f"🚨 [FEHLER] Zammad API-Aufruf fehlgeschlagen: {e}")
         final_message = "Dein Ticket ist fertiggestellt, aber es gab ein Problem bei der Übermittlung an Zammad. Bitte versuche es später noch einmal."

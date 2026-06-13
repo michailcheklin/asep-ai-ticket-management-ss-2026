@@ -21,3 +21,6 @@ class ChatbotState(TypedDict):
 
     # signal if ticket is complete
     is_complete: bool
+
+    #
+    solutions: Annotated[list[dict], operator.add]
