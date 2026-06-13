@@ -60,6 +60,50 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.write(message["content"])
 
+if "chat_mode" not in st.session_state:
+    st.session_state.chat_mode = "normal"
+
+if "selected_description" not in st.session_state:
+    st.session_state.selected_description = ""
+
+# Platzhalter Antwort fürs Testen. Gleiche Struktur für Antwort aus Backend
+placehodler = {
+    "bot_response": "Hier sind ein paar Lösungen, die ich gefunden habe.",
+    "solutions": [
+        {
+            "title": "Lösung 1",
+            "description": "Beschreibung 1"
+        },
+        {
+            "title": "Lösung 2",
+            "description": "Beschreibung 2"
+        }
+    ]
+}
+
+st.session_state.chat_mode = "selection"
+
+if st.session_state.chat_mode == "selection":
+
+    with st.chat_message("assistant"):
+        st.write(placehodler["bot_response"])
+
+        for i, solution in enumerate(placehodler["solutions"]):
+
+            with st.expander(solution["title"]):
+                st.write(solution["description"])
+
+                if st.button("Diese Lösung wählen", key=f"select_{i}"):
+
+                    st.session_state.selected_description = solution["description"]
+                    st.session_state.chat_mode = "confirmed"
+
+                    st.rerun()
+
+        if st.button("Ticket trotzdem erstellen", key="force_ticket"):
+            st.rerun()
+
+
 # Interne History für Ollama, damit der Kontext
 # für zukünftige Chatnachrichten verwendet werden kann
 if "chatbot_history" not in st.session_state:
