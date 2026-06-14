@@ -193,6 +193,7 @@ def ask_for_additional_info(state: ChatbotState):
         BEREITS BEKANNTE ZUSATZINFOS: {infos}
 
         REGELN:
+        0. Wenn die BEREITS BEKANNTE ZUSATZINFOS aus mind. 3 Sachen besteht, dann tendiere dazu, is_complete auf True zu setzen.
         1. Überlege, ob für dieses spezifische Problem essenzielle Details fehlen. 
            (Beispiele: Bei WLAN-Problemen braucht man den Ort/das Gebäude. Bei Software-Problemen das Betriebssystem).
         2. Wenn alles Wichtige da ist, setze is_complete auf True.
@@ -231,7 +232,7 @@ def give_solutions(state: ChatbotState):
 
     # Build query in the requested order
     query_parts = [history_text, user_msg, issue, additional]
-    query = " ".join(p for p in query_parts if p).strip()
+    query = "How to connect to the VPN using Forcepoint?" #" ".join(p for p in query_parts if p).strip()
 
     if not query:
         return {"messages": [AIMessage(content="Keine ausreichende Anfrage für die Suche.")], "solutions": []}

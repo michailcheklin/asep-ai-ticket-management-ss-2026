@@ -66,42 +66,11 @@ if "chat_mode" not in st.session_state:
 if "selected_description" not in st.session_state:
     st.session_state.selected_description = ""
 
-# Platzhalter Antwort fürs Testen. Gleiche Struktur für Antwort aus Backend
-placehodler = {
-    "bot_response": "Hier sind ein paar Lösungen, die ich gefunden habe.",
-    "solutions": [
-        {
-            "title": "Lösung 1",
-            "description": "Beschreibung 1"
-        },
-        {
-            "title": "Lösung 2",
-            "description": "Beschreibung 2"
-        }
-    ]
-}
+if "solutions" not in st.session_state:
+    st.session_state.solutions = []
 
-st.session_state.chat_mode = "selection"
-
-if st.session_state.chat_mode == "selection":
-
-    with st.chat_message("assistant"):
-        st.write(placehodler["bot_response"])
-
-        for i, solution in enumerate(placehodler["solutions"]):
-
-            with st.expander(solution["title"]):
-                st.write(solution["description"])
-
-                if st.button("Diese Lösung wählen", key=f"select_{i}"):
-
-                    st.session_state.selected_description = solution["description"]
-                    st.session_state.chat_mode = "confirmed"
-
-                    st.rerun()
-
-        if st.button("Ticket trotzdem erstellen", key="force_ticket"):
-            st.rerun()
+if "complete" not in st.session_state:
+    st.session_state.complete = False
 
 
 # Interne History für Ollama, damit der Kontext
@@ -196,7 +165,23 @@ if user_input:= st.chat_input(
         st.session_state.issue_description = bot_answer_http_response_json["issue_description"]
         st.session_state.additional_info = bot_answer_http_response_json["additional_info"]
         st.session_state.priority = bot_answer_http_response_json["priority"]
+        solutions = bot_answer_http_response_json["solutions"]
 
+
+        if st.session_state.solutions:
+            st.write(bot_answer)
+
+            for i, solution in enumerate(solutions):
+
+                with st.expander(solution["title"]):
+                    st.write(solution["description"])
+
+                    if st.button("Diese Lösung wählen", key=f"select_{i}"):
+                        st.write("Freut mich, dass Ihnen diese Lösung helfen konnte. Sollten Sie noch einmal ein Problem haben, können Sie sich gerne wieder an mich wenden.")
+                        st.session_state.complete = True
+
+            if st.button("Ticket trotzdem erstellen", key="force_ticket"):
+                st.session_state.force_ticket = True
 
         bot_answer_history_entry_for_chat = {"role": "assistant", "content": bot_answer}
         st.session_state.messages.append(bot_answer_history_entry_for_chat)
@@ -211,11 +196,13 @@ if user_input:= st.chat_input(
             bot_answer_history_entry_for_bot_history = {"role": "bot", "content": bot_answer}
             st.session_state.chatbot_history.append(bot_answer_history_entry_for_bot_history)
 
-        st.write(bot_answer)
+        if not st.session_state.force_ticket:
+            st.write(bot_answer)
 
     # Hier wird das Chatfenster wieder entsperrt
     st.session_state.bot_thinking = False
-    st.rerun()
+    if not st.session_state.complete:
+        st.rerun()
 
 # Geplante Logik für die spätere Ticket-Erstellung:
 
