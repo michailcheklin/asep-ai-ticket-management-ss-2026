@@ -4,6 +4,8 @@ from pydantic import BaseModel, Field, SecretStr
 from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
+
+from rag.retrieve_info import retrieve_relevant_entries
 from state import ChatbotState
 from zammad_endpoints import create_ticket_by_user_email
 
@@ -213,45 +215,58 @@ def ask_for_additional_info(state: ChatbotState):
 
 def give_solutions(state: ChatbotState):
     """
-    Gives two solutions to the request of the user from RAG.
-    :param state: Current conversation and ticket state
-    :return:
-        solutions[list{title, description}] - two best solutions given from RAG
-
-        in postman:
-        {
-            "bot_response": "Folgende Lösungen bieten sich für dein Anliegen an: ",
-            "user_email": "peter@uni.de",
-            "matrikelnummer": "1234567",
-            "issue_description": "WLAN problem",
-            "additional_info": [
-                "Essen, Gebäude R14"
-            ],
-            "is_complete": true,
-            "priority": 0,
-            "solutions": [
-                {
-                    "title": "Lösung 1",
-                    "description": "Beschreibung 1"
-                },
-                {
-                    "title": "Lösung 2",
-                    "description": "Beschreibung 2"
-                }
-            ]
-        }
+    Build a RAG query from: history + user_message + issue_description + additional_info
+    (in that exact order), then retrieve and return up to two solutions.
     """
+    msgs = state.get("messages", []) or []
+    # history = all messages except the last one
+    history_parts = [m.content for m in msgs[:-1]] if len(msgs) > 1 else []
+    history_text = " ".join(history_parts).strip()
 
-    solutions = [
-        {"title": "Lösung 1", "description": "Beschreibung 1"},
-        {"title": "Lösung 2", "description": "Beschreibung 2"}
-    ]
+    # user_message = last message if present
+    user_msg = msgs[-1].content.strip() if msgs else ""
 
-    message_text = "Folgende Lösungen bieten sich für dein Anliegen an: "
-    # placeholder without logic
+    issue = (state.get("issue_description") or "").strip()
+    additional = " ".join(state.get("additional_info", [])) if state.get("additional_info") else ""
+
+    # Build query in the requested order
+    query_parts = [history_text, user_msg, issue, additional]
+    query = " ".join(p for p in query_parts if p).strip()
+
+    if not query:
+        return {"messages": [AIMessage(content="Keine ausreichende Anfrage für die Suche.")], "solutions": []}
+
+    try:
+        print(f"[RAG QUERY] {query}")
+        results = retrieve_relevant_entries(query, n_results=2)
+        print(f"[RAG RESULT] faq={len(results.get('faq_matches',[]))} tickets={len(results.get('ticket_matches',[]))} inferred={results.get('inferred')}")
+    except Exception as e:
+        print(f"[RAG ERROR] {e}")
+        return {"messages": [AIMessage(content="Fehler bei der Suche in der Wissensdatenbank.")], "solutions": []}
+
+    faq_matches = results.get("faq_matches", [])
+    ticket_matches = results.get("ticket_matches", [])
+    inferred = results.get("inferred", {})
+
+    # Build up to 2 solutions (FAQ first)
+    solutions = []
+    for m in faq_matches[:2]:
+        solutions.append({"title": f"FAQ: {m.get('id')}", "description": m.get("text", "")})
+    if len(solutions) < 2:
+        for t in ticket_matches[: 2 - len(solutions)]:
+            solutions.append({"title": f"Ähnliches Ticket ({t.get('category','unknown')})", "description": t.get("text", "")})
+
+    message_text = "Ich habe passende Einträge in der Wissensdatenbank gefunden." if solutions else "Keine passenden Einträge in der Wissensdatenbank gefunden."
+
     return {
         "messages": [AIMessage(content=message_text)],
-        "solutions": solutions
+        "solutions": solutions,
+        "rag_debug": {
+            "query": query,
+            "faq_count": len(faq_matches),
+            "ticket_count": len(ticket_matches),
+            "inferred": inferred
+        }
     }
 
 
