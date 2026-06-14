@@ -1,5 +1,6 @@
 import chromadb
 from collections import defaultdict
+import os
 from sentence_transformers import SentenceTransformer
 
 # --- These run ONCE when the module is first imported ---
@@ -9,8 +10,20 @@ print("[retrieve] Loading ticket embedder...")
 ticket_embedder = SentenceTransformer("paraphrase-multilingual-mpnet-base-v2")
 print("[retrieve] Connecting to databases...")
 
-chroma_client     = chromadb.PersistentClient(path="./faq_db")
-ticket_client     = chromadb.PersistentClient(path="./ticket_db")
+# Get the directory where retrieve_info.py is located
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+faq_db_path    = os.path.join(BASE_DIR, "faq_db")
+ticket_db_path = os.path.join(BASE_DIR, "ticket_db")
+
+# Check they exist before connecting
+if not os.path.exists(faq_db_path):
+    raise FileNotFoundError(f"FAQ database not found at: {faq_db_path}")
+if not os.path.exists(ticket_db_path):
+    raise FileNotFoundError(f"Ticket database not found at: {ticket_db_path}")
+
+chroma_client = chromadb.PersistentClient(path=faq_db_path)
+ticket_client = chromadb.PersistentClient(path=ticket_db_path)
 
 faq_collection    = chroma_client.get_or_create_collection(
     "faq_entries",
