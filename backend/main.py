@@ -85,6 +85,7 @@ class ChatRequest(BaseModel):
     issue_description: str = ""
     additional_info: List[str] = []
     priority: int = 0
+    force_ticket_creation: bool = False
 
 
 # def __check_prompt (prompt:str) -> list[dict]:
@@ -191,6 +192,7 @@ def __execute_langchain_workflow(request: ChatRequest):
         "additional_info": request.additional_info,
         "is_complete": False,
         "priority": request.priority,
+        "force_ticket_creation": request.force_ticket_creation,
     }
 
     updated_state = graph.invoke(current_state)
@@ -236,13 +238,18 @@ def route_after_evaluator(state: ChatbotState):
 def route_after_solutions(state: ChatbotState):
     """
     Checks result of give solutions node.
-    If there are solutions, then END in order to return solutions.
-    Otherwise: Create a ticket with finish_node.
+    If there are solutions
+        -> user unsatisfied: ticket creation
+        -> user satisfied: end conversation
+    If there are no solutions, ticket will be created directly.
     :param state: The current conversation and ticket state
     :return: The next node to execute
     """
     if state.get("solutions"):
-        return END
+        if state.get("force_ticket_creation"):
+            return "finish_node"
+        else:
+            return END
     else:
         return "finish_node"
 
@@ -302,7 +309,8 @@ def run_local_chat():
         "matrikelnummer": "",
         "issue_description": "",
         "additional_info": [],
-        "is_complete": False
+        "is_complete": False,
+        "force_ticket_creation": False
     }
 
 
