@@ -11,8 +11,6 @@ run_tests:
     - docker
     - PoC
     - pilot
-  only:
-    - 114-Implement-test-cases-in-CI
   # Use a specific Python image for a predictable runtime
   image: python:3.11
   before_script:
@@ -31,8 +29,6 @@ run_chat_endpoint_tests:
     - shared
     - docker
     - PoC
-  only:
-    - 125-fix-bugs-in-the-chatbot
   image: python:3.11
   before_script:
     - echo "SAIA_API_KEY=$SAIA_API_KEY" >> .env
