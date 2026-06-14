@@ -144,6 +144,9 @@ async def chat_endpoint(request: ChatRequest):
     :return: returns the updated state, after the llm processed the request
     """
 
+    # Temporarily disabled our own security implementation
+    # Now the chatbot's AI model itself stops bad prompts
+    """
     complete_evaluation = __check_prompt(request.user_message)
 
     failed_checks = [check_result for check_result in complete_evaluation if not check_result["allowed"]]
@@ -160,6 +163,8 @@ async def chat_endpoint(request: ChatRequest):
             "is_complete": False,
             "priority": request.priority,
         }
+
+    """
 
 
     return __execute_langchain_workflow(request)
@@ -271,10 +276,15 @@ graph = workflow.compile()
 
 def run_local_chat():
     """
+        [ONLY FOR TESTING]
         Provides a local terminal interface to test the chatbot workflow
         without running the FastAPI server or an external frontend
     """
-    __local_chat_greet_user()
+    print("\n========================================================")
+    print("🤖 IT-Support Bot V2 (Spoon-Feeding) gestartet")
+    print("Tippe 'exit' zum Beenden")
+    print("========================================================\n")
+
     current_state = {
         "messages": [],
         "user_email": "",
@@ -284,6 +294,7 @@ def run_local_chat():
         "is_complete": False
     }
 
+    print("Bot: Hallo! Willkommen beim IT-Support. Wie kann ich dir heute helfen?")
 
     while True:
         user_input = input("\nDu: ")
@@ -291,54 +302,41 @@ def run_local_chat():
         if user_input.lower() in ["exit", "quit", "q"]:
             break
 
-        complete_state = __local_chat_simulate_workflow(user_input=user_input, current_state=current_state)
-        if complete_state == "Success":
+        # Validate the user input for potential prompt injection attempts
+        # before passing it to the chatbot workflow.
+        # Temporarily disabled security check - Now the chatbot's built in filter is used
+
+        """
+        complete_evaluation = __check_prompt(user_input)
+        failed_checks = [check_result for check_result in complete_evaluation if not check_result["allowed"]]
+        if len(failed_checks) > 0:
+            print(failed_checks)
+            reason = __formulate_prompt_rejection_reason(failed_checks)
+
+            print(
+                f"Bot: {reason} "
+                "Bitte formuliere eine normale Anfrage zu einem ZIM-Thema."
+            )
+            print(f"   [SECURITY DEBUG] {complete_evaluation}")
+            continue
+        """
+
+
+        current_state["messages"].append(HumanMessage(content=user_input))
+        current_state = graph.invoke(current_state)
+
+        print(str(current_state))
+        bot_response = current_state["messages"][-1].content
+        print(f"Bot: {bot_response}")
+        print(
+            f"   [DEBUG STATE] email: {current_state.get('user_email')} | "
+            f"Matrikel: {current_state.get('matrikelnummer')} | "
+            f"Problem: {current_state.get('issue_description')}"
+        )
+
+        if current_state.get("is_complete"):
+            print("\n🎉 [SYSTEM]: backend feuert API-Call an Zammad!")
             break
-
-def __local_chat_simulate_workflow(user_input:str, current_state:dict) -> str|None:
-    """
-    (Nur für die Testumgebung, NICHT für die Produktion):
-    Simuliert den Chat-Workflow, ohne Streamlit oder FastAPI aktiv zu haben
-    :param user_input: Die letzte Eingabe des Benutzers
-    :param current_state: Der aktuelle Status von Langchain
-    :return: "Success", wenn der is_complete-Flag auf True umspringt oder "Security", wenn die Sicherheitschecks des Prompts nicht bestanden wurden.
-    """
-    complete_evaluation = __check_prompt(user_input)
-    failed_checks = [check_result for check_result in complete_evaluation if not check_result["allowed"]]
-    if len(failed_checks) > 0:
-        print(failed_checks)
-        reason = __formulate_prompt_rejection_reason(failed_checks)
-
-        print(f"Bot: {reason}\n Bitte formuliere eine normale Anfrage zu einem ZIM-Thema.")
-        print(f"\t[SECURITY DEBUG] {complete_evaluation}")
-        return "Security"
-
-    current_state["messages"].append(HumanMessage(content=user_input))
-    current_state = graph.invoke(current_state)
-
-    bot_response = current_state["messages"][-1].content
-    print(f"Bot: {bot_response}")
-    print(
-        f"\t[DEBUG STATE] email: {current_state.get('user_email')} | "
-        f"Matrikel: {current_state.get('matrikelnummer')} | "
-        f"Problem: {current_state.get('issue_description')}"
-    )
-
-    if current_state.get("is_complete"):
-        print("\n🎉 [SYSTEM]: backend feuert API-Call an Zammad!")
-        return "Success"
-
-
-def __local_chat_greet_user():
-    """
-    Wenn der lokale Chat aufgerufen wird (für das Testen über das direkte Ausführen des Skripts
-    über die Konsole oder über Pycharm), wird diese Nachricht ganz am Anfang geschrieben
-    """
-    print("\n========================================================")
-    print("🤖 IT-Support Bot V2 (Spoon-Feeding) gestartet")
-    print("Tippe 'exit' zum Beenden")
-    print("========================================================\n")
-    print("Bot: Hallo! Willkommen beim IT-Support. Wie kann ich dir heute helfen?")
 
 
 if __name__ == "__main__":

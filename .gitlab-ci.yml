@@ -2,6 +2,7 @@ image: python:3.11
 
 stages:
   - test
+  - test_chat_endpoint
 
 run_tests:
   stage: test
@@ -24,3 +25,23 @@ run_tests:
     # Execute the provided test script. It imports from main.py, so run from backend directory.
     - python test_prompt_security_result.py
 
+run_chat_endpoint_tests:
+  stage: test_chat_endpoint
+  tags:
+    - shared
+    - docker
+    - PoC
+  only:
+    - 125-fix-bugs-in-the-chatbot
+  image: python:3.11
+  before_script:
+    - echo "SAIA_API_KEY=$SAIA_API_KEY" >> .env
+    - echo "USE_SAIA_API=true" >> .env
+    - python --version
+    - pip install --upgrade pip
+    # Install backend requirements if the file exists;
+    - if [ -f backend/requirements.txt ]; then pip install -r backend/requirements.txt; fi
+  script:
+    - cd backend
+    # Execute the provided test script. It imports from main.py, so run from backend directory.
+    - python test_chat_endpoint.py
