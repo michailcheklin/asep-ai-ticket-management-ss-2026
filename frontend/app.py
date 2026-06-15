@@ -18,14 +18,10 @@ st.set_page_config(page_title="Support-Annahme über ZIM Helper", layout="center
 
 st.title("Support-Annahme über ZIM Helper")
 st.caption("Dein digitaler Assistent für Support-Anfragen")
-
 st.subheader("Deine Kontaktdaten")
-
 email = st.text_input("E-Mail-Adresse *", key="email_input" )
 matrikelnummer = st.text_input("Matrikelnummer *",  key="matrikelnummer_input" )
-
 st.divider()
-
 st.header("ZIM Helper")
 
 
