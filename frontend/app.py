@@ -163,16 +163,13 @@ if user_input:= st.chat_input(
         st.session_state.additional_info = bot_answer_http_response_json.get("additional_info", st.session_state.additional_info)
         st.session_state.priority = bot_answer_http_response_json.get("priority", st.session_state.priority)
 
-
-        bot_answer_history_entry_for_chat = {"role": "assistant", "content": bot_answer}
-        st.session_state.messages.append(bot_answer_history_entry_for_chat)
+        st.session_state.messages.append({"role": "assistant", "content": bot_answer})
 
         # Wenn ein Prompt den Sicherheitscheck nicht bestand, wird dieser nicht in den Bot-Kontext
         # geschrieben, damit der Nutzer noch die Chance hat, einen zulässigen Prompt zu schreiben
         if prompt_safety_checks_passed:
             st.session_state.chatbot_history.append(user_input_history_entry)
-            bot_answer_history_entry_for_bot_history = {"role": "bot", "content": bot_answer}
-            st.session_state.chatbot_history.append(bot_answer_history_entry_for_bot_history)
+            st.session_state.chatbot_history.append({"role": "bot", "content": bot_answer})
 
         st.write(bot_answer)
 
