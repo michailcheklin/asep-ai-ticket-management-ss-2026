@@ -119,14 +119,8 @@ if user_input:= st.chat_input(
 
     with st.chat_message("assistant"):
         # Hier wird die Bot-Antwort generiert. Während die Antwort generiert wird,
-        # wird ein grauer Platzhaltertext bei der Bot-Antwort erscheinen, bis
+        # wird ein grauer kursiver Platzhaltertext bei der Bot-Antwort erscheinen, bis
         # der Bot geantwortet hat.
-        #
-        # Die Streamlit-Funktion st.write() schreibt ein Markdown-Objekt, wenn ein String übergeben wird
-        # (s. https://docs.streamlit.io/develop/api-reference/write-magic/st.write)
-        # Der Markdown-Standard erfordert folgende Sytnax für die Färbung von Text:
-        # :color[Text]{foreground="<Farbcode in Hex>"}.
-        # Ein Sternchen an beiden Seiten des Textes macht diesen kursiv.
         st.write('*:color[Bitte warten. Antwort wird generiert...]{foreground="#888888"}*')
         json_body_for_request = {
                 "user_message": user_input,
@@ -163,12 +157,7 @@ if user_input:= st.chat_input(
         # das Feld "security", sonst nicht
         prompt_safety_checks_passed:bool = "security" not in bot_answer_http_response_json
 
-        # Vor jeden Zeilenumbruch werden 2 Leerzeichen eingefügt, damit die
-        # Bot-Antwort korrekt im Chatfenster dargestellt werden kann.
-        # Die Streamlit-Funktion st.write() schreibt ein Markdown-Objekt, wenn ein String übergeben wird
-        # (s. https://docs.streamlit.io/develop/api-reference/write-magic/st.write)
-        # Der Markdown-Standard fordert, um einen Zeilenumbruch zu erzwingen, 2 Leerzeichen davor
-        # (s. https://markdown-guide.readthedocs.io/en/latest/basics.html#line-return)
+        # Formatiere die Bot-Antwort und aktualisiere den State
         bot_answer = bot_answer.replace("\n", "  \n")
         st.session_state.issue_description = bot_answer_http_response_json.get("issue_description", st.session_state.issue_description)
         st.session_state.additional_info = bot_answer_http_response_json.get("additional_info", st.session_state.additional_info)
@@ -180,9 +169,6 @@ if user_input:= st.chat_input(
 
         # Wenn ein Prompt den Sicherheitscheck nicht bestand, wird dieser nicht in den Bot-Kontext
         # geschrieben, damit der Nutzer noch die Chance hat, einen zulässigen Prompt zu schreiben
-        # Erfüllt das Acceptance Criterion
-        # "Prompts that trigger the detection do not get written into the chatbot history for the backend
-        # to not pollute the context if a legit prompt is sent afterwards" aus Issue #111
         if prompt_safety_checks_passed:
             st.session_state.chatbot_history.append(user_input_history_entry)
             bot_answer_history_entry_for_bot_history = {"role": "bot", "content": bot_answer}
