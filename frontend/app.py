@@ -6,12 +6,6 @@ import requests
 from requests import Response
 
 
-# SPÄTERE BACKEND-/ZAMMAD-ANBINDUNG
-# Aktuell auskommentiert, da zunächst nur die Chatbot-
-# Oberfläche entwickelt wird. Man könnte es aber später nutzen,
-# um automatisch Tickets in Zammad anzulegen.
-# Die KI Anbindungen kommt dann natürlich auch noch später.
-# from zammad_endpoints import create_ticket_by_user_email
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000").rstrip("/")
 ZAMMAD_UI_URL = os.getenv("ZAMMAD_UI_URL", "http://localhost:8080").rstrip("/")
 
