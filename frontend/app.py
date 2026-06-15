@@ -34,18 +34,44 @@ st.divider()
 
 st.header("ZIM Helper")
 
-# Erste Nachricht
-if "messages" not in st.session_state:
-    st.session_state.messages = [
+
+# Diese States werden beim ersten Öffnen des Chat-Interfaces gesetzt
+initial_states = {
+    # Erste Nachricht
+    "messages":[
         {
             "role": "assistant",
             "content": "Hallo! Ich bin ZIM Helper. Erzähl mir bitte von deinem Anliegen."
         }
-    ]
+    ],
 
-# Mithilfe dieses State-Keys wird die Sperrung des Chatfensters gesteuert.
-if "bot_thinking" not in st.session_state:
-    st.session_state.bot_thinking: bool = False
+    # Mithilfe dieses State-Keys wird die Sperrung des Chatfensters gesteuert.
+    "bot_thinking":False,
+
+    # Interne History für Ollama, damit der Kontext
+    # für zukünftige Chatnachrichten verwendet werden kann
+    "chatbot_history":[],
+
+    # Hier wird die Information, die der Bot aus der Benutzernachricht extrahieren konnte
+    # als Text gespeichert
+    "issue_description":"",
+
+    # Hier werden die zusätzlichen Infos, die das LLM extrahieren konnte,
+    # gespeichert, damit diese bei nachfolgenden Anfragen verwendet werden können
+    "additional_info":[],
+
+    # Hier wird die Priorität gespeichert, damit diese nicht
+    # über Nachrichten hinweg verloren geht
+    "priority":0,
+
+}
+
+for key, value in initial_states.items():
+    if key not in st.session_state:
+        st.session_state[key] = value
+
+
+
 
 def bot_starting_thinking() -> None:
     """
@@ -59,26 +85,6 @@ def bot_starting_thinking() -> None:
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.write(message["content"])
-
-# Interne History für Ollama, damit der Kontext
-# für zukünftige Chatnachrichten verwendet werden kann
-if "chatbot_history" not in st.session_state:
-    st.session_state.chatbot_history: list[dict[str, str]] = []
-
-# Hier wird die Information, die der Bot aus der Benutzernachricht extrahieren konnte
-# als Text gespeichert
-if "issue_description" not in st.session_state:
-    st.session_state.issue_description: str = ""
-
-# Hier werden die zusätzlichen Infos, die das LLM extrahieren konnte,
-# gespeichert, damit diese bei nachfolgenden Anfragen verwendet werden können
-if "additional_info" not in st.session_state:
-    st.session_state.additional_info: list[str] = []
-
-# Hier wird die Priorität gespeichert, damit diese nicht
-# über Nachrichten hinweg verloren geht
-if "priority" not in st.session_state:
-    st.session_state.priority: int = 0
 
 # Prüfung, ob eine gültige E-Mail-Adresse und eine
 # gültige Matrikelnummer (Nur Zahlen) eingegeben wurde
