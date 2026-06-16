@@ -20,6 +20,6 @@ COPY . .
 
 # 8501 = Streamlit app
 # 5000 = fake IdP login page
-EXPOSE 8501 5000
+EXPOSE 8501 4999
 
 CMD ["python", "dev.py"]
