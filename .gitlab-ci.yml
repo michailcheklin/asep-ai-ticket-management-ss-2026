@@ -19,8 +19,7 @@ run_tests:
     # Install backend requirements if the file exists;
     - if [ -f backend/requirements.txt ]; then pip install -r backend/requirements.txt; fi
   script:
-    - cd backend
-    # Execute the provided test script. It imports from main.py, so run from backend directory.
+    - cd tests
     - python test_prompt_security_result.py
 
 run_chat_endpoint_tests:
@@ -38,6 +37,5 @@ run_chat_endpoint_tests:
     # Install backend requirements if the file exists;
     - if [ -f backend/requirements.txt ]; then pip install -r backend/requirements.txt; fi
   script:
-    - cd backend
-    # Execute the provided test script. It imports from main.py, so run from backend directory.
+    - cd tests
     - python test_chat_endpoint.py
