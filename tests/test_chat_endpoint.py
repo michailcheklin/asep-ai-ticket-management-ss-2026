@@ -1,4 +1,5 @@
-﻿import asyncio
+﻿import json
+import pytest
 
 from backend.main import chat_endpoint, ChatRequest
 
@@ -58,16 +59,19 @@ testcases = [
 
 ]
 
-testcases = [ChatRequest(**testcase) for testcase in testcases]
 
-def test_chat_endpoint():
-    for testcase in testcases:
-        print("-"*50)
-        response = asyncio.run(chat_endpoint(testcase))
-        print(str(response))
-
-
-
-
-if __name__ == '__main__':
-    test_chat_endpoint()
+@pytest.mark.asyncio
+@pytest.mark.parametrize("testcase", testcases)
+async def test_chat_endpoint_returning_bot_response(testcase):
+    """
+    Dieser Test testet, ob das LLM überhaupt eine wohlgeformte Antwort generieren kann,
+    d. h. eine gültige JSON. Dies ist Platzhalter, bis ein besseres Verständnis über DeepEval
+    für die echte LLM-Analyse gewonnen werden konnte
+    :param testcase: Der zu testende Prompt mit dem Kontext als JSON
+    """
+    test_request_as_chat_request = ChatRequest(**testcase)
+    print(f"Sending following request to the chatbot: \n{json.dumps(testcase)}")
+    response = await chat_endpoint(test_request_as_chat_request)
+    print(f"The chatbot responded with the following response: \n{json.dumps(response)}")
+    assert isinstance(response, dict), "Response should be a dictionary"
+    assert "bot_response" in response, "Response should contain a 'bot_response' key"
