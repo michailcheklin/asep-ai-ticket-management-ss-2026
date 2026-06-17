@@ -1,8 +1,8 @@
 services:
   backend_app:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
     ports:
       - "8000:8000"
     environment:
@@ -22,8 +22,8 @@ services:
 
   frontend_app:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: frontend/Dockerfile
     ports:
       - "8501:8501"
       - "4999:5000"
