@@ -280,7 +280,7 @@ def give_solutions(state: ChatbotState):
     message_text = llm.invoke([system_prompt])
 
     return {
-        "messages": message_text,
+        "messages": message_text, # hier stecken die Solutions als menschlicher, zusammenhägender Text drin
         "solutions": solutions,
         "rag_debug": {
             "query": query,

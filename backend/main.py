@@ -209,7 +209,8 @@ def __execute_langchain_workflow(request: ChatRequest):
         "additional_info": updated_state.get("additional_info", []),
         "needs_additional_info": updated_state.get("needs_additional_info", False),
         "priority": updated_state.get("priority", 0),
-        "is_complete": updated_state.get("is_complete", False)
+        "is_complete": updated_state.get("is_complete", False),
+        "solutions": updated_state.get("solutions", [])
     }
 
 def route_based_on_state(state: ChatbotState):
@@ -250,7 +251,7 @@ def route_after_solutions(state: ChatbotState):
     :return: The next node to execute
     """
     if state.get("solutions"):
-        if state.get("force_ticket_creation"):
+        if state.get("is_complete"):
             return "finish_node"
         else:
             return END
@@ -319,7 +320,7 @@ def run_local_chat():
         "issue_description": "",
         "additional_info": [],
         "needs_additional_info": False,
-        "is_complete": False,
+        "is_complete": False, #setze auf true, wenn du statt solutions direkt ticket erstellen willst (fürs Testing)
     }
 
     print("Bot: Hallo! Willkommen beim IT-Support. Wie kann ich dir heute helfen?")
@@ -362,6 +363,7 @@ def run_local_chat():
             f"Problem: {current_state.get('issue_description')}"
         )
 
+        # erreicht nie True, solange es Solutions gibt. Idee dahinter: Nach Solutions wird ein User Input (Knopf) erwartet, der weiteres entscheidet.
         if current_state.get("is_complete"):
             print("\n🎉 [SYSTEM]: backend feuert API-Call an Zammad!")
             break
