@@ -19,7 +19,7 @@ run_tests:
     # Install backend requirements if the file exists;
     - if [ -f backend/requirements.txt ]; then pip install -r backend/requirements.txt; fi
   script:
-    - pytest test ./tests/test_prompt_security_result.py -v
+    - pytest ./tests/test_prompt_security_result.py -v
 
 run_chat_endpoint_tests:
   stage: test_chat_endpoint
