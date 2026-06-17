@@ -71,7 +71,7 @@ def bot_starting_thinking() -> None:
     st.session_state.bot_thinking = True
 
 
-def all_form_fields_valid() -> bool:
+def are_form_fields_valid() -> bool:
     """
     Prüfung, ob eine gültige E-Mail-Adresse und eine
     gültige Matrikelnummer (Nur Zahlen) eingegeben wurde
@@ -82,10 +82,74 @@ def all_form_fields_valid() -> bool:
     return is_email_valid and is_matrikelnummer_valid
 
 
+def process_user_message(user_input: str) -> None:
+    """
+    Method that processes the user message. Based on the user's input, it sends a request to the backend and updates the chat history with the bot's response.
+    :param user_input:
+    :return: void
+    """
+
+    #
+    with st.chat_message("user"):
+        st.write(user_input)
+
+    with st.chat_message("assistant"):
+
+        placeholder = st.empty()
+        placeholder.write('*:color[Bitte warten. Antwort wird generiert...]{foreground="#888888"}*')
+
+        req = {
+            "user_message": user_input,
+            "history": st.session_state.chatbot_history,
+            "user_email": st.session_state["email_input"],
+            "matrikelnummer": st.session_state["matrikelnummer_input"],
+            "issue_description": st.session_state.issue_description,
+            "additional_info": st.session_state.additional_info,
+            "priority": st.session_state.priority,
+
+        }
+        print(f"Sending the request to the chatbot with {str(req)}")
+        # Response vom Backend als JSON
+        res = requests.post(
+            url=f"{BACKEND_URL}/chat",
+            json=req,
+            timeout=AI_COMMUNICATION_TIMEOUT_IN_SECONDS,
+        ).json()
+
+        if "security" not in res:
+            print("Prompt Safety Check passed!")
+
+            answer = res["bot_response"]
+            placeholder.write(answer)
+
+            st.session_state.messages.append({
+                "role": "user",
+                "content": user_input,
+            })
+            st.session_state.chatbot_history.append({
+                "role": "user",
+                "content": user_input,
+            })
+
+            st.session_state.messages.append({
+                "role": "assistant",
+                "content": answer
+            })
+
+            st.session_state.chatbot_history.append({
+                "role": "assistant",
+                "content": answer
+            })
+        else:
+            print("Prompt Safety Check failed!")
+
 # Bilde die Darstellung des Chatfensters
-for message in st.session_state.messages:
+for i, message in enumerate(st.session_state.messages):
     with st.chat_message(message["role"]):
         st.write(message["content"])
+
+
+
 
 # Ist die Matrikelnummer oder die E-Mail-Adresse
 # ungültig, kann der Benutzer keine Nachrichten an den Chatbot schreiben
@@ -95,74 +159,12 @@ for message in st.session_state.messages:
 # etwas in den Chat eintippt, beginnt die Generierung der Antwort auf die Eingabe des Nutzers.
 # Direkt nach der Eingabe wird das Chatfenster gesperrt, bis der Bot geantwortet hat (s. Methode bot_starting_thinking()).
 if user_input:= st.chat_input(
-    placeholder = "Bitte E-Mail-Adresse und Matrikelnummer eingeben" if not all_form_fields_valid()
+    placeholder = "Bitte E-Mail-Adresse und Matrikelnummer eingeben" if not are_form_fields_valid()
     else "Beschreibe dein Anliegen...",
-    disabled=st.session_state.bot_thinking or not all_form_fields_valid(),
+    disabled=st.session_state.bot_thinking or not are_form_fields_valid(),
     on_submit=bot_starting_thinking
 ):
-
-
-    with st.chat_message("user"):
-        st.write(user_input)
-        user_input_history_entry = {"role": "user", "content": user_input}
-        st.session_state.messages.append(user_input_history_entry)
-
-
-    with st.chat_message("assistant"):
-        # Hier wird die Bot-Antwort generiert. Während die Antwort generiert wird,
-        # wird ein grauer kursiver Platzhaltertext bei der Bot-Antwort erscheinen, bis
-        # der Bot geantwortet hat.
-        st.write('*:color[Bitte warten. Antwort wird generiert...]{foreground="#888888"}*')
-        json_body_for_request = {
-                "user_message": user_input,
-                "history": st.session_state.chatbot_history,
-                "user_email": st.session_state["email_input"],
-                "matrikelnummer": st.session_state["matrikelnummer_input"],
-                "issue_description": st.session_state.issue_description,
-                "additional_info": st.session_state.additional_info,
-                "priority": st.session_state.priority,
-
-            }
-
-        print(f"Sending the request to the chatbot with {str(json_body_for_request)}")
-
-        bot_answer_http_response:Response = requests.post(
-            url=f"{BACKEND_URL}/chat",
-            json=json_body_for_request,
-            timeout=AI_COMMUNICATION_TIMEOUT_IN_SECONDS,
-        )
-
-        print(f"The HTTP response: {str(bot_answer_http_response)}")
-
-        # Sobald der Bot geantwortet hat, werden die Informationen aus dem JSON-Objekt
-        # womit auf den POST-Request geantwortet wurde, extrahiert
-        bot_answer_http_response_json: dict ={}
-        try:
-            bot_answer_http_response_json = bot_answer_http_response.json()
-            bot_answer: str = bot_answer_http_response_json["bot_response"]
-        except requests.exceptions.JSONDecodeError:
-            bot_answer = str(bot_answer_http_response.text)
-        print(f"The bot answered '{bot_answer}'.")
-
-        # Wenn ein Prompt den Sicherheitscheck nicht bestanden hat, hat die JSON-Antwort
-        # das Feld "security", sonst nicht
-        prompt_safety_checks_passed:bool = "security" not in bot_answer_http_response_json
-
-        # Formatiere die Bot-Antwort und aktualisiere den State
-        bot_answer = bot_answer.replace("\n", "  \n")
-        st.session_state.issue_description = bot_answer_http_response_json.get("issue_description", st.session_state.issue_description)
-        st.session_state.additional_info = bot_answer_http_response_json.get("additional_info", st.session_state.additional_info)
-        st.session_state.priority = bot_answer_http_response_json.get("priority", st.session_state.priority)
-
-        st.session_state.messages.append({"role": "assistant", "content": bot_answer})
-
-        # Wenn ein Prompt den Sicherheitscheck nicht bestand, wird dieser nicht in den Bot-Kontext
-        # geschrieben, damit der Nutzer noch die Chance hat, einen zulässigen Prompt zu schreiben
-        if prompt_safety_checks_passed:
-            st.session_state.chatbot_history.append(user_input_history_entry)
-            st.session_state.chatbot_history.append({"role": "bot", "content": bot_answer})
-
-        st.write(bot_answer)
+    process_user_message(user_input)
 
     # Hier wird das Chatfenster wieder entsperrt
     st.session_state.bot_thinking = False
