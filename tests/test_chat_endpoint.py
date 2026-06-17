@@ -1,6 +1,6 @@
 ﻿import asyncio
 
-from main import chat_endpoint, ChatRequest
+from backend.main import chat_endpoint, ChatRequest
 
 # Nur 3 Tests, um die Prompts beim Key zu sparen
 testcases = [

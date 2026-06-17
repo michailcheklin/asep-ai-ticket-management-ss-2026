@@ -4,8 +4,8 @@ from pydantic import BaseModel, Field, SecretStr
 from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
-from state import ChatbotState
-from zammad_endpoints import create_ticket_by_user_email
+from backend.state import ChatbotState
+from backend.zammad_endpoints import create_ticket_by_user_email
 
 
 USE_SAIA = os.getenv("USE_SAIA_API", "false").lower() == "true"

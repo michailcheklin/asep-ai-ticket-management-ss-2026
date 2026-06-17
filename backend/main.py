@@ -5,8 +5,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from langgraph.graph import StateGraph, START, END
 from langchain_core.messages import HumanMessage, AIMessage
-from state import ChatbotState
-from nodes import (
+from backend.state import ChatbotState
+from backend.nodes import (
     extract_information,
     ask_for_email,
     ask_for_matrikelnummer,
@@ -16,7 +16,7 @@ from nodes import (
 )
 from pydantic import BaseModel
 from typing import List, Dict
-from prompt_security_result import (
+from backend.prompt_security_result import (
     evaluate_prompt_injection,
     evaluate_legality,
     evaluate_off_topic

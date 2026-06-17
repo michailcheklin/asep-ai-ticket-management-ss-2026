@@ -1,4 +1,6 @@
-from main import (
+import pytest
+
+from backend.main import (
     __check_prompt, __formulate_prompt_rejection_reason
 )
 
