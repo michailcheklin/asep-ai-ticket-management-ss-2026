@@ -2,15 +2,18 @@ FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1 \
     HF_HOME=/models
 
 WORKDIR /app
 
+# uv installieren
+RUN --mount=type=cache,target=/root/.cache,id=pip  \
+    python -m pip install uv
+
 COPY requirements.txt .
-RUN pip install --upgrade pip && \
-    pip install -r requirements.txt && \
-    python -m spacy download en_core_web_lg
+
+RUN --mount=type=cache,target=/root/.cache,id=pip \
+    uv pip -v install --system -r requirements.txt
 
 # Hier kommen die Hugging Face-Models rein, die für die Vorab-Überprüfung des Prompts
 # zuständig sind

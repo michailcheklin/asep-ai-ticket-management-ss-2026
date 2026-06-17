@@ -17,11 +17,11 @@ from nodes import (
 )
 from pydantic import BaseModel
 from typing import List, Dict
-# from prompt_security_result import (
-#     evaluate_prompt_injection,
-#     evaluate_legality,
-#     evaluate_off_topic
-# )
+from prompt_security_result import (
+    evaluate_prompt_injection,
+    evaluate_legality,
+    evaluate_off_topic
+)
 
 # Create FastAPI application instance
 app = FastAPI(title="AI Ticket API", version="1.0.0")
@@ -85,36 +85,35 @@ class ChatRequest(BaseModel):
     issue_description: str = ""
     additional_info: List[str] = []
     priority: int = 0
-    force_ticket_creation: bool = False
 
 
-# def __check_prompt (prompt:str) -> list[dict]:
-#     """
-#     Diese Methode prüft einen Prompt auf Prompt Injection, illegale Themen
-#     und auf nicht-ZIM-bezogene Themen und gibt für die Logs eine strukturierte Ausgabe
-#     :param prompt: Der Prompt, der auf seine Sicherheit geprüft werden soll
-#     :return: Die Ergebnisse als eine Liste von Objekten, die jeweils beschreiben was und mit welchem Ergebnis der Prompt geprüft wird
-#     """
-#     # Validate the user input for potential prompt injection attempts before
-#     # passing it to the chatbot workflow. If the request is classified as unsafe
-#     # it is blocked and not forwarded to the chatbot or the RAG-based knowledge base.
-#     # Execute the checks all at the same time
-#     with (concurrent.futures.ThreadPoolExecutor() as executor):
-#         prompt_injection_detection = executor.submit(evaluate_prompt_injection, prompt)
-#         illegal_topics_detection = executor.submit(evaluate_legality, prompt)
-#         off_topic_detection = executor.submit(evaluate_off_topic, prompt)
-#
-#         prompt_injection_detection_result = prompt_injection_detection.result()
-#         illegal_topics_detection_result = illegal_topics_detection.result()
-#         off_topic_detection_result = off_topic_detection.result()
-#
-#     complete_evaluation = [
-#         prompt_injection_detection_result,
-#         illegal_topics_detection_result,
-#         off_topic_detection_result
-#     ]
-#
-#     return complete_evaluation
+def __check_prompt (prompt:str) -> list[dict]:
+    """
+    Diese Methode prüft einen Prompt auf Prompt Injection, illegale Themen
+    und auf nicht-ZIM-bezogene Themen und gibt für die Logs eine strukturierte Ausgabe
+    :param prompt: Der Prompt, der auf seine Sicherheit geprüft werden soll
+    :return: Die Ergebnisse als eine Liste von Objekten, die jeweils beschreiben was und mit welchem Ergebnis der Prompt geprüft wird
+    """
+    # Validate the user input for potential prompt injection attempts before
+    # passing it to the chatbot workflow. If the request is classified as unsafe
+    # it is blocked and not forwarded to the chatbot or the RAG-based knowledge base.
+    # Execute the checks all at the same time
+    with (concurrent.futures.ThreadPoolExecutor() as executor):
+        prompt_injection_detection = executor.submit(evaluate_prompt_injection, prompt)
+        illegal_topics_detection = executor.submit(evaluate_legality, prompt)
+        off_topic_detection = executor.submit(evaluate_off_topic, prompt)
+
+        prompt_injection_detection_result = prompt_injection_detection.result()
+        illegal_topics_detection_result = illegal_topics_detection.result()
+        off_topic_detection_result = off_topic_detection.result()
+
+    complete_evaluation = [
+        prompt_injection_detection_result,
+        illegal_topics_detection_result,
+        off_topic_detection_result
+    ]
+
+    return complete_evaluation
 
 def __formulate_prompt_rejection_reason(failed_checks:list[dict]) -> str:
     """
@@ -140,32 +139,36 @@ def __formulate_prompt_rejection_reason(failed_checks:list[dict]) -> str:
     return reason
 
 @app.post("/chat")
-# async def chat_endpoint(request: ChatRequest):
-#     """
-#     API Endpoint to chat with the llm
-#     :param request: the state of the conversation
-#     :return: returns the updated state, after the llm processed the request
-#     """
-#
-#     complete_evaluation = __check_prompt(request.user_message)
-#
-#     failed_checks = [check_result for check_result in complete_evaluation if not check_result["allowed"]]
-#     if len(failed_checks) > 0:
-#         print(failed_checks)
-#         reason = __formulate_prompt_rejection_reason(failed_checks)
-#
-#         return {
-#             "bot_response": f"{reason} Bitte formuliere eine normale Anfrage zu einem ZIM-Thema.",
-#             "security": complete_evaluation,
-#             "user_email": request.user_email,
-#             "matrikelnummer": request.matrikelnummer,
-#             "issue_description": request.issue_description,
-#             "is_complete": False,
-#             "priority": request.priority,
-#         }
-#
-#
-#     return __execute_langchain_workflow(request)
+async def chat_endpoint(request: ChatRequest):
+    """
+    API Endpoint to chat with the llm
+    :param request: the state of the conversation
+    :return: returns the updated state, after the llm processed the request
+    """
+
+    complete_evaluation = __check_prompt(request.user_message)
+
+    failed_checks = [check_result for check_result in complete_evaluation if not check_result["allowed"]]
+    if len(failed_checks) > 0:
+        print(failed_checks)
+        reason = __formulate_prompt_rejection_reason(failed_checks)
+
+        return {
+            "bot_response": f"{reason} Bitte formuliere eine normale Anfrage zu einem ZIM-Thema.",
+            "security": complete_evaluation,
+            "user_email": request.user_email,
+            "matrikelnummer": request.matrikelnummer,
+            "issue_description": request.issue_description,
+            "is_complete": False,
+            "priority": request.priority,
+        }
+
+
+    return __execute_langchain_workflow(request)
+  
+
+
+    
 
 
 def __execute_langchain_workflow(request: ChatRequest):
@@ -191,8 +194,7 @@ def __execute_langchain_workflow(request: ChatRequest):
         "issue_description": request.issue_description,
         "additional_info": request.additional_info,
         "is_complete": False,
-        "priority": request.priority,
-        "force_ticket_creation": request.force_ticket_creation,
+        "priority": request.priority
     }
 
     updated_state = graph.invoke(current_state)
@@ -205,7 +207,6 @@ def __execute_langchain_workflow(request: ChatRequest):
         "additional_info": updated_state.get("additional_info", []),
         "is_complete": updated_state.get("is_complete", False),
         "priority": updated_state.get("priority", 0),
-        "solutions": updated_state.get("solutions", [])
     }
 
 def route_based_on_state(state: ChatbotState):
@@ -299,20 +300,25 @@ graph = workflow.compile()
 
 def run_local_chat():
     """
+        [ONLY FOR TESTING]
         Provides a local terminal interface to test the chatbot workflow
         without running the FastAPI server or an external frontend
     """
-    __local_chat_greet_user()
+    print("\n========================================================")
+    print("🤖 IT-Support Bot V2 (Spoon-Feeding) gestartet")
+    print("Tippe 'exit' zum Beenden")
+    print("========================================================\n")
+
     current_state = {
         "messages": [],
         "user_email": "",
         "matrikelnummer": "",
         "issue_description": "",
         "additional_info": [],
-        "is_complete": False,
-        "force_ticket_creation": False
+        "is_complete": False
     }
 
+    print("Bot: Hallo! Willkommen beim IT-Support. Wie kann ich dir heute helfen?")
 
     while True:
         user_input = input("\nDu: ")
@@ -320,55 +326,42 @@ def run_local_chat():
         if user_input.lower() in ["exit", "quit", "q"]:
             break
 
-        complete_state = __local_chat_simulate_workflow(user_input=user_input, current_state=current_state)
-        if complete_state == "Success":
+        # Validate the user input for potential prompt injection attempts
+        # before passing it to the chatbot workflow.
+        # Temporarily disabled security check - Now the chatbot's built in filter is used
+
+        """
+        complete_evaluation = __check_prompt(user_input)
+        failed_checks = [check_result for check_result in complete_evaluation if not check_result["allowed"]]
+        if len(failed_checks) > 0:
+            print(failed_checks)
+            reason = __formulate_prompt_rejection_reason(failed_checks)
+
+            print(
+                f"Bot: {reason} "
+                "Bitte formuliere eine normale Anfrage zu einem ZIM-Thema."
+            )
+            print(f"   [SECURITY DEBUG] {complete_evaluation}")
+            continue
+        """
+
+
+        current_state["messages"].append(HumanMessage(content=user_input))
+        current_state = graph.invoke(current_state)
+
+        print(str(current_state))
+        bot_response = current_state["messages"][-1].content
+        print(f"Bot: {bot_response}")
+        print(
+            f"   [DEBUG STATE] email: {current_state.get('user_email')} | "
+            f"Matrikel: {current_state.get('matrikelnummer')} | "
+            f"Problem: {current_state.get('issue_description')}"
+        )
+
+        if current_state.get("is_complete"):
+            print("\n🎉 [SYSTEM]: backend feuert API-Call an Zammad!")
             break
-
-def __local_chat_simulate_workflow(user_input:str, current_state:dict) -> str|None:
-    """
-    (Nur für die Testumgebung, NICHT für die Produktion):
-    Simuliert den Chat-Workflow, ohne Streamlit oder FastAPI aktiv zu haben
-    :param user_input: Die letzte Eingabe des Benutzers
-    :param current_state: Der aktuelle Status von Langchain
-    :return: "Success", wenn der is_complete-Flag auf True umspringt oder "Security", wenn die Sicherheitschecks des Prompts nicht bestanden wurden.
-    """
-    # complete_evaluation = __check_prompt(user_input)
-    # failed_checks = [check_result for check_result in complete_evaluation if not check_result["allowed"]]
-    # if len(failed_checks) > 0:
-    #     print(failed_checks)
-    #     reason = __formulate_prompt_rejection_reason(failed_checks)
-    #
-    #     print(f"Bot: {reason}\n Bitte formuliere eine normale Anfrage zu einem ZIM-Thema.")
-    #     print(f"\t[SECURITY DEBUG] {complete_evaluation}")
-    #     return "Security"
-
-    current_state["messages"].append(HumanMessage(content=user_input))
-    current_state = graph.invoke(current_state)
-
-    bot_response = current_state["messages"][-1].content
-    print(f"Bot: {bot_response}")
-    print(
-        f"\t[DEBUG STATE] email: {current_state.get('user_email')} | "
-        f"Matrikel: {current_state.get('matrikelnummer')} | "
-        f"Problem: {current_state.get('issue_description')}"
-    )
-
-    if current_state.get("is_complete"):
-        print("\n🎉 [SYSTEM]: backend feuert API-Call an Zammad!")
-        return "Success"
-
-
-def __local_chat_greet_user():
-    """
-    Wenn der lokale Chat aufgerufen wird (für das Testen über das direkte Ausführen des Skripts
-    über die Konsole oder über Pycharm), wird diese Nachricht ganz am Anfang geschrieben
-    """
-    print("\n========================================================")
-    print("🤖 IT-Support Bot V2 (Spoon-Feeding) gestartet")
-    print("Tippe 'exit' zum Beenden")
-    print("========================================================\n")
-    print("Bot: Hallo! Willkommen beim IT-Support. Wie kann ich dir heute helfen?")
 
 
 if __name__ == "__main__":
-    run_local_chat()
+    run_local_chat() 

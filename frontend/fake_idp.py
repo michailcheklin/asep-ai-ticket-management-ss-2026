@@ -3,6 +3,8 @@ from flask import Flask, request, redirect, make_response, render_template_strin
 
 
 # fake_idp.py — fake Shibboleth login page for local development
+# Setting port to something different than 5000 to avoid port conflicts on MacOS computers
+IDP_PORT = 4999
 
 app = Flask(__name__, static_folder="fake_idp_static", static_url_path="/resources")
 
@@ -191,6 +193,6 @@ def login():
 
 
 if __name__ == "__main__":
-    print("\nFake UDE Shibboleth IdP running at http://localhost:5000")
-    print("Login: http://localhost:5000/login?next=http://localhost:8501\n")
-    app.run(host="0.0.0.0", port=5000, debug=False)
+    print(f"\nFake UDE Shibboleth IdP running at http://localhost:{IDP_PORT}")
+    print(f"Login: http://localhost:{IDP_PORT}/login?next=http://localhost:8501\n")
+    app.run(host="0.0.0.0", port=IDP_PORT, debug=False)
