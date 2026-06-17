@@ -1,11 +1,11 @@
 image: python:3.11
 
 stages:
-  - test
+  - test_prompt_security
   - test_chat_endpoint
 
 run_tests:
-  stage: test
+  stage: test_prompt_security
   tags:
     - shared
     - docker
