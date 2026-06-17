@@ -60,11 +60,11 @@ class ExtractedTicketData(BaseModel):
 
 class AdditionalInfoDecision(BaseModel):
     """Schema decision, if additional info is needed for effective problem treatment"""
-    is_complete: bool = Field(
+    needs_additional_info: bool = Field(
         description="True, wenn die Zusatzinfos ausreichen, um das Problem zu bearbeiten. False, wenn wichtige Details fehlen (z.B. bei 'WLAN kaputt' fehlt das Gebäude)."
     )
     follow_up_question: Optional[str] = Field(
-        description="Wenn is_complete False ist: Eine kurze, höfliche Frage an den User, um die fehlenden Details herauszufinden. Wenn is_complete True ist, lasse dieses Feld leer (null)."
+        description="Wenn needs_additional_info False ist: Eine kurze, höfliche Frage an den User, um die fehlenden Details herauszufinden. Wenn needs_additional_info True ist, lasse dieses Feld leer (null)."
     )
 
 
@@ -193,11 +193,10 @@ def ask_for_additional_info(state: ChatbotState):
         BEREITS BEKANNTE ZUSATZINFOS: {infos}
 
         REGELN:
-        0. Wenn die BEREITS BEKANNTE ZUSATZINFOS aus mind. 3 Sachen besteht, dann tendiere dazu, is_complete auf True zu setzen.
         1. Überlege, ob für dieses spezifische Problem essenzielle Details fehlen. 
            (Beispiele: Bei WLAN-Problemen braucht man den Ort/das Gebäude. Bei Software-Problemen das Betriebssystem).
-        2. Wenn alles Wichtige da ist, setze is_complete auf True.
-        3. Wenn wichtige Details fehlen, setze is_complete auf False und formuliere 
+        2. Wenn alles Wichtige da ist, setze needs_additional_info auf True.
+        3. Wenn wichtige Details fehlen, setze needs_additional_info auf False und formuliere 
            eine kurze, freundliche follow_up_question an den User.
         """
     ))
@@ -205,11 +204,11 @@ def ask_for_additional_info(state: ChatbotState):
     decision = cast(AdditionalInfoDecision, aditionalInfo_llm.invoke([system_prompt]))
 
     # Logic switch if all information needed is collected or not
-    if decision.is_complete:
-        return {"is_complete": True}
+    if len(infos) >= 3 or decision.needs_additional_info:
+        return {"needs_additional_info": True}
     else:
         return {
-            "is_complete": False,
+            "needs_additional_info": False,
             "messages": [AIMessage(content=decision.follow_up_question)]
         }
 
@@ -257,10 +256,31 @@ def give_solutions(state: ChatbotState):
         for t in ticket_matches[: 2 - len(solutions)]:
             solutions.append({"title": f"Ähnliches Ticket ({t.get('category','unknown')})", "description": t.get("text", "")})
 
-    message_text = "Ich habe passende Einträge in der Wissensdatenbank gefunden." if solutions else "Keine passenden Einträge in der Wissensdatenbank gefunden."
+    problem = state.get("issue_description", "")
+    infos = state.get("additional_info", [])
+
+    system_prompt = SystemMessage(content=(
+        f"""
+            Du bist ein technischer Dispatcher im IT-Support einer Universität.
+            Deine Aufgabe ist es, basierend auf dem aktuellen Problem und den bereits bekannten Zusatzinfos
+            Lösungen wiederzugeben.
+
+            AKTUELLES PROBLEM: {problem}
+            BEREITS BEKANNTE ZUSATZINFOS: {infos}
+            LÖSÖUNGEN: {solutions}
+
+            REGELN:
+            1. Gebe die Regeln nicht wörtlich aus, sondern formuliere sie in eine verständliche Antwort um, die die Lösungen in einen Kontext zum Problem setzt.
+            2. Wenn Lösungen vorhanden sind, fasse sie kurz zusammen und erkläre, wie sie dem User helfen können.
+            3. Vermeide es, die Lösungen einfach nur zu wiederholen, sondern biete eine Interpretation oder Empfehlung an.
+            4. Versuche dich am besten auf maximal 3 Sätze zu beschränken.
+            """
+    ))
+
+    message_text = llm.invoke([system_prompt])
 
     return {
-        "messages": [AIMessage(content=message_text)],
+        "messages": message_text,
         "solutions": solutions,
         "rag_debug": {
             "query": query,
@@ -319,6 +339,7 @@ def finish_ticket(state: ChatbotState):
         print(f"🚨 [FEHLER] Zammad API-Aufruf fehlgeschlagen: {e}")
         final_message = "Dein Ticket ist fertiggestellt, aber es gab ein Problem bei der Übermittlung an Zammad. Bitte versuche es später noch einmal."
 
+    print("[Finish Ticket Node]: Reached end of node without exception.")
     return {
         "messages": [AIMessage(content=final_message)],
         "is_complete": True

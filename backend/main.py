@@ -159,8 +159,9 @@ async def chat_endpoint(request: ChatRequest):
             "user_email": request.user_email,
             "matrikelnummer": request.matrikelnummer,
             "issue_description": request.issue_description,
-            "is_complete": False,
+            "needs_additional_info": False,
             "priority": request.priority,
+            "is_complete": False
         }
 
 
@@ -193,8 +194,9 @@ def __execute_langchain_workflow(request: ChatRequest):
         "matrikelnummer": request.matrikelnummer,
         "issue_description": request.issue_description,
         "additional_info": request.additional_info,
-        "is_complete": False,
-        "priority": request.priority
+        "needs_additional_info": False,
+        "priority": request.priority,
+        "is_complete": False
     }
 
     updated_state = graph.invoke(current_state)
@@ -205,8 +207,9 @@ def __execute_langchain_workflow(request: ChatRequest):
         "matrikelnummer": updated_state.get("matrikelnummer", ""),
         "issue_description": updated_state.get("issue_description", ""),
         "additional_info": updated_state.get("additional_info", []),
-        "is_complete": updated_state.get("is_complete", False),
+        "needs_additional_info": updated_state.get("needs_additional_info", False),
         "priority": updated_state.get("priority", 0),
+        "is_complete": updated_state.get("is_complete", False)
     }
 
 def route_based_on_state(state: ChatbotState):
@@ -231,7 +234,7 @@ def route_after_evaluator(state: ChatbotState):
     If all needed information are collected, we search for suitable solutions from RAG.
     Otherwise, we ask for more additional information by END.
     """
-    if state.get("is_complete"):
+    if state.get("needs_additional_info"):
         return "give_solutions_node"
     else:
         return END
@@ -315,7 +318,8 @@ def run_local_chat():
         "matrikelnummer": "",
         "issue_description": "",
         "additional_info": [],
-        "is_complete": False
+        "needs_additional_info": False,
+        "is_complete": False,
     }
 
     print("Bot: Hallo! Willkommen beim IT-Support. Wie kann ich dir heute helfen?")

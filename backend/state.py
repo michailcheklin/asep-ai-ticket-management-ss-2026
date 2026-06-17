@@ -19,7 +19,9 @@ class ChatbotState(TypedDict):
     #Priority of the ticket:0 =non-ungent/normal, 1 = urgent/important
     priority:int
 
-    # signal if ticket is complete
+    # signal if user needs more information
+    needs_additional_info: bool
+
     is_complete: bool
 
     #
