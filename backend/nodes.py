@@ -278,16 +278,17 @@ def give_solutions(state: ChatbotState):
     ))
 
     message_text = llm.invoke([system_prompt])
+    final_message = AIMessage(content=message_text.content + "\n\nKonnte ich Ihnen dabei helfen, Ihr Problem zu lösen?")
 
     return {
-        "messages": message_text, # hier stecken die Solutions als menschlicher, zusammenhägender Text drin
+        "messages": final_message, # hier stecken die Solutions als menschlicher, zusammenhägender Text drin
         "solutions": solutions,
-        "rag_debug": {
-            "query": query,
-            "faq_count": len(faq_matches),
-            "ticket_count": len(ticket_matches),
-            "inferred": inferred
-        }
+        # "rag_debug": {
+        #     "query": query,
+        #     "faq_count": len(faq_matches),
+        #     "ticket_count": len(ticket_matches),
+        #     "inferred": inferred
+        # }
     }
 
 

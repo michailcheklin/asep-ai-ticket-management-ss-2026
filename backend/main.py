@@ -16,7 +16,7 @@ from nodes import (
     finish_ticket
 )
 from pydantic import BaseModel
-from typing import List, Dict
+from typing import List, Dict, Optional
 from prompt_security_result import (
     evaluate_prompt_injection,
     evaluate_legality,
@@ -85,6 +85,10 @@ class ChatRequest(BaseModel):
     issue_description: str = ""
     additional_info: List[str] = []
     priority: int = 0
+    helpful: bool = False
+    solutions: List[Dict] = []
+    bot_message: str = ""
+
 
 
 def __check_prompt (prompt:str) -> list[dict]:
@@ -168,10 +172,50 @@ async def chat_endpoint(request: ChatRequest):
 
     return __execute_langchain_workflow(request)
   
+@app.post("/solution-feedback")
+async def solution_feedback(request: ChatRequest):
+    """
+    API Endpoint to receive user feedback on the provided solutions.
+    Helpful: Nice goodbye msg, else: Ticket creation.
+    :param request: the feedback data, including whether the solution was helpful and any additional comments
+    :return: a response acknowledging the feedback
+    """
+    if request.helpful:
+        return {
+            "bot_response": "Super. Freut mich, dass ich dir helfen konnte! Wenn du in Zukunft weitere Fragen hast, stehe ich gerne zur Verfügung. Hab einen schönen Tag!"
+        }
+    else:
+        langchain_messages = []
+        for msg in request.history:
+            if msg["role"] == "user":
+                langchain_messages.append(HumanMessage(content=msg["content"]))
+            elif msg["role"] == "bot":
+                langchain_messages.append(AIMessage(content=msg["content"]))
 
+        langchain_messages.append(HumanMessage(content=request.user_message))
 
-    
+        current_state: ChatbotState = {
+            "messages": langchain_messages,
+            "user_email": request.user_email,
+            "matrikelnummer": request.matrikelnummer,
+            "issue_description": request.issue_description,
+            "additional_info": request.additional_info,
+            "needs_additional_info": False,
+            "priority": request.priority,
+            "is_complete": False,
+            "solutions": request.solutions,
+        }
 
+        updated_state = finish_ticket(current_state)
+        bot_response = updated_state["messages"][-1].content
+
+        try:
+            return {"bot_response": bot_response}
+        except Exception as e:
+            print(f"Error extracting bot response: {e}")
+            return {
+                "bot_response": "Es tut mir leid, aber es gab ein Problem bei der Verarbeitung deines Feedbacks. Bitte versuche es erneut oder kontaktiere den Support direkt."
+            }
 
 def __execute_langchain_workflow(request: ChatRequest):
     """

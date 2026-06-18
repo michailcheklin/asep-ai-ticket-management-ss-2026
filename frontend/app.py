@@ -133,20 +133,93 @@ def process_user_message(user_input: str) -> None:
 
             st.session_state.messages.append({
                 "role": "assistant",
-                "content": answer
+                "content": answer,
+                "solutions": res.get("solutions")
             })
 
             st.session_state.chatbot_history.append({
                 "role": "assistant",
                 "content": answer
             })
+
+            # 🔥 WICHTIG: Backend-State synchronisieren
+            st.session_state.issue_description = res.get("issue_description", "")
+            st.session_state.additional_info = res.get("additional_info", [])
+            st.session_state.priority = res.get("priority", 0)
+
         else:
             print("Prompt Safety Check failed!")
+
+
+def process_solution_feedback(message_index: int, helpful: bool):
+    """
+    Generiert ein Ticket abhängig vom Feedback des Nutzers.
+    Wenn helpful, dann kein Ticket und nette Abschiedsnachricht, sonst Ticketerstellung inkl. Bestätiungsnachricht + Übersicht
+    :param message_index: letzte message des bots (hier: die solution)
+    :param helpful: ob diese message hilfreich war oder nicht
+    :return:
+    """
+    message = st.session_state.messages[message_index]
+
+    payload = {
+        "user_message": "",
+        "history": st.session_state.chatbot_history,
+        "user_email": st.session_state["email_input"],
+        "matrikelnummer": st.session_state["matrikelnummer_input"],
+        "issue_description": st.session_state.issue_description,
+        "additional_info": st.session_state.additional_info,
+        "priority": st.session_state.priority,
+        "helpful": helpful,
+        "solutions": message.get("solutions"),
+        "message": message["content"],
+    }
+
+    for key, value in payload.items():
+        print(f"[Debug]: {key}: {value}")
+
+    res = requests.post(
+        f"{BACKEND_URL}/solution-feedback",
+        json=payload,
+        timeout=AI_COMMUNICATION_TIMEOUT_IN_SECONDS
+    ).json()
+
+    # UI State updaten
+    message["solutions"] = []
+
+    return res.get("bot_response")
 
 # Bilde die Darstellung des Chatfensters
 for i, message in enumerate(st.session_state.messages):
     with st.chat_message(message["role"]):
         st.write(message["content"])
+
+        # Wenn es Lösungen gibt, dann wird die displayed message[content] die in Text verpackte Lösung.
+        # Hier if solutions, nicht if message, weil wir die message nach Ja/Nein behalten wollen ABER solutions danach leeren
+        # so wird beim rerun() gewährleistet, dass die Buttons nicht wieder gerendert werden aber die message weiterhin im Chatverlauf sichtbar bleibt
+        if message.get("solutions"):
+            col1, col2 = st.columns(2)
+
+            with col1:
+                if st.button("Ja"): # hat gefolfen
+                    st.session_state.messages.append({
+                        "role": "assistant",
+                        "content": process_solution_feedback(i, True)
+                    })
+                    st.session_state.bot_thinking = True # Chat ist Ende, User darf so nicht mehr schreiben
+                    st.rerun()
+                    # API Endpoint rufen für bot-tag-complete
+            with col2:
+                if st.button("Nein"): # hat nicht geholfen
+                    st.session_state.messages.append({
+                        "role": "assistant",
+                        "content": process_solution_feedback(i, False)
+                    })
+                    st.session_state.bot_thinking = True # s.o.
+                    st.rerun()
+
+
+
+
 
 
 

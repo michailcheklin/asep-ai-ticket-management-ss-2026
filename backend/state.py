@@ -26,4 +26,3 @@ class ChatbotState(TypedDict):
 
     #
     solutions: Annotated[list[dict], operator.add]
-    force_ticket_creation: bool
