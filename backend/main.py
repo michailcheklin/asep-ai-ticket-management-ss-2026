@@ -146,8 +146,9 @@ async def chat_endpoint(request: ChatRequest):
     :return: returns the updated state, after the llm processed the request
     """
 
+    """
     complete_evaluation = __check_prompt(request.user_message)
-
+    
     failed_checks = [check_result for check_result in complete_evaluation if not check_result["allowed"]]
     if len(failed_checks) > 0:
         print(failed_checks)
@@ -163,7 +164,7 @@ async def chat_endpoint(request: ChatRequest):
             "priority": request.priority,
             "is_complete": False
         }
-
+    """
 
     return __execute_langchain_workflow(request)
   
