@@ -3,8 +3,7 @@ import os
 import streamlit as st
 import re
 import requests
-from requests import Response
-
+from requests import Response, JSONDecodeError
 
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000").rstrip("/")
 ZAMMAD_UI_URL = os.getenv("ZAMMAD_UI_URL", "http://localhost:8080").rstrip("/")
@@ -114,12 +113,31 @@ def process_user_message(user_input: str) -> None:
             url=f"{BACKEND_URL}/chat",
             json=req,
             timeout=AI_COMMUNICATION_TIMEOUT_IN_SECONDS,
-        ).json()
+        )
 
-        if "security" not in res:
+        try:
+            # Probiere erst die Antwort des Backends in JSON zu parsen
+            res_json = res.json()
+        except JSONDecodeError:
+            # Fallback, falls das Backend durch einen Fehler nicht mit einer JSON-Datei antwortete
+            # und somit die Antwort nicht in JSON geparst werden kann
+            # Dies passiert meistens, wenn es Probleme bei SAIA gibt.
+            res_json = {
+                "bot_response": res.text,
+                "user_email": st.session_state["email_input"],
+                "matrikelnummer": st.session_state["matrikelnummer_input"],
+                "issue_description": st.session_state.issue_description,
+                "additional_info": st.session_state.additional_info,
+                "needs_additional_info": False,
+                "priority": st.session_state.priority,
+                "is_complete": False,
+                "solutions": []
+    }
+
+        if "security" not in res_json:
             print("Prompt Safety Check passed!")
 
-            answer = res["bot_response"]
+            answer = res_json["bot_response"]
             placeholder.write(answer)
 
             st.session_state.messages.append({
@@ -134,7 +152,7 @@ def process_user_message(user_input: str) -> None:
             st.session_state.messages.append({
                 "role": "assistant",
                 "content": answer,
-                "solutions": res.get("solutions")
+                "solutions": res_json.get("solutions")
             })
 
             st.session_state.chatbot_history.append({
@@ -143,9 +161,9 @@ def process_user_message(user_input: str) -> None:
             })
 
             # 🔥 WICHTIG: Backend-State synchronisieren
-            st.session_state.issue_description = res.get("issue_description", "")
-            st.session_state.additional_info = res.get("additional_info", [])
-            st.session_state.priority = res.get("priority", 0)
+            st.session_state.issue_description = res_json.get("issue_description", "")
+            st.session_state.additional_info = res_json.get("additional_info", [])
+            st.session_state.priority = res_json.get("priority", 0)
 
         else:
             print("Prompt Safety Check failed!")
