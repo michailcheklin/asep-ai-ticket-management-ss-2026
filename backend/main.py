@@ -1,4 +1,4 @@
-"""API für AI Ticket System; optionale Anbindung an Zammad (REST)."""
+"""Backend API for the AI ticket management system with optional Zammad integration."""
 import concurrent.futures
 import os
 from fastapi import FastAPI
@@ -76,11 +76,10 @@ def health():
 
 class ChatRequest(BaseModel):
     """
-    datastructure for frontend requests
+    Data model representing the request payload sent by the frontend.
     """
     user_message: str
-    history: List[Dict[str, str]]  # Format: [{"role": "user", "content": "Hallo"}, {"role": "bot", "content": "Hi"}]
-    user_email: str = ""
+    history: List[Dict[str, str]]  # Format: [{"role": "user", "content": "..."}, {"role": "bot", "content": "..."}]    user_email: str = ""
     matrikelnummer: str = ""
     issue_description: str = ""
     additional_info: List[str] = []
@@ -93,15 +92,15 @@ class ChatRequest(BaseModel):
 
 def __check_prompt (prompt:str) -> list[dict]:
     """
-    Diese Methode prüft einen Prompt auf Prompt Injection, illegale Themen
-    und auf nicht-ZIM-bezogene Themen und gibt für die Logs eine strukturierte Ausgabe
-    :param prompt: Der Prompt, der auf seine Sicherheit geprüft werden soll
-    :return: Die Ergebnisse als eine Liste von Objekten, die jeweils beschreiben was und mit welchem Ergebnis der Prompt geprüft wird
+    Run all prompt safety checks in parallel.
+
+    The user input is checked for prompt injection, illegal content
+    and off-topic requests before being processed by the chatbot.
+
+    :param prompt: User input to validate
+    :return: List containing the results of all safety checks
     """
-    # Validate the user input for potential prompt injection attempts before
-    # passing it to the chatbot workflow. If the request is classified as unsafe
-    # it is blocked and not forwarded to the chatbot or the RAG-based knowledge base.
-    # Execute the checks all at the same time
+    # Execute all prompt safety checks concurrently.
     with (concurrent.futures.ThreadPoolExecutor() as executor):
         prompt_injection_detection = executor.submit(evaluate_prompt_injection, prompt)
         illegal_topics_detection = executor.submit(evaluate_legality, prompt)
@@ -121,16 +120,15 @@ def __check_prompt (prompt:str) -> list[dict]:
 
 def __formulate_prompt_rejection_reason(failed_checks:list[dict]) -> str:
     """
-    Diese Methode formuliert basierend darauf, warum der Prompt abgelehnt wurde,
-    den Grund als Text.
-    :param failed_checks: Die Liste der nicht bestandenen Sicherheitschecks, die
-    aus der Liste, die nach der Nutzung der __check_prompt-Methode entsteht,
-    gefiltert wurde
-    :return: Der Grund, warum ein Prompt abgelehnt wurde als Text
+    Generate a user-facing rejection message based on the failed
+    prompt safety checks.
+
+    :param failed_checks: List of failed safety checks
+    :return: Rejection message shown to the user
     """
 
-    # Leaving the code format like that, so that if separate user-visible rejection messages
-    # are needed, only the return strings have to be changed here.
+    # Keep the mapping centralized so only these return values
+    # need to be changed if different user messages are required.
     reason = ""
     if len(failed_checks) == 0:
         return ""
@@ -145,9 +143,13 @@ def __formulate_prompt_rejection_reason(failed_checks:list[dict]) -> str:
 @app.post("/chat")
 async def chat_endpoint(request: ChatRequest):
     """
-    API Endpoint to chat with the llm
-    :param request: the state of the conversation
-    :return: returns the updated state, after the llm processed the request
+    Process a chat request.
+
+    The request is forwarded to the LangGraph workflow after
+    passing the prompt safety checks.
+
+    :param request: Current conversation state
+    :return: Updated conversation state
     """
 
     """
@@ -175,10 +177,13 @@ async def chat_endpoint(request: ChatRequest):
 @app.post("/solution-feedback")
 async def solution_feedback(request: ChatRequest):
     """
-    API Endpoint to receive user feedback on the provided solutions.
-    Helpful: Nice goodbye msg, else: Ticket creation.
-    :param request: the feedback data, including whether the solution was helpful and any additional comments
-    :return: a response acknowledging the feedback
+    Process the user's feedback on the suggested solutions.
+
+    If the solution was helpful, return a goodbye message.
+    Otherwise, create a support ticket and return a confirmation.
+
+    :param request: Feedback request
+    :return: Backend response
     """
     if request.helpful:
         return {
@@ -219,10 +224,13 @@ async def solution_feedback(request: ChatRequest):
 
 def __execute_langchain_workflow(request: ChatRequest):
     """
-    Diese Methode generiert eine Antwort basierend auf dem Chatverlauf und dem Prompt. Diese Methode wird nur dann ausgeführt,
-    wenn der Prompt alle Sicherheitschecks bestanden hat.
-    :param request: Das JSON-Objekt, das an den Chat-Endpoint gesendet wurde
-    :return: Das Antwort-JSON-Objekt, nachdem darauf der Langchain-Workflow ausgeführt wurde
+    Execute the LangGraph workflow.
+
+    Converts the frontend request into the internal chatbot state,
+    executes the workflow and returns the updated conversation state.
+
+    :param request: Frontend request
+    :return: Updated conversation state
     """
     langchain_messages = []
     for msg in request.history:
@@ -260,7 +268,8 @@ def __execute_langchain_workflow(request: ChatRequest):
 
 def route_based_on_state(state: ChatbotState):
     """
-    Checks state and decides which node is called next. Depended on missing relevant information
+    Determine the next workflow node based on the missing
+    required information.
     """
     if not state.get("user_email"):
         return "ask_email_node"
@@ -276,9 +285,11 @@ def route_based_on_state(state: ChatbotState):
 
 def route_after_evaluator(state: ChatbotState):
     """
-    Checks result of additional information node.
-    If all needed information are collected, we search for suitable solutions from RAG.
-    Otherwise, we ask for more additional information by END.
+    Determine whether enough information has been collected.
+
+    If all required information is available, search for suitable
+    solutions. Otherwise, end the current workflow so the user can
+    provide additional information.
     """
     if state.get("needs_additional_info"):
         return "give_solutions_node"
@@ -287,13 +298,14 @@ def route_after_evaluator(state: ChatbotState):
 
 def route_after_solutions(state: ChatbotState):
     """
-    Checks result of give solutions node.
-    If there are solutions
-        -> user unsatisfied: ticket creation
-        -> user satisfied: end conversation
-    If there are no solutions, ticket will be created directly.
-    :param state: The current conversation and ticket state
-    :return: The next node to execute
+    Determine the next step after searching for solutions.
+
+    If solutions were found, wait for user feedback unless the
+    conversation is already complete. If no solutions were found,
+    create a ticket immediately.
+
+    :param state: Current chatbot state
+    :return: Next workflow node
     """
     if state.get("solutions"):
         if state.get("is_complete"):
@@ -305,10 +317,10 @@ def route_after_solutions(state: ChatbotState):
 
 
 
-# Initialize the state graph configuration with the defined ChatbotState schema
+# Initialize the workflow using the ChatbotState schema.
 workflow = StateGraph(ChatbotState)
 
-# Register all functional nodes within the workflow
+# Register all workflow nodes.
 workflow.add_node("extractor_node", extract_information)
 workflow.add_node("ask_email_node", ask_for_email)
 workflow.add_node("ask_matrikel_node", ask_for_matrikelnummer)
@@ -317,41 +329,43 @@ workflow.add_node("ask_for_additional_info", ask_for_additional_info)
 workflow.add_node("give_solutions_node", give_solutions)
 workflow.add_node("finish_node", finish_ticket)
 
-# Set the mandatory entry point of the graph execution
+# Define the workflow entry point.
 workflow.add_edge(START, "extractor_node")
 
-# Dynamically route to the next node based missing information
+# Route dynamically based on the extracted conversation state.
 workflow.add_conditional_edges(
     "extractor_node",
     route_based_on_state
 )
 
-# Switch after the additional information node
+# Route after evaluating the additional information.
 workflow.add_conditional_edges(
     "ask_for_additional_info",
     route_after_evaluator
 )
 
+# Route after retrieving possible solutions.
 workflow.add_conditional_edges(
     "give_solutions_node",
     route_after_solutions
 )
 
-# Switch after giving solutions between finish_node (ticekt)
 
+# End the workflow after the information collection nodes.
 workflow.add_edge("ask_email_node", END)
 workflow.add_edge("ask_matrikel_node", END)
 workflow.add_edge("ask_issue_node", END)
 workflow.add_edge("finish_node", END)
 
-# Compile the graph architecture into an executable LangGraph application
+# Compile the workflow into an executable LangGraph graph.
 graph = workflow.compile()
 
 def run_local_chat():
     """
-        [ONLY FOR TESTING]
-        Provides a local terminal interface to test the chatbot workflow
-        without running the FastAPI server or an external frontend
+    [TESTING ONLY]
+
+    Run the chatbot locally in a terminal without starting
+    the FastAPI server or the frontend.
     """
     print("\n========================================================")
     print("🤖 IT-Support Bot V2 (Spoon-Feeding) gestartet")
@@ -365,7 +379,9 @@ def run_local_chat():
         "issue_description": "",
         "additional_info": [],
         "needs_additional_info": False,
-        "is_complete": False, #setze auf true, wenn du statt solutions direkt ticket erstellen willst (fürs Testing)
+        # Set to True to skip the solution step and directly create
+        # a ticket during testing.
+        "is_complete": False,
     }
 
     print("Bot: Hallo! Willkommen beim IT-Support. Wie kann ich dir heute helfen?")
@@ -376,9 +392,9 @@ def run_local_chat():
         if user_input.lower() in ["exit", "quit", "q"]:
             break
 
-        # Validate the user input for potential prompt injection attempts
-        # before passing it to the chatbot workflow.
-        # Temporarily disabled security check - Now the chatbot's built in filter is used
+        # Prompt safety validation.
+        # Currently disabled because the chatbot's built-in safety
+        # mechanisms are used instead.
 
         """
         complete_evaluation = __check_prompt(user_input)
@@ -408,7 +424,9 @@ def run_local_chat():
             f"Problem: {current_state.get('issue_description')}"
         )
 
-        # erreicht nie True, solange es Solutions gibt. Idee dahinter: Nach Solutions wird ein User Input (Knopf) erwartet, der weiteres entscheidet.
+        # This never becomes True while solutions are available.
+        # The workflow waits for explicit user feedback before
+        # continuing with ticket creation.
         if current_state.get("is_complete"):
             print("\n🎉 [SYSTEM]: backend feuert API-Call an Zammad!")
             break
