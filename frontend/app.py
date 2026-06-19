@@ -28,7 +28,12 @@ st.header("ZIM Helper")
 initial_states = {
 
     # Initial assistant message
-    "messages": [...],
+    "messages": [
+        {
+            "role": "assistant",
+            "content": "Hallo! Ich bin ZIM Helper. Erzähl mir bitte von deinem Anliegen."
+        }
+    ],
 
     # Controls whether the chat input is disabled while
     # the assistant is generating a response.
