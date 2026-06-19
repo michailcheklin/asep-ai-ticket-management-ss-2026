@@ -61,6 +61,7 @@ testcases = [
 testcases = [ChatRequest(**testcase) for testcase in testcases]
 
 def test_chat_endpoint():
+    """Tests the chat endpoint if it responds"""
     for testcase in testcases:
         print("-"*50)
         response = asyncio.run(chat_endpoint(testcase))

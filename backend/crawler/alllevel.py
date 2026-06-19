@@ -8,7 +8,12 @@ BASE_URL = "https://www.uni-due.de/zim/hilfecenter/faqs.php"
 
 
 def get_soup(url):
-    return BeautifulSoup(requests.get(url).text, "html.parser")
+    """
+    Returns a BeautifulSoup object of the specified object to later inspect
+    :param url: The URL where the BeautifulSoup object is to be fetched
+    :return: The BeautifulSoup object of the specified URL
+    """
+    return BeautifulSoup(requests.get(url=url, timeout=30).text, "html.parser")
 
 
 # -----------------------------
@@ -34,15 +39,35 @@ for a in rahmen.select("a[href]"):
 # HELPERS
 # -----------------------------
 def is_level1(text):
+    """
+    Returns True if the text is a level 1 tag
+    :param text: The text to be checked
+    :return: True if the text is a level 1 tag
+    """
     return re.match(r"^\d{2}\s", text)
 
 def is_level2(text):
+    """
+    Returns True if the text is a level 2 tag
+    :param text: The text to be checked
+    :return: True if the text is a level 2 tag
+    """
     return re.match(r"^\d{2}\.\d{2}(?!\.\d)", text)
 
 def is_level3(text):
+    """
+    Returns True if the text is a level 3 tag
+    :param text: The text to be checked
+    :return: True if the text is a level 3 tag
+    """
     return re.match(r"^\d{2}\.\d{2}\.\d+", text)
 
 def is_noise(text):
+    """
+    Returns True if the text is not in any level
+    :param text: The text to be checked
+    :return: True if the text is not in any level
+    """
     return is_level1(text)
 
 

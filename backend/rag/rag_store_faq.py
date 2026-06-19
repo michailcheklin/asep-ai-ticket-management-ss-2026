@@ -27,6 +27,7 @@ print("[INFO] Created new faq_entries collection with cosine metric.")
 
 
 def flatten_faq_entry(faq_entry: dict) -> str:
+    """Convert a JSON formatted FAQ entry to a single string"""
     parts = []
     if faq_entry.get("context"):
         parts.append(f"context: {faq_entry['context']}")

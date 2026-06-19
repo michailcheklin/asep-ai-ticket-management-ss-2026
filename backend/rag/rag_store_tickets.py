@@ -35,6 +35,7 @@ def flatten_ticket(ticket_entry: dict) -> str:
 
 
 def load_and_store_tickets(json_filepath: str):
+    """Loads ticket from a JSON file and stores it in the vector database"""
     with open(json_filepath, "r", encoding="utf-8") as f:
         data = json.load(f)
 

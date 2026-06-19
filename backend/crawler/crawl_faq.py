@@ -152,6 +152,9 @@ def build_faq_entry(idx, link, content):
 
 
 def main():
+    """
+    Initializes the crawling routine of the FAQ page
+    """
     all_links = load_links('./faqs.json')
     # links = all_links[:15]
     links = all_links
@@ -169,7 +172,7 @@ def main():
         content = extract_faq_content(url)
 
         if not content:
-            print(f"  [SKIP] Could not fetch content.")
+            print("  [SKIP] Could not fetch content.")
             skipped.append({'idx': idx, 'name': name, 'url': url, 'reason': 'fetch error'})
             continue
 

@@ -57,6 +57,7 @@ def best_ticket_detail(matches: list, above: list) -> str:
 
 
 def run_tests() -> bool:
+    """Run some test cases"""
     all_passed = True
 
     # ── Test 1: VPN query ─────────────────────────────────────────────────────
