@@ -16,8 +16,8 @@ chroma_client = chromadb.PersistentClient(path="./faq_db")
 try:
     chroma_client.delete_collection("faq_entries")
     print("[INFO] Deleted old faq_entries collection.")
-except:
-    pass
+except Exception as e:
+    print(f"[ERROR] Failed to delete old faq_entries collection: {e}")
 
 faq_collection = chroma_client.create_collection(
     "faq_entries",

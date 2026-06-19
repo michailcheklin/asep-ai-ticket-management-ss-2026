@@ -12,8 +12,8 @@ ticket_client   = chromadb.PersistentClient(path="./ticket_db")
 try:
     ticket_client.delete_collection("tickets")
     print("[INFO] Deleted old tickets collection.")
-except:
-    pass
+except Exception as e:
+    print(f"[ERROR] Failed to delete old tickets collection: {e}")
 
 ticket_collection = ticket_client.create_collection(
     "tickets",
