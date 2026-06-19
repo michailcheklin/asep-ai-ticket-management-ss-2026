@@ -3,7 +3,7 @@ import os
 import streamlit as st
 import re
 import requests
-from requests import Response, JSONDecodeError
+from requests import JSONDecodeError
 
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000").rstrip("/")
 ZAMMAD_UI_URL = os.getenv("ZAMMAD_UI_URL", "http://localhost:8080").rstrip("/")

@@ -16,7 +16,7 @@ from nodes import (
     finish_ticket
 )
 from pydantic import BaseModel
-from typing import List, Dict, Optional
+from typing import List, Dict
 from prompt_security_result import (
     evaluate_prompt_injection,
     evaluate_legality,
