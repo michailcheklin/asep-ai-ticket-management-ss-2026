@@ -88,6 +88,7 @@ class ChatRequest(BaseModel):
     helpful: bool = False
     solutions: List[Dict] = []
     bot_message: str = ""
+    additional_info_attempts: int = 0
 
 
 
@@ -210,6 +211,7 @@ async def solution_feedback(request: ChatRequest):
             "priority": request.priority,
             "is_complete": False,
             "solutions": request.solutions,
+            "additional_info_attempts": request.additional_info_attempts,
         }
 
         updated_state = finish_ticket(current_state)
@@ -250,7 +252,8 @@ def __execute_langchain_workflow(request: ChatRequest):
         "additional_info": request.additional_info,
         "needs_additional_info": False,
         "priority": request.priority,
-        "is_complete": False
+        "is_complete": False,
+        "additional_info_attempts": request.additional_info_attempts,
     }
 
     updated_state = graph.invoke(current_state)
@@ -264,7 +267,8 @@ def __execute_langchain_workflow(request: ChatRequest):
         "needs_additional_info": updated_state.get("needs_additional_info", False),
         "priority": updated_state.get("priority", 0),
         "is_complete": updated_state.get("is_complete", False),
-        "solutions": updated_state.get("solutions", [])
+        "solutions": updated_state.get("solutions", []),
+        "additional_info_attempts": updated_state.get("additional_info_attempts", 0),
     }
 
 def route_based_on_state(state: ChatbotState):

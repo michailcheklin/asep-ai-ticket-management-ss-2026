@@ -181,6 +181,9 @@ def ask_for_additional_info(state: ChatbotState):
 
     problem = state.get("issue_description", "")
     infos = state.get("additional_info", [])
+    attempts = state.get("additional_info_attempts", 0)
+
+    print(f"[DEBUG: ask_for_additional_info]: attempts: {attempts} ")
 
     aditionalInfo_llm = llm.with_structured_output(AdditionalInfoDecision)
     system_prompt = SystemMessage(content=(
@@ -196,7 +199,9 @@ def ask_for_additional_info(state: ChatbotState):
         1. Überlege, ob für dieses spezifische Problem essenzielle Details fehlen. 
            (Beispiele: Bei WLAN-Problemen braucht man den Ort/das Gebäude. Bei Software-Problemen das Betriebssystem).
         2. Wenn alles Wichtige da ist, setze needs_additional_info auf True.
-        3. Wenn wichtige Details fehlen, setze needs_additional_info auf False und formuliere 
+        3. Halte dich bei deinen Rückfragen kurz und präzise.
+        4. Gib keine direkten Lösungen wieder. Hier geht es nur um Rückfragen stellen, damit man später basierend auf den erhaltenen Informationen eine Lösung anbieten kann.
+        5.. Wenn wichtige Details fehlen, setze needs_additional_info auf False und formuliere 
            eine kurze, freundliche follow_up_question an den User.
         """
     ))
@@ -204,11 +209,12 @@ def ask_for_additional_info(state: ChatbotState):
     decision = cast(AdditionalInfoDecision, aditionalInfo_llm.invoke([system_prompt]))
 
     # Logic switch if all information needed is collected or not
-    if len(infos) >= 3 or decision.needs_additional_info:
+    if len(infos) >= 3 or decision.needs_additional_info or attempts >=3:
         return {"needs_additional_info": True}
     else:
         return {
             "needs_additional_info": False,
+            "additional_info_attempts": attempts + 1,
             "messages": [AIMessage(content=decision.follow_up_question)]
         }
 

@@ -50,6 +50,8 @@ initial_states = {
 
     # Stores the calculated ticket priority.
     "priority": 0,
+
+    "additional_info_attempts": 0,
 }
 
 # Initialize missing session state entries.
@@ -106,6 +108,7 @@ def process_user_message(user_input: str) -> None:
             "issue_description": st.session_state.issue_description,
             "additional_info": st.session_state.additional_info,
             "priority": st.session_state.priority,
+            "additional_info_attempts": st.session_state.additional_info_attempts,
 
         }
         print(f"Sending the request to the chatbot with {str(req)}")
@@ -131,7 +134,8 @@ def process_user_message(user_input: str) -> None:
                 "needs_additional_info": False,
                 "priority": st.session_state.priority,
                 "is_complete": False,
-                "solutions": []
+                "solutions": [],
+                "additional_info_attempts": message.get("additional_info_attempts"),
             }
 
         # Continue only if the backend did not detect a prompt safety violation.
@@ -165,6 +169,7 @@ def process_user_message(user_input: str) -> None:
             st.session_state.issue_description = res_json.get("issue_description", "")
             st.session_state.additional_info = res_json.get("additional_info", [])
             st.session_state.priority = res_json.get("priority", 0)
+            st.session_state.additional_info_attempts = res_json.get("additional_info_attempts", 0)
 
         else:
             print("Prompt Safety Check failed!")
@@ -191,7 +196,8 @@ def process_solution_feedback(message_index: int, helpful: bool):
         "priority": st.session_state.priority,
         "helpful": helpful,
         "solutions": message.get("solutions"),
-        "message": message["content"],
+        "bot_message": message["content"],
+        "additional_info_attempts": st.session_state.additional_info_attempts
     }
 
     for key, value in payload.items():
