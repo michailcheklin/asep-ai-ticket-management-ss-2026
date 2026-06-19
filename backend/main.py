@@ -79,7 +79,8 @@ class ChatRequest(BaseModel):
     Data model representing the request payload sent by the frontend.
     """
     user_message: str
-    history: List[Dict[str, str]]  # Format: [{"role": "user", "content": "..."}, {"role": "bot", "content": "..."}]    user_email: str = ""
+    history: List[Dict[str, str]]  # Format: [{"role": "user", "content": "..."}, {"role": "bot", "content": "..."}]
+    user_email: str = ""
     matrikelnummer: str = ""
     issue_description: str = ""
     additional_info: List[str] = []
