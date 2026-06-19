@@ -181,11 +181,11 @@ def main():
 
         # ── Warnings ──────────────────────────────────────────────────────────
         if has_problem and not has_solution:
-            print(f"  [WARNING] Problem found but NO solution!")
+            print("  [WARNING] Problem found but NO solution!")
         if has_solution and not has_problem:
-            print(f"  [WARNING] Solution found but NO problem!")
+            print("  [WARNING] Solution found but NO problem!")
         if not has_problem and not has_solution:
-            print(f"  [INFO] No problem/solution — likely a category heading, skipping.")
+            print("  [INFO] No problem/solution — likely a category heading, skipping.")
             skipped.append({'idx': idx, 'name': name, 'url': url, 'reason': 'no content'})
             continue
 
@@ -213,7 +213,7 @@ def main():
 
     print(f"\n{'='*60}")
     print(f"Done. {len(faq_entries)} entries saved, {len(skipped)} skipped.")
-    print(f"Output: faq_extracted_full.json")
+    print("Output: faq_extracted_full.json")
 
 
 if __name__ == "__main__":
