@@ -174,36 +174,7 @@ async def chat_endpoint(request: ChatRequest):
             "is_complete": False
         }
     """
-@app.post("/solution-feedback")
-async def solution_feedback(request: ChatRequest):
-    """
-    Verarbeitet das Feedback des Users auf die vorgeschlagene Lösung.
-    Bei helpful=True wird ein geschlossenes Ticket mit AISolved-Tag erstellt.
-    Bei helpful=False wird ein normales Ticket für einen Mitarbeiter erstellt.
-    """
-    langchain_messages = []
-    for msg in request.history:
-        if msg["role"] == "user":
-            langchain_messages.append(HumanMessage(content=msg["content"]))
-        elif msg["role"] == "bot":
-            langchain_messages.append(AIMessage(content=msg["content"]))
-
-    current_state: ChatbotState = {
-        "messages": langchain_messages,
-        "user_email": request.user_email,
-        "matrikelnummer": request.matrikelnummer,
-        "issue_description": request.issue_description,
-        "additional_info": request.additional_info,
-        "priority": request.priority,
-        "is_complete": False,
-    }
-
-    if request.helpful:
-        updated_state = finish_ai_solved_ticket(current_state)
-    else:
-        updated_state = finish_ticket(current_state)
-
-    return {"bot_response": updated_state["messages"][-1].content}
+    return __execute_langchain_workflow(request)
 
 @app.post("/solution-feedback")
 async def solution_feedback(request: ChatRequest):
