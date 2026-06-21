@@ -89,6 +89,7 @@ class ChatRequest(BaseModel):
     solutions: List[Dict] = []
     bot_message: str = ""
     additional_info_attempts: int = 0
+    ask_issue_attempts: int = 0
 
 
 
@@ -212,6 +213,7 @@ async def solution_feedback(request: ChatRequest):
             "is_complete": False,
             "solutions": request.solutions,
             "additional_info_attempts": request.additional_info_attempts,
+            "ask_issue_attempts": request.ask_issue_attempts
         }
 
         updated_state = finish_ticket(current_state)
@@ -254,6 +256,7 @@ def __execute_langchain_workflow(request: ChatRequest):
         "priority": request.priority,
         "is_complete": False,
         "additional_info_attempts": request.additional_info_attempts,
+        "ask_issue_attempts": request.ask_issue_attempts
     }
 
     updated_state = graph.invoke(current_state)
@@ -269,6 +272,7 @@ def __execute_langchain_workflow(request: ChatRequest):
         "is_complete": updated_state.get("is_complete", False),
         "solutions": updated_state.get("solutions", []),
         "additional_info_attempts": updated_state.get("additional_info_attempts", 0),
+        "ask_issue_attempts": updated_state.get("ask_issue_attempts", 0),
     }
 
 def route_based_on_state(state: ChatbotState):
@@ -283,7 +287,11 @@ def route_based_on_state(state: ChatbotState):
         return "ask_matrikel_node"
 
     elif not state.get("issue_description"):
-        return "ask_issue_node"
+        print(f"[DEBUG]: Attempts for ask_for_issue node: {state.get('ask_issue_attempts')}")
+        if state.get("ask_issue_attempts") >= 3:
+            return "finish_node"
+        else:
+            return "ask_issue_node"
 
     else:
         return "ask_for_additional_info"
