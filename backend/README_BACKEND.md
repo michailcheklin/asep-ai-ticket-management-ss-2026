@@ -22,12 +22,222 @@ then start the ai-ticket-management container
 docker compose up -d --build
 ```
 
-## 2. API Interface
-* POST /chat
-* This endpoint processes the user's input and communicates with the AI model
+## 2. Architecture
+
+```text
+Frontend
+    │
+    │ POST /chat
+    ▼
+FastAPI
+    │
+    ▼
+LangGraph
+    │
+    ├── Extract information
+    ├── Ask for missing data
+    ├── Search for solutions (RAG)
+    └── Create ticket
+    │
+    ▼
+Response to Frontend
+```
+
+If solutions are found, the frontend asks the user whether they solved the issue.
+
+```text
+Frontend
+    │
+    │ POST /solution-feedback
+    ▼
+Backend
+    │
+    ├── Helpful
+    │      └── End conversation
+    │
+    └── Not helpful
+           └── Create ticket in Zammad
+```
+
+# API Endpoints
+
+## POST /chat
+
+Main communication endpoint between frontend and backend.
+
+Responsibilities:
+- Receive user input
+- Build the current chatbot state
+- Execute the LangGraph workflow
+- Return the updated state
+
+#### Request
+
+```json
+{
+  "user_message": "My VPN connection is not working.",
+  "history": [
+    {
+      "role": "assistant",
+      "content": "Hello! How can I help you?"
+    },
+    {
+      "role": "user",
+      "content": "My VPN connection is not working."
+    }
+  ],
+  "user_email": "john.doe@example.com",
+  "matrikelnummer": "12345678",
+  "issue_description": "",
+  "additional_info": [],
+  "priority": 0
+}
+```
+
+#### Response
+
+```json
+{
+  "bot_response": "Can you tell me which operating system you are using?",
+  "issue_description": "VPN connection does not work",
+  "additional_info": [
+    "VPN"
+  ],
+  "priority": 2,
+  "solutions": [],
+  "needs_additional_info": true,
+  "is_complete": false
+}
+```
+
+If the chatbot already knows a suitable solution, the response contains one or more solution objects instead of asking another question.
+
+Example:
+
+```json
+{
+  "bot_response": "Please try reconnecting to the university VPN using the AnyConnect client.",
+  "issue_description": "VPN connection does not work",
+  "additional_info": [
+    "Windows 11"
+  ],
+  "priority": 2,
+  "needs_additional_info": false,
+  "is_complete": false,
+  "solutions": [
+    {
+      "title": "VPN Troubleshooting",
+      "content": "Restart the VPN client and reconnect."
+    }
+  ]
+}
+```
 
 
-### Security Checks
+## POST /solution-feedback
+
+Called after the user indicates whether the proposed solution solved the problem.
+
+#### Request
+
+```json
+{
+  "user_message": "",
+  "history": [],
+  "user_email": "john.doe@example.com",
+  "matrikelnummer": "12345678",
+  "issue_description": "VPN connection does not work",
+  "additional_info": [
+    "Windows 11"
+  ],
+  "priority": 2,
+  "helpful": false,
+  "solutions": [
+    {
+      "title": "VPN Troubleshooting",
+      "content": "Restart the VPN client and reconnect."
+    }
+  ],
+  "message": "Please try reconnecting to the university VPN using the AnyConnect client."
+}
+```
+
+#### Response
+
+If the solution was helpful, the backend returns a confirmation message.
+
+```json
+{
+  "bot_response": "I'm glad the solution helped. Have a nice day!"
+}
+```
+
+Otherwise, the backend creates a support ticket in Zammad and returns a confirmation.
+
+```json
+{
+  "bot_response": "Your support ticket has been created successfully. Our support team will contact you soon."
+}
+```
+
+---
+
+# RAG System
+
+Before creating a ticket, the chatbot searches the knowledge base for relevant information.
+
+The retrieval component searches:
+- FAQ entries
+- Similar support tickets
+
+The LLM summarizes the retrieved content into a concise response.
+
+---
+
+# Ticket Prioritization
+
+The chatbot automatically classifies tickets into two priority levels:
+
+| Priority | Meaning                   |
+| -------- | ------------------------- |
+| 0        | Normal / non-urgent issue |
+| 1        | Urgent / important issue  |
+
+Examples for urgent tickets include:
+
+* User cannot log in
+* Exam or deadline is affected
+* Complete service outage
+* Critical account access problems
+
+The priority is extracted together with the ticket information and is included in the chatbot state and API response. The value can later be used when creating tickets in Zammad to assign a higher ticket priority.
+
+---
+
+# Zammad Integration
+
+Communication with Zammad is implemented in `zammad_endpoints.py`.
+
+Each ticket contains:
+- Title
+- Email
+- Student ID
+- Issue description
+- Priority
+- Additional information
+
+---
+
+# Prompt Security
+
+The project contains optional security checks against:
+- Prompt injection
+- Illegal content
+- Off-topic requests
+
+These checks are implemented in `prompt_security_result.py` and can be enabled if required.
+
+## Security Checks
 
 Before a user message is processed by the chatbot workflow, multiple security checks are performed.
 
@@ -48,7 +258,7 @@ Blocked requests are logged together with:
 
 The security layer is executed before any chatbot processing or future RAG-based retrieval takes place.
 
-#### Current Limitations
+## Current Limitations
 
 The prompt injection detector (`deepset/deberta-v3-base-injection`) occasionally produces false positives for legitimate ZIM support requests.
 
@@ -58,78 +268,28 @@ The legality check also contains a temporary keyword-based workaround for ZIM-re
 
 These workarounds should be replaced by a more robust classifier-based solution in future iterations.
 
+---
 
+# Technologies
 
-### Expected Request
-```json
-{
-  "user_message": "Meine Nachricht an den Bot",
-  "history": [],
-  "user_email": "",
-  "matrikelnummer": "",
-  "additional_info": [],
-  "issue_description": "",
-  "priority": 0
-}
-```
+- Python
+- FastAPI
+- LangGraph
+- LangChain
+- Ollama
+- OpenAI-compatible SAIA API
+- Pydantic
+- Zammad API
 
-### Response from the Server
-```json
-{
-  "bot_response": "Dein Ticket ist fertiggestellt...", 
-  "user_email": "peter@uni.de",
-  "matrikelnummer": "1234567",
-  "issue_description": "WLAN Problem",
-  "additional_info": [
-    "Essen",
-    "Gebäude R14"
-  ],
-  "is_complete": true,
-  "priority": 1
-}
-```
-* The Fields **user_email**, **matrikelnummer** and **issue_description** will be populated if this information was present in a message from the user
+---
 
+# Summary
 
-### Ticket Prioritization
+The backend workflow consists of four main steps:
 
-The chatbot automatically classifies tickets into two priority levels:
+1. Extract information from the conversation.
+2. Request missing information.
+3. Search for suitable solutions using RAG.
+4. Create a support ticket in Zammad if no solution resolves the issue.
 
-| Priority | Meaning                   |
-| -------- | ------------------------- |
-| 0        | Normal / non-urgent issue |
-| 1        | Urgent / important issue  |
-
-Examples for urgent tickets include:
-
-* User cannot log in
-* Exam or deadline is affected
-* Complete service outage
-* Critical account access problems
-
-The priority is extracted together with the ticket information and is included in the chatbot state and API response. The value can later be used when creating tickets in Zammad to assign a higher ticket priority.
-
-
-### Example of a Request with Populated History
-```json
-{
-  "user_message": "es handelt sich um ein wlan problem, ich bin in essen im gebäude R14 und ich habe noch keine schritte unternommen",
-  "history": [
-    {
-      "role": "user",
-      "content": "Hallo, meine email ist peter@uni.de, meine matrikelnummer ist 1234567 und ich habe internet probleme"
-    },
-    {
-      "role": "bot",
-      "content": "Könnten Sie uns bitte mehr Details zu Ihrem Internetproblem geben? Zum Beispiel, ob es sich um ein WLAN- oder ein kabelgebundenes Problem handelt, welcher Ort oder welches Gebäude betroffen ist..."
-    }
-  ],
-  "user_email": "peter@uni.de",
-  "matrikelnummer": "1234567",
-  "issue_description": "internet probleme",
-  "additional_info": []
-}
-```
-* Requests must always include the existing history with role and content for the bot to function correctly
-
-> **Note for Dockerization:** When creating the `docker-compose.yml` for this backend, ensure `OLLAMA_BASE_URL` is set to point to the internal Docker network name of the Ollama container (e.g., `http://ollama:11434`).
+The separation into **State**, **Nodes**, and **Graph** keeps the workflow modular, maintainable, and easy to extend.

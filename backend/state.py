@@ -15,9 +15,15 @@ class ChatbotState(TypedDict):
     matrikelnummer: str
     issue_description: str
     additional_info: Annotated[list[str], operator.add]
+    additional_info_attempts: int
 
     #Priority of the ticket:0 =non-ungent/normal, 1 = urgent/important
     priority:int
 
-    # signal if ticket is complete
+    # signal if user needs more information
+    needs_additional_info: bool
+
     is_complete: bool
+
+    #
+    solutions: Annotated[list[dict], operator.add]
