@@ -5,7 +5,7 @@ Each script that contains test cases ("test script") is in the folder `<project 
 
 To ensure that the test scripts can find all the application code, each folder (frontend, backend, tests) has an empty `__init__.py` file. This tells Python to treat the folders as packages (also cf. https://docs.python.org/3/tutorial/modules.html#packages).  **Do not delete this file**. Otherwise, the test scripts cannot find the code from the backend or frontend anymore. 
 
-If you are during regular development import code from other scripts, you need to use the full module path:
+If you are during regular development import code from other scripts, you need to use the full module path. For example if you need to import in the backend something from `backend/nodes.py` into `backend/main.py`:
 * ❌ Incorrect: `from nodes import ...`
 * ✅ Correct: `from backend.nodes import ...`
 
@@ -42,7 +42,7 @@ Accuracy, Precision, Recall and F1 score must be above 75%. If any of the metric
 Here it is checked if the chatbot is responsive or not. 
 
 **Why is this test done:**
-This test checks first if the chatbot responds before other chatbot tests will be done, because it would be impossible to evaluate the chatbot's responses, if the chat cannot reply at all.
+This test checks first if the chatbot responds before other chatbot tests will be done, because it would be impossible to evaluate the chatbot's responses, if the chatbot cannot reply at all.
 
 **How is the test done:**
 In this script, one input is sent to the chatbot, which is expected to return a valid JSON response within 20 minutes. 
