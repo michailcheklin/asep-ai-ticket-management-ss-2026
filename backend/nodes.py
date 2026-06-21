@@ -167,6 +167,7 @@ def ask_for_issue(state: ChatbotState):
     :param state: The current conversation and ticket state
     :return: A dictionary containing the newly extracted fields to update the state.
     """
+    attempts = state.get("ask_issue_attempts") + 1
     system_prompt = SystemMessage(content=(
         "Du bist ein IT-Support-Bot des ZIM einer Universität. "
         "Du unterstützt ausschließlich bei Problemen mit universitären IT-Diensten "
@@ -182,7 +183,10 @@ def ask_for_issue(state: ChatbotState):
     full_messages = [system_prompt] + state["messages"]
     response = llm.invoke(full_messages)
 
-    return {"messages": [response]}
+    return {
+        "messages": [response],
+        "ask_issue_attempts": attempts
+    }
 
 
 def ask_for_additional_info(state: ChatbotState):
@@ -316,6 +320,21 @@ def finish_ticket(state: ChatbotState):
     Finalizes the ticket creation process by generating a concise title
     and preparing the payload for the Zammad API.
     """
+    attempts = state.get("ask_issue_attempts", 0)
+
+    if attempts > 3:
+        final_message = (
+            "Ich kann dein Anliegen leider nicht weiter als ZIM-IT-Support bearbeiten, "
+            "da keine eindeutige IT-/ZIM-bezogene Problemstellung erkannt wurde.\n\n"
+            "Falls du später ein IT-Problem rund um Dienste der Universität hast "
+            "(z. B. WLAN, VPN, E-Mail, Moodle oder Account-Probleme), helfe ich dir gerne weiter."
+        )
+
+        return {
+            "messages": [AIMessage(content=final_message)],
+            "is_complete": True
+        }
+    
     title_prompt = (
         f"Du bist ein IT-Support-Assistent. Fasse das folgende Problem in maximal "
         f"4-5 Worten als Ticket-Betreff zusammen. Antworte NUR mit dem Betreff, ohne Anführungszeichen:\n"
