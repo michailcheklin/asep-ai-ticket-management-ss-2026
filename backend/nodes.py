@@ -44,7 +44,12 @@ class ExtractedTicketData(BaseModel):
     matrikelnummer: Optional[str] = Field(None,
                                           description="Die 7-stellige Matrikelnummer des Studenten, falls genannt.")
     problem: Optional[str] = Field(None,
-                                   description="Das IT-Problem (z.B. 'WLAN geht nicht', 'Passwort vergessen', 'Moodle lädt nicht'). Auch kurze, umgangssprachliche Sätze zählen!")
+                                   description="Das vom Nutzer explizit beschriebene IT-Problem oder die Supportanfrage. "
+                                                "Nur setzen, wenn tatsächlich ein konkretes Problem genannt wird. "
+                                                "Bei Begrüßungen, einzelnen Buchstaben, Testnachrichten, Smalltalk, "
+                                                "Dankesnachrichten oder unverständlichem Text muss der Wert null sein. "
+                                                "Niemals ein Problem erfinden oder aus Vermutungen ableiten."
+                                   )
     additional_info: Optional[List[str]] = Field(default_factory=list,
                                                  description="Eine Liste von spezifischen Zusatzinformationen, die für den IT-Support an einer Universität relevant sind (z.B. Gebäude, Raumnummer, Fehlermeldung, Gerätetyp, OS). Keine Füllwörter."
                                                  )
@@ -84,6 +89,7 @@ def extract_information(state: ChatbotState):
         Deine Aufgabe ist es, aus den eingehenden Chat-Nachrichten von Studierenden und Mitarbeitern strukturierte Ticket-Daten zu extrahieren.
         EXTRAKTIONS-REGELN:
         1. Basis-Daten (Textfelder): Suche nach der 'email', der 'matrikelnummer' und dem Haupt-'problem' und speichere diese ausschließlich in ihren jeweiligen Textfeldern.
+        2. Das 'problem' darf ausschließlich gesetzt werden, wenn der Nutzer tatsächlich ein konkretes IT-Problem oder eine Supportanfrage beschreibt. Erfinde niemals ein Problem.
         2. Zusatzinformationen (Listen-Feld): Extrahiere alle weiteren technischen oder lokalen Details, die für die Lösung des Problems nützlich sein könnten, und weise sie dem Feld 'additional_info' zu.
         - Beispiele für wertvolle Details: Orte (z.B. 'Gebäude LF', 'Bibliothek'), Geräte/Systeme (z.B. 'MacBook', 'Windows 11'), betroffene Services (z.B. 'eduroam', 'VPN') oder spezifische Fehlercodes.
         - FORMAT: Speichere diese Zusatzinfos als einzelne, kompakte Strings innerhalb der Liste (z.B. ["Gebäude LF", "MacBook", "eduroam"]).
@@ -161,15 +167,26 @@ def ask_for_issue(state: ChatbotState):
     :param state: The current conversation and ticket state
     :return: A dictionary containing the newly extracted fields to update the state.
     """
+    attempts = state.get("ask_issue_attempts") + 1
     system_prompt = SystemMessage(content=(
-        "Du bist ein IT-Support-Bot. Dir fehlt noch eine genaue Beschreibung des IT-Problems. "
-        "Frage den User kurz und höflich, womit du ihm heute helfen kannst."
+        "Du bist ein IT-Support-Bot des ZIM einer Universität. "
+        "Du unterstützt ausschließlich bei Problemen mit universitären IT-Diensten "
+        "(z. B. WLAN, VPN, E-Mail, Moodle, Benutzerkonto, Drucker oder bereitgestellter Software). "
+
+        "Falls der Nutzer ein anderes Anliegen beschreibt, das nichts mit den "
+        "IT-Diensten des ZIM zu tun hat, gehe nicht auf dieses Thema ein und gib "
+        "keine fachliche Beratung dazu. Weise stattdessen freundlich darauf hin, "
+        "dass du nur bei ZIM-bezogenen IT-Anliegen helfen kannst, und bitte den "
+        "Nutzer, sein entsprechendes IT-Problem zu schildern."
     ))
 
     full_messages = [system_prompt] + state["messages"]
     response = llm.invoke(full_messages)
 
-    return {"messages": [response]}
+    return {
+        "messages": [response],
+        "ask_issue_attempts": attempts
+    }
 
 
 def ask_for_additional_info(state: ChatbotState):
@@ -303,6 +320,21 @@ def finish_ticket(state: ChatbotState):
     Finalizes the ticket creation process by generating a concise title
     and preparing the payload for the Zammad API.
     """
+    attempts = state.get("ask_issue_attempts", 0)
+
+    if attempts >= 3:
+        final_message = (
+            "Ich kann dein Anliegen leider nicht weiter als ZIM-IT-Support bearbeiten, "
+            "da keine eindeutige IT-/ZIM-bezogene Problemstellung erkannt wurde.\n\n"
+            "Falls du später ein IT-Problem rund um Dienste der Universität hast "
+            "(z. B. WLAN, VPN, E-Mail, Moodle oder Account-Probleme), helfe ich dir gerne weiter."
+        )
+
+        return {
+            "messages": [AIMessage(content=final_message)],
+            "is_complete": True
+        }
+    
     title_prompt = (
         f"Du bist ein IT-Support-Assistent. Fasse das folgende Problem in maximal "
         f"4-5 Worten als Ticket-Betreff zusammen. Antworte NUR mit dem Betreff, ohne Anführungszeichen:\n"
