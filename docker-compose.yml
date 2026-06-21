@@ -16,7 +16,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 30s
+      start_period: 180s
     volumes:
       - huggingface-models:/models
 
@@ -26,7 +26,7 @@ services:
       dockerfile: frontend/Dockerfile
     ports:
       - "8501:8501"
-      - "4999:5000"
+      - "4999:4999"
     environment:
       BACKEND_URL: http://backend_app:8000
       ZAMMAD_UI_URL: http://localhost:8080

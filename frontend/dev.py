@@ -9,6 +9,8 @@ import signal
 import time
 import webbrowser
 
+from fake_idp import IDP_PORT
+
 os.environ["FAKE_IDP"] = "1"
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -26,7 +28,7 @@ streamlit_proc = subprocess.Popen(
 )
 time.sleep(2)
 
-webbrowser.open("http://localhost:5000/login?next=http://localhost:8501")
+webbrowser.open(f"http://localhost:{IDP_PORT}/login?next=http://localhost:8501")
 
 def _shutdown(sig, frame):
     """Terminate all subprocesses when termination signal is received"""

@@ -1,0 +1,404 @@
+{
+  "TICKET_TEMPLATES" : [
+    {
+        "name": "Anna Müller",
+        "email": "anna.mueller@student.uni-due.de",
+        "ticket": "I cannot log in to the campus portal although I reset my password yesterday.",
+        "solution": "Check whether the account is locked and reset the login credentials if necessary.",
+        "priority": "0",
+        "category": "Zugang/Login"
+    },
+    {
+        "name": "Jonas Schneider",
+        "email": "jonas.schneider@student.uni-due.de",
+        "ticket": "I cannot access Moodle with my university account. The login page always redirects me back to the start page.",
+        "solution": "Check the user's university account status and verify Moodle authentication permissions.",
+        "priority": "0",
+        "category": "Zugang/Login"
+    },
+    {
+        "name": "Mariam Yilmaz",
+        "email": "mariam.yilmaz@student.uni-due.de",
+        "ticket": "I forgot my university password and the reset link does not arrive in my email inbox.",
+        "solution": "Verify the recovery email address and manually trigger a new password reset process.",
+        "priority": "0",
+        "category": "Zugang/Login"
+    },
+    {
+        "name": "Felix Weber",
+        "email": "felix.weber@student.uni-due.de",
+        "ticket": "I can log in to my email account, but I cannot log in to the campus management system.",
+        "solution": "Check whether the campus management account is synchronized correctly with the central identity system.",
+        "priority": "0",
+        "category": "Zugang/Login"
+    },
+    {
+        "name": "Sarah Hoffmann",
+        "email": "sarah.hoffmann@student.uni-due.de",
+        "ticket": "My account says that it is locked after too many login attempts, but I need access for my exam registration today.",
+        "solution": "Unlock the account and advise the user to reset the password if login attempts continue to fail.",
+        "priority": "0",
+        "category": "Zugang/Login"
+    },
+    {
+        "name": "Dr. Laura Becker",
+        "email": "laura.becker@uni-due.de",
+        "ticket": "Several students in my seminar cannot log in to Moodle today, and I also cannot access the course administration page.",
+        "solution": "Escalate to identity management and check whether the central authentication service is affected.",
+        "priority": "1",
+        "category": "Zugang/Login"
+    },
+    {
+        "name": "Nico Fischer",
+        "email": "nico.fischer@student.uni-due.de",
+        "ticket": "I changed my password, but my old password still works in some university systems and the new one works in others.",
+        "solution": "Check password synchronization between connected university services.",
+        "priority": "0",
+        "category": "Zugang/Login"
+    },
+    {
+        "name": "Lea Wagner",
+        "email": "lea.wagner@student.uni-due.de",
+        "ticket": "I cannot activate two-factor authentication for my university account because the QR code is not displayed.",
+        "solution": "Reset the two-factor authentication setup and generate a new activation QR code.",
+        "priority": "0",
+        "category": "Zugang/Login"
+    },
+    {
+        "name": "Tim Bauer",
+        "email": "tim.bauer@student.uni-due.de",
+        "ticket": "My student account was created today, but I still cannot log in to any university service.",
+        "solution": "Check account provisioning status and trigger synchronization if the account is not active yet.",
+        "priority": "0",
+        "category": "Zugang/Login"
+    },
+    {
+        "name": "Sophie Klein",
+        "email": "sophie.klein@student.uni-due.de",
+        "ticket": "The login system shows an error message for many students in my course. None of us can access the exam registration portal.",
+        "solution": "Escalate to identity management and check the availability of the central login service.",
+        "priority": "1",
+        "category": "Zugang/Login"
+    },
+    {
+        "name": "Jonas Schneider",
+        "email": "jonas.schneider@student.uni-due.de",
+        "ticket": "I cannot connect to the university VPN from home. Forcepoint keeps showing an authentication error. Greetings, Jonas Schneider.",
+        "solution": "Reinstall Forcepoint and re-establish the VPN connection with the correct university credentials.",
+        "priority": "0",
+        "category": "Technisches Problem"
+    },
+    {
+        "name": "Elena Hoffmann",
+        "email": "elena.hoffmann@student.uni-due.de",
+        "ticket": "I cannot connect to eduroam on my laptop, but my phone connects without problems.",
+        "solution": "Remove the old eduroam profile and configure the Wi-Fi connection again.",
+        "priority": "0",
+        "category": "Technisches Problem"
+    },
+    {
+        "name": "Dr. Markus Neumann",
+        "email": "markus.neumann@uni-due.de",
+        "ticket": "The projector in room S203 does not show my laptop screen, and I need it for my lecture this afternoon.",
+        "solution": "Check the HDMI connection, input source and restart the projector system.",
+        "priority": "0",
+        "category": "Technisches Problem"
+    },
+    {
+        "name": "Clara Stein",
+        "email": "clara.stein@student.uni-due.de",
+        "ticket": "The printer in the computer lab does not print my document. The print job stays in the queue.",
+        "solution": "Check printer status, restart the print job and verify the user's print quota.",
+        "priority": "0",
+        "category": "Technisches Problem"
+    },
+    {
+        "name": "Omar Haddad",
+        "email": "omar.haddad@student.uni-due.de",
+        "ticket": "I cannot install Citavi with my university license because the activation code is rejected.",
+        "solution": "Verify the university license assignment and provide the correct activation instructions.",
+        "priority": "0",
+        "category": "Technisches Problem"
+    },
+    {
+        "name": "Prof. Katrin Vogt",
+        "email": "katrin.vogt@uni-due.de",
+        "ticket": "The central VPN gateway seems to be unavailable. Many staff members cannot access internal systems from outside the campus.",
+        "solution": "Escalate to network operations and check the VPN gateway infrastructure.",
+        "priority": "1",
+        "category": "Technisches Problem"
+    },
+    {
+        "name": "David Schmitz",
+        "email": "david.schmitz@student.uni-due.de",
+        "ticket": "My university laptop is very slow after the last software update and sometimes freezes during online meetings.",
+        "solution": "Check system resources, update drivers and review the last installed software package.",
+        "priority": "0",
+        "category": "Technisches Problem"
+    },
+    {
+        "name": "Nina Krause",
+        "email": "nina.krause@student.uni-due.de",
+        "ticket": "I cannot upload a PDF file to Moodle. The upload stops at 90 percent and then fails. My email address is: nina.krause@student.uni-due.de",
+        "solution": "Check the file size, file format and Moodle upload limit for the course.",
+        "priority": "0",
+        "category": "Technisches Problem"
+    },
+    {
+        "name": "Dr. Thomas Berger",
+        "email": "thomas.berger@uni-due.de",
+        "ticket": "The research data storage is not reachable for my project group. We cannot access important files for our experiment.",
+        "solution": "Escalate to storage administration and check the research storage permissions and availability.",
+        "priority": "1",
+        "category": "Technisches Problem"
+    },
+    {
+        "name": "Laura Schmitt",
+        "email": "laura.schmitt@student.uni-due.de",
+        "ticket": "I cannot open Microsoft Teams with my university account. The browser redirects me to an error page.",
+        "solution": "Check Microsoft 365 license assignment and reset the user's active session.",
+        "priority": "0",
+        "category": "Technisches Problem"
+    },
+    {
+        "name": "Mariam Yilmaz",
+        "email": "mariam.yilmaz@student.uni-due.de",
+        "ticket": "I was charged the semester fee twice and I need help correcting the payment.",
+        "solution": "Check the payment records and forward the case to the finance department if a duplicate payment exists.",
+        "priority": "0",
+        "category": "Rechnung"
+    },
+    {
+        "name": "Philipp Hartmann",
+        "email": "philipp.hartmann@student.uni-due.de",
+        "ticket": "My payment for the semester fee was successful, but the campus portal still says that the fee is unpaid.",
+        "solution": "Verify the payment reference and synchronize the payment status in the campus management system.",
+        "priority": "0",
+        "category": "Rechnung"
+    },
+    {
+        "name": "Aylin Demir",
+        "email": "aylin.demir@student.uni-due.de",
+        "ticket": "I need an invoice confirmation for the language course fee that I paid last week.",
+        "solution": "Check the payment record and provide a payment confirmation or invoice copy.",
+        "priority": "0",
+        "category": "Rechnung"
+    },
+    {
+        "name": "Maximilian Wolf",
+        "email": "maximilian.wolf@student.uni-due.de",
+        "ticket": "I received a reminder for an unpaid fee, but I already transferred the money two weeks ago.",
+        "solution": "Compare the bank transfer details with the student's payment record and update the status if needed.",
+        "priority": "0",
+        "category": "Rechnung"
+    },
+    {
+        "name": "Sabrina Koch",
+        "email": "sabrina.koch@student.uni-due.de",
+        "ticket": "The online payment page shows an error when I try to pay my semester fee by card.",
+        "solution": "Check the payment provider status and advise the user to retry or use another payment method.",
+        "priority": "0",
+        "category": "Rechnung"
+    },
+    {
+        "name": "Daniel Richter",
+        "email": "daniel.richter@student.uni-due.de",
+        "ticket": "Many students in my program cannot pay the semester fee online because the payment system fails after login.",
+        "solution": "Escalate to payment system support and check the availability of the payment service.",
+        "priority": "1",
+        "category": "Rechnung"
+    },
+    {
+        "name": "Hannah Meier",
+        "email": "hannah.meier@student.uni-due.de",
+        "ticket": "I need a refund because I accidentally paid the library fee twice.",
+        "solution": "Verify the duplicate payment and initiate the refund process through the finance department.",
+        "priority": "0",
+        "category": "Rechnung"
+    },
+    {
+        "name": "Dr. Erik Lang",
+        "email": "erik.lang@uni-due.de",
+        "ticket": "Our department cannot export invoice reports from the accounting system for one project.",
+        "solution": "Check report permissions and regenerate the export for the affected project account.",
+        "priority": "0",
+        "category": "Rechnung"
+    },
+    {
+        "name": "Julia Neumann",
+        "email": "julia.neumann@student.uni-due.de",
+        "ticket": "The invoice amount for my continuing education course seems incorrect compared to the amount shown during registration.",
+        "solution": "Compare the registration data with the invoice and correct the invoice if necessary.",
+        "priority": "0",
+        "category": "Rechnung"
+    },
+    {
+        "name": "Christian Becker",
+        "email": "christian.becker@uni-due.de",
+        "ticket": "The central accounting system is not available, and our finance team cannot process invoices today. I am logged in as christian.becker@uni-due.de",
+        "solution": "Escalate to finance IT support and check the accounting system database and application servers.",
+        "priority": "1",
+        "category": "Rechnung"
+    },
+    {
+        "name": "Felix Weber",
+        "email": "felix.weber@student.uni-due.de",
+        "ticket": "I would like to know where I can find information about available software licenses for students.",
+        "solution": "Refer the user to the university IT service portal and the software license overview.",
+        "priority": "0",
+        "category": "Allgemeine Anfrage"
+    },
+    {
+        "name": "Leonie Braun",
+        "email": "leonie.braun@student.uni-due.de",
+        "ticket": "I would like to know how I can get temporary Wi-Fi access for a guest researcher visiting our seminar.",
+        "solution": "Provide instructions for requesting a temporary guest Wi-Fi account.",
+        "priority": "0",
+        "category": "Allgemeine Anfrage"
+    },
+    {
+        "name": "Noah Klein",
+        "email": "noah.klein@student.uni-due.de",
+        "ticket": "I want to know where I can download Microsoft Office with my university account.",
+        "solution": "Send the user the official Microsoft 365 download instructions for university accounts.",
+        "priority": "0",
+        "category": "Allgemeine Anfrage"
+    },
+    {
+        "name": "Dr. Petra Schulz",
+        "email": "petra.schulz@uni-due.de",
+        "ticket": "I would like to know how to request a new shared mailbox for our research project.",
+        "solution": "Provide the request process for shared mailboxes and required project information.",
+        "priority": "0",
+        "category": "Allgemeine Anfrage"
+    },
+    {
+        "name": "Lukas Meyer",
+        "email": "lukas.meyer@student.uni-due.de",
+        "ticket": "Hello! Lucas here, I need information about how to use the university cloud storage for group assignments.",
+        "solution": "Refer the user to the cloud storage documentation and collaboration guidelines.",
+        "priority": "0",
+        "category": "Allgemeine Anfrage"
+    },
+    {
+        "name": "Amira Saleh",
+        "email": "amira.saleh@student.uni-due.de",
+        "ticket": "I would like to know whether students can borrow laptops from the university for online exams.",
+        "solution": "Provide information about the university's device lending service and contact point.",
+        "priority": "0",
+        "category": "Allgemeine Anfrage"
+    },
+    {
+        "name": "Jan Hoffmann",
+        "email": "jan.hoffmann@student.uni-due.de",
+        "ticket": "I want to know how long my university email account remains active after graduation.",
+        "solution": "Refer the user to the account lifecycle policy for students and alumni.",
+        "priority": "0",
+        "category": "Allgemeine Anfrage"
+    },
+    {
+        "name": "Sofia Romano",
+        "email": "sofia.romano@student.uni-due.de",
+        "ticket": "I would like to know where I can find instructions for setting up eduroam on my phone.",
+        "solution": "Send the user the eduroam setup guide for mobile devices.",
+        "priority": "0",
+        "category": "Allgemeine Anfrage"
+    },
+    {
+        "name": "Dr. Martin Keller",
+        "email": "martin.keller@uni-due.de",
+        "ticket": "I need information about how to request IT support for a new employee in our department.",
+        "solution": "Provide the onboarding IT request process and required employee information.",
+        "priority": "0",
+        "category": "Allgemeine Anfrage"
+    },
+    {
+        "name": "Yasmin Özdemir",
+        "email": "yasmin.oezdemir@student.uni-due.de",
+        "ticket": "I would like to know which support contact is responsible for problems with the campus app. My email address: yasmin.oezdemir@student.uni-due.de",
+        "solution": "Refer the user to the responsible campus app support contact and FAQ page.",
+        "priority": "0",
+        "category": "Allgemeine Anfrage"
+    },
+    {
+        "name": "Sarah Hoffmann",
+        "email": "sarah.hoffmann@student.uni-due.de",
+        "ticket": "I am very unhappy because my support request has not been answered for more than two weeks.",
+        "solution": "Apologize for the delay, check the previous ticket status and escalate the request if necessary.",
+        "priority": "0",
+        "category": "Beschwerde"
+    },
+    {
+        "name": "Kevin Wagner",
+        "email": "kevin.wagner@student.uni-due.de",
+        "ticket": "I already contacted support three times about my login problem, but I still have no working solution.",
+        "solution": "Review the previous support history, apologize and escalate the case to second-level support.",
+        "priority": "0",
+        "category": "Beschwerde"
+    },
+    {
+        "name": "Nadine Fischer",
+        "email": "nadine.fischer@student.uni-due.de",
+        "ticket": "I am frustrated because the printer in the computer lab has been broken for several days and nobody fixed it.",
+        "solution": "Apologize and forward the issue to the print service team with a request for status feedback.",
+        "priority": "0",
+        "category": "Beschwerde"
+    },
+    {
+        "name": "Dr. Julia Brandt",
+        "email": "julia.brandt@uni-due.de",
+        "ticket": "I am dissatisfied because the media equipment failed again during my lecture and no technician was available.",
+        "solution": "Apologize, document the repeated failure and escalate the room equipment issue to media technology support.",
+        "priority": "0",
+        "category": "Beschwerde"
+    },
+    {
+        "name": "Mehmet Arslan",
+        "email": "mehmet.arslan@student.uni-due.de",
+        "ticket": "I was told that my payment issue would be fixed last week, but my account still shows an unpaid semester fee.",
+        "solution": "Review the finance case, apologize for the delay and update the payment status if the payment is confirmed.",
+        "priority": "0",
+        "category": "Beschwerde"
+    },
+    {
+        "name": "Greta Lehmann",
+        "email": "greta.lehmann@student.uni-due.de",
+        "ticket": "I am upset because I could not submit my assignment due to a Moodle upload error and I did not receive help in time.",
+        "solution": "Escalate the complaint to e-learning support and provide documentation for the course instructor if needed.",
+        "priority": "0",
+        "category": "Beschwerde"
+    },
+    {
+        "name": "Prof. Andreas Weber",
+        "email": "andreas.weber@uni-due.de",
+        "ticket": "Several lecturers complained that the lecture recording system failed repeatedly during important sessions this week. Best, Andreas Weber.",
+        "solution": "Escalate the repeated failures to media technology management and investigate the recording system stability.",
+        "priority": "1",
+        "category": "Beschwerde"
+    },
+    {
+        "name": "Lisa König",
+        "email": "lisa.koenig@student.uni-due.de",
+        "ticket": "I am disappointed because the information on the website was outdated and caused me to miss an important deadline.",
+        "solution": "Apologize, forward the outdated content to the website owner and provide the correct information to the user.",
+        "priority": "0",
+        "category": "Beschwerde"
+    },
+    {
+        "name": "Tobias Richter",
+        "email": "tobias.richter@student.uni-due.de",
+        "ticket": "I find it unacceptable that the Wi-Fi in the library keeps disconnecting during online exams.",
+        "solution": "Document the complaint and forward the case to network support for analysis of the library Wi-Fi stability.",
+        "priority": "0",
+        "category": "Beschwerde"
+    },
+    {
+        "name": "Mona Schmidt",
+        "email": "mona.schmidt@student.uni-due.de",
+        "ticket": "I am angry because my account was locked without clear explanation and I could not access my course material.",
+        "solution": "Review the account lock reason, explain the situation to the user and unlock the account if appropriate.",
+        "priority": "0",
+        "category": "Beschwerde"
+    }
+  ]
+}

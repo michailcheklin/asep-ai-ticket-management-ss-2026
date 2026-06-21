@@ -89,3 +89,205 @@ The backend supports seamless switching between our local model and the powerful
 > We have a strict limit of **3,000 requests per month** for the SAIA API. To ensure we don't exhaust this quota in the middle of a sprint, please adhere to the following rule:
 > * **Local Development & Debugging:** Always use Ollama (`USE_SAIA_API=false`) to verify that the code runs, pipelines are working, or the UI is loading.
 > * **Quality Testing:** **Only** enable the SAIA API (`USE_SAIA_API=true`) when you specifically need to evaluate the quality of the AI responses or during a final feature review.
+
+
+## Troubleshooting
+
+Several issues occurred during development and testing of the Zammad integration. The following sections describe the causes and their corresponding solutions.
+
+### Docker API Error
+
+#### Problem
+
+The following error message appeared when executing Docker commands:
+
+```bash
+request returned 500 Internal Server Error for API route ...
+```
+
+#### Cause
+
+Docker Desktop was not running correctly or the Docker daemon was unavailable.
+
+#### Solution
+
+Restart Docker Desktop:
+
+```bash
+open -a Docker
+```
+
+Then verify that Docker is available again:
+
+```bash
+docker info
+docker ps
+```
+
+
+
+### Backend Container Remains "unhealthy"
+
+#### Problem
+
+The backend container remained in the `unhealthy` state after startup.
+
+#### Diagnosis
+
+Check the container status:
+
+```bash
+docker ps | grep backend
+```
+
+View the logs:
+
+```bash
+docker logs ai-ticket-management-sprint2-backend_app-1 --tail=100
+```
+
+Check the health status:
+
+```bash
+docker inspect ai-ticket-management-sprint2-backend_app-1 --format='{{.State.Health.Status}}'
+```
+
+#### Cause
+
+During the first startup, multiple embedding models are downloaded and loaded. This process may take several minutes and can temporarily cause the container to appear as `unhealthy` or `health: starting`.
+
+#### Solution
+
+Wait until the following messages appear:
+
+```text
+[retrieve] Ready.
+INFO: Application startup complete.
+INFO: Uvicorn running on http://0.0.0.0:8000
+```
+
+Afterwards, the container should become `healthy`.
+
+
+
+
+### Zammad API Token Errors
+
+#### Problem
+
+The following errors appeared during ticket creation:
+
+```text
+401 Can't find User for Token
+```
+
+or
+
+```text
+403 Token authorization failed
+```
+
+#### Cause
+
+The Zammad API token was invalid, outdated, or not correctly loaded into the backend container.
+
+#### Solution
+
+Create a new API token in Zammad:
+
+```text
+Profile → Token Access
+```
+
+Add the token to the `.env` file:
+
+```env
+ZAMMAD_API_TOKEN=<TOKEN>
+```
+
+
+
+
+### Backend Still Uses the Old Token
+
+#### Problem
+
+Even after updating the token in the `.env` file, the backend container continued using the old token.
+
+#### Diagnosis
+
+Check the token in the `.env` file:
+
+```bash
+grep ZAMMAD_API_TOKEN .env
+```
+
+Check the token inside the container:
+
+```bash
+docker exec -it ai-ticket-management-sprint2-backend_app-1 printenv | grep ZAMMAD_API_TOKEN
+```
+
+#### Cause
+
+A simple container restart does not always reload environment variable changes.
+
+#### Solution
+
+Recreate the backend container:
+
+```bash
+docker compose -f docker-compose.yml \
+-f zammad/docker-compose.yml \
+-f zammad/scenarios/add-ollama.yml \
+up -d --force-recreate backend_app
+```
+
+Verify the token again:
+
+```bash
+docker exec -it ai-ticket-management-sprint2-backend_app-1 printenv | grep ZAMMAD_API_TOKEN
+```
+
+
+
+### Testing the Connection Between Backend and Zammad
+
+After updating the token, the connection should be verified.
+
+#### Test
+
+```bash
+docker exec -it ai-ticket-management-sprint2-backend_app-1 python -c 'import os,requests; r=requests.get(os.getenv("ZAMMAD_INTERNAL_URL")+"/api/v1/users/me", headers={"Authorization":"Token token="+os.getenv("ZAMMAD_API_TOKEN")}); print(r.status_code); print(r.text)'
+```
+
+#### Expected Result
+
+```text
+200
+```
+
+The command should also return the user information as JSON.
+
+#### Result
+
+After updating the token and recreating the container, the connection was established successfully and ticket creation worked again.
+
+
+
+### Known Open Issue
+
+#### Problem
+
+When no matching solution can be found for a request, a ticket is not created automatically.
+
+#### Observation
+
+Instead, the chatbot enters a communication loop and repeatedly asks follow-up questions.
+
+#### Possible Cause
+
+The fallback flow for the "no solution found" scenario is not triggered correctly.
+
+
+**Note:** The examples in this documentation use the project prefix `ai-ticket-management-sprint2`; if the repository is cloned into a directory with a different name, this prefix must be replaced accordingly in all Docker commands.
