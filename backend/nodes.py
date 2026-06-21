@@ -322,7 +322,7 @@ def finish_ticket(state: ChatbotState):
     """
     attempts = state.get("ask_issue_attempts", 0)
 
-    if attempts > 3:
+    if attempts >= 3:
         final_message = (
             "Ich kann dein Anliegen leider nicht weiter als ZIM-IT-Support bearbeiten, "
             "da keine eindeutige IT-/ZIM-bezogene Problemstellung erkannt wurde.\n\n"
