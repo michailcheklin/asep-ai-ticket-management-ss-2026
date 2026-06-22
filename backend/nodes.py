@@ -7,7 +7,7 @@ from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 
 from rag.retrieve_info import retrieve_relevant_entries
 from state import ChatbotState
-from zammad_endpoints import create_ticket_by_user_email
+from zammad_endpoints import create_ticket_by_user_email, add_tag_to_ticket
 
 USE_SAIA = os.getenv("USE_SAIA_API", "false").lower() == "true"
 # temperature 0.2 for less hallucination
@@ -167,7 +167,7 @@ def ask_for_issue(state: ChatbotState):
     :param state: The current conversation and ticket state
     :return: A dictionary containing the newly extracted fields to update the state.
     """
-    attempts = state.get("ask_issue_attempts") + 1
+    attempts = state.get("ask_issue_attempts",0) + 1
     system_prompt = SystemMessage(content=(
         "Du bist ein IT-Support-Bot des ZIM einer Universität. "
         "Du unterstützt ausschließlich bei Problemen mit universitären IT-Diensten "
@@ -381,5 +381,65 @@ def finish_ticket(state: ChatbotState):
     print("[Finish Ticket Node]: Reached end of node without exception.")
     return {
         "messages": [AIMessage(content=final_message)],
+        "is_complete": True
+    }
+
+
+def finish_ai_solved_ticket(state: ChatbotState):
+    """
+    Erstellt ein geschlossenes Ticket mit AISolved-Tag,
+    wenn der User die Bot-Lösung akzeptiert hat.
+    Kein Mitarbeiter wird involviert.
+    """
+    title_response = llm.invoke([HumanMessage(content=(
+        f"Fasse das folgende Problem in maximal 4-5 Worten als Ticket-Betreff zusammen. "
+        f"Antworte NUR mit dem Betreff, ohne Anführungszeichen:\n{state['issue_description']}"
+    ))])
+    generated_title = title_response.content.strip()
+    zammad_title = f"[{state['matrikelnummer']}] {generated_title}"
+
+    # Chatverlauf aufbereiten 
+    verlauf = ""
+    for msg in state.get("messages", []):
+        if isinstance(msg, HumanMessage):
+            verlauf += f"Kunde: {msg.content}\n"
+        elif isinstance(msg, AIMessage):
+            verlauf += f"Bot: {msg.content}\n"
+
+    # Angebotene Lösungen aufbereiten 
+    loesungen = ""
+    for i, solution in enumerate(state.get("solutions", []), 1):
+        loesungen += f"{i}. {solution.get('title', '')}\n{solution.get('description', '')}\n\n"
+
+    zammad_body = (
+        f"Matrikelnummer: {state['matrikelnummer']}\n"
+        f"E-Mail: {state['user_email']}\n\n"
+        f"Problembeschreibung: {state['issue_description']}\n"
+        f"Zusatzinfos: {state['additional_info']}\n\n"
+        f"--- Vom Bot angebotene Lösungen ---\n"
+        f"{loesungen if loesungen else 'Keine Lösungen gespeichert.'}\n"
+        f"--- Chatverlauf ---\n"
+        f"{verlauf}\n"
+        f"Status: Durch KI-Bot gelöst. Kein Mitarbeiter involviert."
+    )
+
+    try:
+        ticket_id = create_ticket_by_user_email(
+            email=state["user_email"],
+            title=zammad_title,
+            body=zammad_body,
+            priority=state["priority"],
+            state="closed"
+        )
+        if ticket_id:
+            add_tag_to_ticket(ticket_id, "AISolved")
+    except Exception as e:
+        print(f"🚨 [FEHLER] AISolved-Ticket konnte nicht erstellt werden: {e}")
+
+    return {
+        "messages": [AIMessage(content=(
+            "Super, das freut mich! Wenn du in Zukunft weitere Fragen hast, "
+            "stehe ich gerne zur Verfügung. Hab einen schönen Tag!"
+        ))],
         "is_complete": True
     }
