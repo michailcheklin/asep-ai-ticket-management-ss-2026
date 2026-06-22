@@ -185,7 +185,28 @@ def ask_for_additional_info(state: ChatbotState):
 
     print(f"[DEBUG: ask_for_additional_info]: attempts: {attempts} ")
 
+    search_query = problem
+    rag_results = retrieve_relevant_entries(search_query, n_results=2)
+
+    faq_matches = rag_results.get("faq_matches", [])
+    ticket_matches = rag_results.get("ticket_matches", [])
+
+    if not faq_matches and not ticket_matches:
+        print("[DEBUG] RAG lieferte keine Ergebnisse. Überspringe Rückfrage.")
+        return {"needs_additional_info": True}
+
+    print(
+        f"""
+        [Debug]
+        Faq matches: {faq_matches}
+        ticket matches: {ticket_matches}
+        """)
+
+    faq_context = "\n".join([f"- {match['text']}" for match in faq_matches])
+    ticket_context = "\n".join([f"- {match['text']} (Kategorie: {match['category']})" for match in ticket_matches])
+
     aditionalInfo_llm = llm.with_structured_output(AdditionalInfoDecision)
+
     system_prompt = SystemMessage(content=(
         f"""
         Du bist ein technischer Dispatcher im IT-Support einer Universität.
@@ -195,14 +216,21 @@ def ask_for_additional_info(state: ChatbotState):
         AKTUELLES PROBLEM: {problem}
         BEREITS BEKANNTE ZUSATZINFOS: {infos}
 
+        WISSENSDATENBANK (Historische Tickets & FAQs für dieses Problem):
+        FAQs:
+        {faq_context}
+        
+        Alte Tickets:
+        {ticket_context}
+
         REGELN:
-        1. Überlege, ob für dieses spezifische Problem essenzielle Details fehlen. 
-           (Beispiele: Bei WLAN-Problemen braucht man den Ort/das Gebäude. Bei Software-Problemen das Betriebssystem).
-        2. Wenn alles Wichtige da ist, setze needs_additional_info auf True.
-        3. Halte dich bei deinen Rückfragen kurz und präzise.
-        4. Gib keine direkten Lösungen wieder. Hier geht es nur um Rückfragen stellen, damit man später basierend auf den erhaltenen Informationen eine Lösung anbieten kann.
-        5.. Wenn wichtige Details fehlen, setze needs_additional_info auf False und formuliere 
-           eine kurze, freundliche follow_up_question an den User.
+        1. Lies die Einträge in der WISSENSDATENBANK. Fehlen in unserem "AKTUELLEN PROBLEM" Details, 
+           die in den alten Tickets oder FAQs zur Lösung zwingend notwendig waren?
+        2. Wenn alles Wichtige da ist, ODER wenn die WISSENSDATENBANK keine relevanten Inhalte für eine Nachfrage liefert, 
+           setze needs_additional_info auf True.
+        3. Wenn wichtige Details fehlen, setze needs_additional_info auf False und formuliere 
+           EINE kurze, freundliche follow_up_question an den User basierend auf dem RAG-Kontext.
+        4. Gib keine direkten Lösungen wieder. Hier geht es nur um Rückfragen.
         """
     ))
 
