@@ -273,9 +273,7 @@ def give_solutions(state: ChatbotState):
     issue = (state.get("issue_description") or "").strip()
     additional = " ".join(state.get("additional_info", [])) if state.get("additional_info") else ""
 
-    # Build query in the requested order
-    query_parts = [history_text, user_msg, issue, additional]
-    query = "How to connect to the VPN using Forcepoint?" #" ".join(p for p in query_parts if p).strip()
+    query = issue
 
     if not query:
         return {"messages": [AIMessage(content="Keine ausreichende Anfrage für die Suche.")], "solutions": []}
