@@ -1,6 +1,6 @@
 from langgraph.graph import StateGraph, START, END
-from state import ChatbotState
-from nodes import (
+from .state import ChatbotState
+from .nodes import (
     extract_information,
     ask_for_email,
     ask_for_matrikelnummer,

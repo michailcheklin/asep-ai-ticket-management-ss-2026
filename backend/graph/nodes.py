@@ -6,7 +6,7 @@ from langchain_openai import ChatOpenAI
 from models.ExtractedTicketData import ExtractedTicketData
 from models.AdditionalInfoDecision import AdditionalInfoDecision
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
-from state import ChatbotState
+from .state import ChatbotState
 from backend.rag.retrieve_info import retrieve_relevant_entries
 from ..services.TicketService import TicketService
 
