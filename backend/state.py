@@ -10,6 +10,7 @@ class ChatbotState(TypedDict):
     # add_messages sorgt dafür, dass neue Chat-Nachrichten immer an die Liste angehängt werden
     messages: Annotated[list, add_messages]
 
+    ask_issue_attempts: int
     # ticket data
     user_email: str
     matrikelnummer: str

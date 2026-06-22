@@ -42,6 +42,8 @@ LangGraph
     ▼
 Response to Frontend
 ```
+If the chatbot cannot extract an issue, it attempts to ask the user to describe its issue again three times.  
+After the third time, the chatbot ends the conversation referring to come back if there is a problem relevant for the ZIM.
 
 If solutions are found, the frontend asks the user whether they solved the issue.
 
