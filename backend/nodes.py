@@ -212,13 +212,6 @@ def ask_for_additional_info(state: ChatbotState):
         print("[DEBUG] RAG lieferte keine Ergebnisse. Überspringe Rückfrage.")
         return {"needs_additional_info": True}
 
-    print(
-        f"""
-        [Debug]
-        Faq matches: {faq_matches}
-        ticket matches: {ticket_matches}
-        """)
-
     faq_context = "\n".join([f"- {match['text']}" for match in faq_matches])
     ticket_context = "\n".join([f"- {match['text']} (Kategorie: {match['category']})" for match in ticket_matches])
 
