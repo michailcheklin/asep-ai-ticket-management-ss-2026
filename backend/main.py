@@ -12,6 +12,7 @@ from backend.nodes import (
     ask_for_matrikelnummer,
     ask_for_issue,
     ask_for_additional_info,
+    classify_ticket,
     give_solutions,
     finish_ticket,
     finish_ai_solved_ticket
@@ -87,6 +88,7 @@ class ChatRequest(BaseModel):
     issue_description: str = ""
     additional_info: List[str] = []
     priority: int = 0
+    category: str = ""
     helpful: bool = False
     solutions: List[Dict] = []
     bot_message: str = ""
@@ -171,6 +173,7 @@ async def chat_endpoint(request: ChatRequest):
             "issue_description": request.issue_description,
             "needs_additional_info": False,
             "priority": request.priority,
+            "category": request.category,
             "is_complete": False
         }
     """
@@ -207,7 +210,8 @@ async def solution_feedback(request: ChatRequest):
         "is_complete": False,
         "solutions": request.solutions,
         "ask_issue_attempts": request.ask_issue_attempts,
-        "additional_info_attempts": request.additional_info_attempts
+        "additional_info_attempts": request.additional_info_attempts,
+        "category": request.category,
     }
 
     if request.helpful:
@@ -244,6 +248,7 @@ def __execute_langchain_workflow(request: ChatRequest):
         "additional_info": request.additional_info,
         "needs_additional_info": False,
         "priority": request.priority,
+        "category": request.category,
         "is_complete": False,
         "additional_info_attempts": request.additional_info_attempts,
         "ask_issue_attempts": request.ask_issue_attempts
@@ -259,6 +264,7 @@ def __execute_langchain_workflow(request: ChatRequest):
         "additional_info": updated_state.get("additional_info", []),
         "needs_additional_info": updated_state.get("needs_additional_info", False),
         "priority": updated_state.get("priority", 0),
+        "category": updated_state.get("category", ""),
         "is_complete": updated_state.get("is_complete", False),
         "solutions": updated_state.get("solutions", []),
         "additional_info_attempts": updated_state.get("additional_info_attempts", 0),
@@ -295,7 +301,7 @@ def route_after_evaluator(state: ChatbotState):
     provide additional information.
     """
     if state.get("needs_additional_info"):
-        return "give_solutions_node"
+        return "classify_ticket_node"
     else:
         return END
 
@@ -329,6 +335,7 @@ workflow.add_node("ask_email_node", ask_for_email)
 workflow.add_node("ask_matrikel_node", ask_for_matrikelnummer)
 workflow.add_node("ask_issue_node", ask_for_issue)
 workflow.add_node("ask_for_additional_info", ask_for_additional_info)
+workflow.add_node("classify_ticket_node", classify_ticket)
 workflow.add_node("give_solutions_node", give_solutions)
 workflow.add_node("finish_node", finish_ticket)
 
@@ -346,6 +353,9 @@ workflow.add_conditional_edges(
     "ask_for_additional_info",
     route_after_evaluator
 )
+
+# Route after classifying the ticket to solution retrieval.
+workflow.add_edge("classify_ticket_node", "give_solutions_node")
 
 # Route after retrieving possible solutions.
 workflow.add_conditional_edges(

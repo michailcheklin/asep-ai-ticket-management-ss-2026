@@ -1,0 +1,32 @@
+{
+  "HOLDOUT_TESTS": [
+    {
+      "ticket": "Ich kann meine Hausarbeit heute nicht hochladen, weil das Portal mich ständig abmeldet.",
+      "expected_category": "Zugang/Login"
+    },
+    {
+      "ticket": "Ich habe den Semesterbeitrag bezahlt, aber im System steht immer noch offen.",
+      "expected_category": "Rechnung"
+    },
+    {
+      "ticket": "Der Drucker in der Bibliothek zieht Papier ein, aber druckt nichts.",
+      "expected_category": "Technisches Problem"
+    },
+    {
+      "ticket": "Ich habe letzte Woche schon geschrieben und niemand antwortet. Das ist echt schlecht organisiert.",
+      "expected_category": "Beschwerde"
+    },
+    {
+      "ticket": "Wo finde ich eine Anleitung für eduroam auf meinem Handy?",
+      "expected_category": "Allgemeine Anfrage"
+    },
+    {
+      "ticket": "Ich wurde beim Einloggen rausgeworfen und komme nicht mehr in meine Abgabe rein.",
+      "expected_category": "Zugang/Login"
+    },
+    {
+      "ticket": "Ich kann mich in Moodle anmelden, aber mein Kurs wird nicht angezeigt, obwohl ich in HisInOne eingeschrieben bin.",
+      "expected_category": "Technisches Problem"
+    }
+  ]
+}

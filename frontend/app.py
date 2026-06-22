@@ -55,7 +55,9 @@ initial_states = {
     "additional_info_attempts": 0,
 
     # Tracks attempts to be asked for the issue if it could not been extraced by LLM
-    "ask_issue_attempts": 0
+    "ask_issue_attempts": 0,
+
+    "category": "",
 }
 
 # Initialize missing session state entries.
@@ -114,6 +116,7 @@ def process_user_message(user_input: str) -> None:
             "priority": st.session_state.priority,
             "additional_info_attempts": st.session_state.additional_info_attempts,
             "ask_issue_attempts": st.session_state.ask_issue_attempts,
+            "category": st.session_state.category,
         }
         print(f"Sending the request to the chatbot with {str(req)}")
         # Send the request to the backend.
@@ -176,6 +179,7 @@ def process_user_message(user_input: str) -> None:
             st.session_state.priority = res_json.get("priority", 0)
             st.session_state.additional_info_attempts = res_json.get("additional_info_attempts", 0)
             st.session_state.ask_issue_attempts = res_json.get("ask_issue_attempts", 0)
+            st.session_state.category = res_json.get("category", "")
 
         else:
             print("Prompt Safety Check failed!")
@@ -200,6 +204,7 @@ def process_solution_feedback(message_index: int, helpful: bool):
         "issue_description": st.session_state.issue_description,
         "additional_info": st.session_state.additional_info,
         "priority": st.session_state.priority,
+        "category": st.session_state.category,
         "helpful": helpful,
         "solutions": message.get("solutions"),
         "bot_message": message["content"],

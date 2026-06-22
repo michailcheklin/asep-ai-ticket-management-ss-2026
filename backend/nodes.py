@@ -33,6 +33,14 @@ else:
         base_url=ollama_url
     )
 
+TICKET_CATEGORIES = [
+    "Zugang/Login",
+    "Technisches Problem",
+    "Allgemeine Anfrage",
+    "Beschwerde",
+    "Rechnung",
+]
+
 
 class ExtractedTicketData(BaseModel):
     """
@@ -76,6 +84,102 @@ class AdditionalInfoDecision(BaseModel):
 structured_llm = llm.with_structured_output(ExtractedTicketData)
 
 
+class TicketCategoryDecision(BaseModel):
+    category: str = Field(
+        description=f"Exactly one of: {', '.join(TICKET_CATEGORIES)}"
+    )
+
+
+category_llm = llm.with_structured_output(TicketCategoryDecision)
+
+_CATEGORY_RULES = """
+Klassifiziere nach Hauptabsicht des Nutzers, nicht nach einzelnen Schlüsselwörtern.
+
+Kategorien:
+
+1. Beschwerde:
+Wähle diese Kategorie nur, wenn die Hauptabsicht des Nutzers eine Beschwerde über Support,
+Bearbeitung, Wartezeit oder schlechte Kommunikation ist.
+Ein technisches Problem allein ist keine Beschwerde.
+
+2. Rechnung:
+Wähle diese Kategorie, wenn das Hauptproblem Zahlung, Gebühren, Rechnung, Rückerstattung
+oder Zahlungsstatus betrifft.
+Auch technische Fehler in einem Zahlungsportal bleiben Rechnung, wenn die Zahlung das
+eigentliche Ziel ist.
+
+3. Zugang/Login:
+Wähle diese Kategorie, wenn der Nutzer keinen Zugang zu einem Konto oder Uni-System bekommt.
+Dazu gehören Login-Probleme, Passwort, 2FA, gesperrte Accounts, falsche Zugangsdaten oder
+Authentifizierung — auch ohne explizite Nennung von Systemnamen.
+
+4. Technisches Problem:
+Wähle diese Kategorie, wenn ein System, Gerät, Netzwerk oder eine Software technisch nicht
+funktioniert, aber der Schwerpunkt nicht auf Login, Zahlung oder Beschwerde liegt.
+
+5. Allgemeine Anfrage:
+Wähle diese Kategorie, wenn der Nutzer nur Informationen möchte oder noch kein konkretes
+Problem beschreibt.
+
+Bei Überschneidungen gilt:
+Beschwerde > Rechnung > Zugang/Login > Technisches Problem > Allgemeine Anfrage.
+
+Bewerte die Kategorie immer anhand des GESAMTEN Chatverlaufs und aller bekannten Infos.
+Gib genau eine Kategorie zurück.
+"""
+
+
+def classify_ticket_category(
+    issue_description: str,
+    additional_info: list[str],
+    user_messages: list[str],
+) -> str:
+    """Classify a ticket using the full conversation context, not just the last message."""
+    conversation = "\n".join(f"- {msg}" for msg in user_messages) if user_messages else "(keine)"
+    infos = ", ".join(additional_info) if additional_info else "(keine)"
+    prompt = f"""Du bist ein Kategorisierer für IT-Support-Tickets an einer Universität.
+Ordne das Ticket nach der Hauptabsicht des Nutzers genau einer Kategorie zu:
+[{", ".join(TICKET_CATEGORIES)}].
+
+KONTEXT:
+Chatverlauf (User-Nachrichten):
+{conversation}
+
+Problembeschreibung: {issue_description or "(noch nicht bekannt)"}
+Zusatzinfos: {infos}
+
+{_CATEGORY_RULES}"""
+    decision = cast(TicketCategoryDecision, category_llm.invoke([SystemMessage(content=prompt)]))
+    if decision.category in TICKET_CATEGORIES:
+        return decision.category
+    return "Allgemeine Anfrage"
+
+
+def _resolve_ticket_category(state: ChatbotState) -> str:
+    """Use an existing category from state or classify exactly once."""
+    existing = (state.get("category") or "").strip()
+    if existing in TICKET_CATEGORIES:
+        return existing
+
+    user_messages = [msg.content for msg in state["messages"] if isinstance(msg, HumanMessage)]
+    return classify_ticket_category(
+        state.get("issue_description", ""),
+        list(state.get("additional_info", [])),
+        user_messages,
+    )
+
+
+def classify_ticket(state: ChatbotState):
+    """Workflow node: assign ticket category once enough context is available."""
+    user_messages = [msg.content for msg in state["messages"] if isinstance(msg, HumanMessage)]
+    category = classify_ticket_category(
+        state.get("issue_description", ""),
+        list(state.get("additional_info", [])),
+        user_messages,
+    )
+    return {"category": category}
+
+
 def extract_information(state: ChatbotState):
     """
     Analyzes the latest user message to extract structured ticket details.
@@ -83,9 +187,20 @@ def extract_information(state: ChatbotState):
     :return: A dictionary containing the newly extracted fields to update the state.
     """
     last_user_message = [msg for msg in state["messages"] if isinstance(msg, HumanMessage)][-1]
+    user_messages = [msg.content for msg in state["messages"] if isinstance(msg, HumanMessage)]
+    prior_issue = state.get("issue_description", "")
+    prior_infos = state.get("additional_info", [])
+    conversation_context = "\n".join(f"- {msg}" for msg in user_messages)
 
     system_prompt = ("""Du bist ein hochpräziser KI-Daten-Extraktor für ein IT-Support-Unternehmen, das exklusiv mit Universitäten zusammenarbeitet.
         Deine Aufgabe ist es, aus den eingehenden Chat-Nachrichten von Studierenden und Mitarbeitern strukturierte Ticket-Daten zu extrahieren.
+
+        BEREITS BEKANNTER KONTEXT:
+        Problembeschreibung: {prior_issue}
+        Zusatzinfos: {prior_infos}
+        Chatverlauf (User-Nachrichten):
+        {conversation_context}
+
         EXTRAKTIONS-REGELN:
         1. Basis-Daten (Textfelder): Suche nach der 'email', der 'matrikelnummer' und dem Haupt-'problem' und speichere diese ausschließlich in ihren jeweiligen Textfeldern.
         2. Das 'problem' darf ausschließlich gesetzt werden, wenn der Nutzer tatsächlich ein konkretes IT-Problem oder eine Supportanfrage beschreibt. Erfinde niemals ein Problem.
@@ -97,7 +212,11 @@ def extract_information(state: ChatbotState):
         Setze priority auf 1 bei dringenden Problemen wie gesperrtem Account,
         Login nicht möglich, Prüfungs-/Abgabeproblemen oder komplettem Ausfall.
         Setze priority auf 0 bei normalen oder weniger dringenden Problemen.
-    	""")
+    	""".format(
+        prior_issue=prior_issue or "noch nicht bekannt",
+        prior_infos=", ".join(prior_infos) if prior_infos else "keine",
+        conversation_context=conversation_context or "keine",
+    ))
 
     # Telling python to treat output from structured llm as ExtractedTicketData instance
     extracted_data = cast(ExtractedTicketData, structured_llm.invoke([
@@ -333,7 +452,9 @@ def finish_ticket(state: ChatbotState):
             "messages": [AIMessage(content=final_message)],
             "is_complete": True
         }
-    
+
+    category = _resolve_ticket_category(state)
+
     title_prompt = (
         f"Du bist ein IT-Support-Assistent. Fasse das folgende Problem in maximal "
         f"4-5 Worten als Ticket-Betreff zusammen. Antworte NUR mit dem Betreff, ohne Anführungszeichen:\n"
@@ -347,6 +468,7 @@ def finish_ticket(state: ChatbotState):
         f"Matrikelnummer: {state['matrikelnummer']}\n"
         f"E-Mail: {state['user_email']}\n\n"
         f"Priorität: {'urgent' if state.get('priority') == 1 else 'normal'}\n"
+        f"Kategorie: {category}\n"
         f"Problembeschreibung des Nutzers:\n"
         f"{state['issue_description']}\n\n"
         f"Zusätzliche Infos (automatisch extrahiert durch den Chatbot):\n"
@@ -380,7 +502,8 @@ def finish_ticket(state: ChatbotState):
     print("[Finish Ticket Node]: Reached end of node without exception.")
     return {
         "messages": [AIMessage(content=final_message)],
-        "is_complete": True
+        "is_complete": True,
+        "category": category,
     }
 
 
