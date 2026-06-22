@@ -55,10 +55,10 @@ Frontend
 Backend
     │
     ├── Helpful
-    │      └── End conversation
+    │      └── Create closed ticket in Zammad with tag "AISolved"
     │
     └── Not helpful
-           └── Create ticket in Zammad
+           └── Create open ticket in Zammad for staff
 ```
 
 # API Endpoints
@@ -166,23 +166,25 @@ Called after the user indicates whether the proposed solution solved the problem
 
 #### Response
 
-If the solution was helpful, the backend returns a confirmation message.
+If the solution was helpful (`helpful: true`), the backend:
+- Creates a ticket in Zammad with status **closed**
+- Tags it with **AISolved**
+- Includes the chat history and offered solutions in the ticket body
+- Returns a goodbye message
 
 ```json
 {
-  "bot_response": "I'm glad the solution helped. Have a nice day!"
+  "bot_response": "Super, das freut mich! Wenn du in Zukunft weitere Fragen hast, stehe ich gerne zur Verfügung. Hab einen schönen Tag!"
 }
 ```
 
-Otherwise, the backend creates a support ticket in Zammad and returns a confirmation.
+If the solution was not helpful (`helpful: false`), the backend creates an open support ticket in Zammad for a staff member and returns a confirmation.
 
 ```json
 {
   "bot_response": "Your support ticket has been created successfully. Our support team will contact you soon."
 }
 ```
-
----
 
 # RAG System
 
@@ -227,6 +229,13 @@ Each ticket contains:
 - Issue description
 - Priority
 - Additional information
+
+
+Tickets created after a successful AI resolution additionally contain:
+- Chat history
+- Offered solutions
+- Status: closed
+- Tag: AISolved
 
 ---
 

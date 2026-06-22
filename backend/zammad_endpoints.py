@@ -36,7 +36,9 @@ def create_ticket_by_user_email(
         priority:int=0,
         group:str = "Users",
         article_type:str = "web",
-        internal:bool = False
+        internal:bool = False, 
+        state:str = "new"        
+
 ):
     """
     Erstellt ein Ticket im Zammad-System über die REST-API,
@@ -51,7 +53,11 @@ def create_ticket_by_user_email(
     :arg article_type: Typ des Artikels (erste Nachricht im Ticket,
         s. https://docs.zammad.org/en/latest/api/ticket/articles.html#general-information-about-ticket-articles) (i. d. R. note)
     :arg internal: Standardmäßig False. Falls True, ist das Ticket nur für die Mitarbeitenden des Helpdesks sichtbar
+    :arg state: Zammad-Status des Tickets, z.B. "new" oder "closed"
     """
+    
+
+
     json_body_for_ticket = {
         "title": f"{title}",
         "group": f"{group}",
@@ -63,6 +69,7 @@ def create_ticket_by_user_email(
             "sender": "Customer",
         },
         "priority_id": priority_number_to_zammad_priority_id_map[priority],
+        "state":state,
     }
 
     server_response = requests.post(url=f"{server_address}/api/v1/tickets",
@@ -72,7 +79,16 @@ def create_ticket_by_user_email(
 
     print(server_response.status_code)
     print(server_response.text)
+    return server_response.json().get("id")
 
-
+def add_tag_to_ticket(ticket_id: int, tag: str):
+    """Fügt einen Tag zu einem Zammad-Ticket hinzu."""
+    response = requests.post(
+        url=f"{server_address}/api/v1/tags/add",
+        json={"object": "Ticket", "o_id": ticket_id, "item": tag},
+        headers=headers,
+        timeout=GENERAL_TIMEOUT
+    )
+    print(f"Tag '{tag}' added to ticket {ticket_id}: {response.status_code}")
 
 # create_ticket_by_user_email(email="example@example.com", title="Help request", body="Hello, I need help!",)
