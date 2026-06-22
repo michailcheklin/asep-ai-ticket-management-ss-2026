@@ -167,7 +167,7 @@ def ask_for_issue(state: ChatbotState):
     :param state: The current conversation and ticket state
     :return: A dictionary containing the newly extracted fields to update the state.
     """
-    attempts = state.get("ask_issue_attempts") + 1
+    attempts = state.get("ask_issue_attempts",0) + 1
     system_prompt = SystemMessage(content=(
         "Du bist ein IT-Support-Bot des ZIM einer Universität. "
         "Du unterstützt ausschließlich bei Problemen mit universitären IT-Diensten "

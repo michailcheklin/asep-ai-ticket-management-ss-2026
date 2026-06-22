@@ -206,7 +206,8 @@ async def solution_feedback(request: ChatRequest):
         "priority": request.priority,
         "is_complete": False,
         "solutions": request.solutions,
-        "additional_info_attempts": request.additional_info_attempts,
+        "ask_issue_attempts": request.ask_issue_attempts,
+        "additional_info_attempts": request.additional_info_attempts
     }
 
     if request.helpful:
