@@ -4,10 +4,9 @@ from pydantic import BaseModel, Field, SecretStr
 from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
-
-from rag.retrieve_info import retrieve_relevant_entries
-from state import ChatbotState
-from zammad_endpoints import create_ticket_by_user_email, add_tag_to_ticket
+from backend.state import ChatbotState
+from backend.zammad_endpoints import create_ticket_by_user_email, add_tag_to_ticket
+from backend.rag.retrieve_info import retrieve_relevant_entries
 
 USE_SAIA = os.getenv("USE_SAIA_API", "false").lower() == "true"
 # temperature 0.2 for less hallucination
@@ -398,7 +397,7 @@ def finish_ai_solved_ticket(state: ChatbotState):
     generated_title = title_response.content.strip()
     zammad_title = f"[{state['matrikelnummer']}] {generated_title}"
 
-    # Chatverlauf aufbereiten 
+    # Chatverlauf aufbereiten
     verlauf = ""
     for msg in state.get("messages", []):
         if isinstance(msg, HumanMessage):
@@ -406,7 +405,7 @@ def finish_ai_solved_ticket(state: ChatbotState):
         elif isinstance(msg, AIMessage):
             verlauf += f"Bot: {msg.content}\n"
 
-    # Angebotene Lösungen aufbereiten 
+    # Angebotene Lösungen aufbereiten
     loesungen = ""
     for i, solution in enumerate(state.get("solutions", []), 1):
         loesungen += f"{i}. {solution.get('title', '')}\n{solution.get('description', '')}\n\n"
