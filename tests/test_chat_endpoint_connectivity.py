@@ -2,7 +2,7 @@
 import pytest
 
 from backend.api.ZIM import chat_endpoint
-from backend.graph.models import ChatRequest
+from backend.graph.models.ChatRequest import ChatRequest
 
 # Nur 3 Tests, um die Prompts beim Key zu sparen
 testcases = [
@@ -24,6 +24,7 @@ testcases = [
 @pytest.mark.asyncio
 @pytest.mark.parametrize("testcase", testcases)
 async def test_chat_endpoint_connectivity(testcase):
+    print(ChatRequest)
     """
     Dieser Test testet, ob das LLM überhaupt eine wohlgeformte Antwort generieren kann,
     d. h. eine gültige JSON. Dies ist Platzhalter, bis ein besseres Verständnis über DeepEval
