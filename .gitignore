@@ -1,3 +1,9 @@
+.deepeval
+
+# Files that keep regenerating and changing locally
+# when you re-run any tests that touch the RAG system
+**/*.sqlite3
+**/*.bin
 ### Quelle: https://github.com/github/gitignore/blob/main/Python.gitignore
 # Byte-compiled / optimized / DLL files
 __pycache__/
