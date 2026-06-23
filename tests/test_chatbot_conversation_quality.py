@@ -31,8 +31,14 @@ dataset = EvaluationDataset(goldens=[
         user_description="Nicht-technischer Kunde, der dazu tendiert, vage Informationen zu geben, es sei denn er wird"
                          " explizit nach Details gefragt",
         turns=[
+            # The initial message from the frontend that is shown
             Turn(role="assistant", content="Hallo! Ich bin ZIM Helper. Erzähl mir bitte von deinem Anliegen."),
+
+            # The first thing that the user types into the chat
             Turn(role="user", content="Mein WLAN geht nicht")
+
+            # After that the chatbot test decides what the user enters into the chat
+            # and then how the simulated user on the subsequent chatbot output reacts
         ]
     ),
 ])
