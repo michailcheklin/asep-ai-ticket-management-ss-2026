@@ -1,8 +1,8 @@
 # backend/services/ticket_service.py
 
 from langchain_core.messages import HumanMessage, AIMessage
-from ..graph.nodes import llm
 from ..api.zammad import create_ticket_by_user_email, add_tag_to_ticket
+from ..llm.llm import llm
 
 
 class TicketService:
@@ -71,7 +71,8 @@ class TicketService:
             return {
                 "messages": [
                     AIMessage(content=(
-                        "Super, das freut mich! Wenn du wieder Hilfe brauchst, bin ich da 🙂"
+                        "Super, das freut mich! Wenn du in Zukunft weitere Fragen hast, "
+                        "stehe ich gerne zur Verfügung. Hab einen schönen Tag!"
                     ))
                 ],
                 "is_complete": True
@@ -114,9 +115,13 @@ class TicketService:
         return {
             "messages": [
                 AIMessage(content=(
-                    f"Perfekt! Ticket erstellt.\n\n"
-                    f"**Betreff:** {title}\n"
-                    f"Ich melde mich bald 🙂"
+                    "Perfekt! Dein Ticket wurde erfolgreich erstellt.\n\n"
+                    "Ein Support-Mitarbeiter meldet sich so bald wie möglich bei dir.\n\n"
+                    "**Ticketübersicht**\n\n"
+                    f"**Betreff:** {title}\n\n"
+                    f"**E-Mail:** {state['user_email']}\n\n"
+                    f"**Problembeschreibung:**\n"
+                    f"{state['issue_description']}"
                 ))
             ],
             "is_complete": True
