@@ -1,5 +1,5 @@
 import concurrent.futures
-from .prompt_security_result import (
+from .prompt_security_checks import (
     evaluate_prompt_injection,
     evaluate_legality,
     evaluate_off_topic
