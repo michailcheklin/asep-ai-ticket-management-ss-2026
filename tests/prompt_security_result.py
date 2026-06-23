@@ -1,8 +1,8 @@
 import torch
 
-from backend.security_logger import log_blocked_prompt
+from .security_logger import log_blocked_prompt
 from datetime import datetime
-from backend.prompt_check_pipeline import (
+from tests.prompt_check_pipeline import (
     ZIM_KEYWORDS,
     DANGEROUS_PATTERNS,
     ON_TOPIC_TOPICS,
