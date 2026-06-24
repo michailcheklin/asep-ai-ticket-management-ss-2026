@@ -36,6 +36,7 @@ LangGraph
     │
     ├── Extract information
     ├── Ask for missing data
+    ├── Classify ticket category
     ├── Search for solutions (RAG)
     └── Create ticket
     │
@@ -218,6 +219,50 @@ The priority is extracted together with the ticket information and is included i
 
 ---
 
+# Ticket Category Classification
+
+The chatbot classifies each support request into exactly one ticket category using an LLM-based classifier implemented in `nodes.py`.
+
+## Supported Categories
+
+| Category | Typical use case |
+| -------- | ---------------- |
+| Zugang/Login | Login, password, 2FA, locked accounts, authentication |
+| Technisches Problem | Software, device, network, or system malfunction |
+| Allgemeine Anfrage | Information requests or unclear issues |
+| Beschwerde | Complaints about support, waiting time, or communication |
+| Rechnung | Payments, fees, invoices, refunds, payment status |
+
+## How It Works
+
+The main function is `classify_ticket_category()` in `nodes.py`. It uses a structured LLM output (`TicketCategoryDecision`) and prompt rules (`_CATEGORY_RULES`) to choose one category based on the user's main intent.
+
+Classification uses the full conversation context, not only the latest message:
+
+* user messages from the chat history
+* extracted issue description
+* extracted additional information
+
+The workflow node `classify_ticket_node` (defined in `classify_ticket()`) runs after additional information has been collected and before solution retrieval (`give_solutions_node`).
+
+When a ticket is created, `_resolve_ticket_category()` reuses an already stored category from the chatbot state. If no valid category exists yet, classification is performed once at ticket creation.
+
+The determined category is:
+
+* stored in the chatbot state (`category` field in `state.py`)
+* returned in the `/chat` API response
+* included in the Zammad ticket body as `Kategorie: ...`
+
+If the LLM returns an unknown category, the fallback is `Allgemeine Anfrage`.
+
+Category classification is separate from information extraction. The extractor node only collects ticket data; category assignment is handled by the dedicated classification node.
+
+## Tests
+
+Unit tests are in `test_ticket_category.py`. Mocked tests run without Ollama or SAIA. Optional live LLM tests can be enabled with `RUN_LLM_CATEGORY_TESTS=1`.
+
+---
+
 # Zammad Integration
 
 Communication with Zammad is implemented in `zammad_endpoints.py`.
@@ -228,6 +273,7 @@ Each ticket contains:
 - Student ID
 - Issue description
 - Priority
+- Category
 - Additional information
 
 
@@ -296,11 +342,12 @@ These workarounds should be replaced by a more robust classifier-based solution 
 
 # Summary
 
-The backend workflow consists of four main steps:
+The backend workflow consists of five main steps:
 
 1. Extract information from the conversation.
 2. Request missing information.
-3. Search for suitable solutions using RAG.
-4. Create a support ticket in Zammad if no solution resolves the issue.
+3. Classify the ticket category.
+4. Search for suitable solutions using RAG.
+5. Create a support ticket in Zammad if no solution resolves the issue.
 
 The separation into **State**, **Nodes**, and **Graph** keeps the workflow modular, maintainable, and easy to extend.
