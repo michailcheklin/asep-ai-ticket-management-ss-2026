@@ -251,8 +251,18 @@ def give_solutions(state: ChatbotState):
 
 
 def finish_ticket(state):
+    """
+    Finalizes the ticket creation process by generating a concise title
+    and preparing the payload for the Zammad API.
+    """
+
     return ticket_service.create_support_ticket(state)
 
 
 def finish_ai_solved_ticket(state):
+    """
+    Finalizes the ticket creation process by generating a concise title
+    and preparing the payload for the Zammad API. Also marks the ticket with that that
+    was solved only by using the chatbot without involving the ZIM staff
+    """
     return ticket_service.create_ai_solved_ticket(state)

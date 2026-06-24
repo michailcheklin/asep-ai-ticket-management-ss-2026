@@ -8,7 +8,6 @@ from .nodes import (
     ask_for_additional_info,
     give_solutions,
     finish_ticket,
-    finish_ai_solved_ticket
 )
 
 def __execute_langchain_workflow(state: ChatbotState):

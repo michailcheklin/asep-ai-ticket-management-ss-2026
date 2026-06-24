@@ -24,13 +24,13 @@ testcases = [
 @pytest.mark.asyncio
 @pytest.mark.parametrize("testcase", testcases)
 async def test_chat_endpoint_connectivity(testcase):
-    print(ChatRequest)
     """
-    Dieser Test testet, ob das LLM überhaupt eine wohlgeformte Antwort generieren kann,
-    d. h. eine gültige JSON. Dies ist Platzhalter, bis ein besseres Verständnis über DeepEval
-    für die echte LLM-Analyse gewonnen werden konnte
-    :param testcase: Der zu testende Prompt mit dem Kontext als JSON
+    This test checks whether the LLM can generate a well-formed response at all,
+    i.e., valid JSON.
+    :param testcase: The prompt to test along with the context packed in a JSON file
     """
+
+
     test_request_as_chat_request = ChatRequest(**testcase)
     print(f"Sending following request to the chatbot: \n{json.dumps(testcase)}")
     response = await chat_endpoint(test_request_as_chat_request)
