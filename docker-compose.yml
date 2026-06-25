@@ -36,15 +36,15 @@ services:
 
   frontend_clone:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: frontend/Dockerfile
     command:
       [
         "python",
         "-m",
         "streamlit",
         "run",
-        "app_clone.py",
+        "./frontend/app_clone.py",
         "--server.headless",
         "true",
         "--server.port",
