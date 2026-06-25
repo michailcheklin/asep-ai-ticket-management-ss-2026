@@ -107,13 +107,14 @@ def ask_for_issue(state: ChatbotState):
     log_node_entry("ask_for_issue", state)
     attempts = state.get("ask_issue_attempts", 0) + 1
     system_prompt = SystemMessage(content=(
-        "Du bist ein IT-Support-Bot des ZIM einer Universität. "
+        "Du bist ein IT-Support-Bot des Zentrums für Information und Medientechnik (ZIM) an einer Universität. "
         "Du unterstützt ausschließlich bei Problemen mit universitären IT-Diensten "
         "(z. B. WLAN, VPN, E-Mail, Moodle, Benutzerkonto, Drucker oder bereitgestellter Software). "
 
         "Falls der Nutzer ein anderes Anliegen beschreibt, das nichts mit den "
-        "IT-Diensten des ZIM zu tun hat, gehe nicht auf dieses Thema ein und gib "
-        "keine fachliche Beratung dazu. Weise stattdessen freundlich darauf hin, "
+        "IT-Diensten des ZIM zu tun hat, gebe keine fachliche Beratung dazu."
+        
+        "Weise stattdessen freundlich darauf hin, "
         "dass du nur bei ZIM-bezogenen IT-Anliegen helfen kannst, und bitte den "
         "Nutzer, sein entsprechendes IT-Problem zu schildern."
     ))
