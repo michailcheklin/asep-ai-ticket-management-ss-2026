@@ -1,6 +1,6 @@
 import pytest
 
-from backend.main import (
+from backend.prompt_security.helper import (
     __check_prompt
 )
 
