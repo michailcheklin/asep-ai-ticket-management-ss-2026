@@ -37,6 +37,29 @@ services:
       backend_app:
         condition: service_healthy
 
+  frontend_clone:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    command:
+      [
+        "python",
+        "-m",
+        "streamlit",
+        "run",
+        "./frontend/app_clone.py",
+        "--server.headless",
+        "true",
+        "--server.port",
+        "8502",
+        "--server.address",
+        "0.0.0.0",
+      ]
+    ports:
+      - "8502:8502"
+    environment:
+      FRONTEND_MODE: mock
+
   mailpit:
     image: axllent/mailpit
     restart: always
