@@ -6,6 +6,7 @@ from .state import ChatbotState
 from backend.rag.retrieve_info import retrieve_relevant_entries
 from ..services.TicketService import TicketService
 from ..llm.llm import llm, structured_llm
+from .node_logging import log_node_entry
 
 ticket_service = TicketService()
 
@@ -16,6 +17,7 @@ def extract_information(state: ChatbotState):
     :param state: The current state of the chatbot conversation.
     :return: A dictionary containing the newly extracted fields to update the state.
     """
+    log_node_entry("extract_information", state)
     last_user_message = [msg for msg in state["messages"] if isinstance(msg, HumanMessage)][-1]
 
     system_prompt = ("""Du bist ein hochpräziser KI-Daten-Extraktor für ein IT-Support-Unternehmen, das exklusiv mit Universitäten zusammenarbeitet.
@@ -65,6 +67,7 @@ def ask_for_email(state: ChatbotState):
     :param state: The current conversation and ticket state
     :return: A dictionary containing the newly extracted fields to update the state.
     """
+    log_node_entry("ask_for_email", state)
     system_prompt = SystemMessage(content=(
         "Du bist ein IT-Support-Bot. Dir fehlt noch die email des Users. "
         "Frage kurz und höflich nach der Uni email Adresse. Beantworte keine anderen Fragen "
@@ -83,6 +86,7 @@ def ask_for_matrikelnummer(state: ChatbotState):
     :param state: The current conversation and ticket state
     :return: A dictionary containing the newly extracted fields to update the state.
     """
+    log_node_entry("ask_for_matrikelnummer", state)
     system_prompt = SystemMessage(content=(
         "Du bist ein IT-Support-Bot. Dir fehlt noch die 7-stellige Matrikelnummer des Users. "
         "Frage kurz und höflich nach der Matrikelnummer. Beantworte keine anderen Fragen."
@@ -100,6 +104,7 @@ def ask_for_issue(state: ChatbotState):
     :param state: The current conversation and ticket state
     :return: A dictionary containing the newly extracted fields to update the state.
     """
+    log_node_entry("ask_for_issue", state)
     attempts = state.get("ask_issue_attempts", 0) + 1
     system_prompt = SystemMessage(content=(
         "Du bist ein IT-Support-Bot des ZIM einer Universität. "
@@ -128,7 +133,7 @@ def ask_for_additional_info(state: ChatbotState):
     :param state: The current conversation and ticket state
     :return: A dictionary containing the newly extracted fields to update the state.
     """
-
+    log_node_entry("ask_for_additional_info", state)
     problem = state.get("issue_description", "")
     infos = state.get("additional_info", [])
     attempts = state.get("additional_info_attempts", 0)
@@ -174,6 +179,7 @@ def give_solutions(state: ChatbotState):
     Build a RAG query from: history + user_message + issue_description + additional_info
     (in that exact order), then retrieve and return up to two solutions.
     """
+    log_node_entry("give_solutions", state)
     msgs = state.get("messages", []) or []
     # history = all messages except the last one
     history_parts = [m.content for m in msgs[:-1]] if len(msgs) > 1 else []
@@ -255,6 +261,9 @@ def finish_ticket(state):
     Finalizes the ticket creation process by generating a concise title
     and preparing the payload for the Zammad API.
     """
+    log_node_entry("finish_ticket", state)
+
+
 
     return ticket_service.create_support_ticket(state)
 
@@ -265,4 +274,5 @@ def finish_ai_solved_ticket(state):
     and preparing the payload for the Zammad API. Also marks the ticket with that that
     was solved only by using the chatbot without involving the ZIM staff
     """
+    log_node_entry("finish_ai_solved_ticket", state)
     return ticket_service.create_ai_solved_ticket(state)
