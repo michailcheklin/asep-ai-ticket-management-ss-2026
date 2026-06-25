@@ -1,5 +1,22 @@
 # Graph (LangGraph)
 
+**Prerequisites for LangSmith tracing**:
+To be able to trace the LangGraph flow using LangSmith you need to do following steps:
+1. Go to https://smith.langchain.com/
+2. Select the **EU** Data Region
+3. Sign up with an e-mail and set a password to create an account
+4. On account confirmation choose "Technical" and then "LangSmith".
+5. Go to ⚙️ Settings > Access and Security > API Keys
+6. Click "+ API Key"
+7. Choose "Personal Access Token" and choose a name for the LangSmith API key
+8. Copy your API key
+9. Paste the following text into your .env file:
+```
+LANGSMITH_TRACING=true
+LANGSMITH_API_KEY=(langsmith API key copied in step 8)
+LANGSMITH_ENDPOINT=https://eu.api.smith.langchain.com
+```
+
 This folder contains the LangGraph workflow used to orchestrate extraction, clarification and retrieval steps. The graph is responsible for executing small, composable nodes that together implement the backend conversation logic.
 
 Structure
