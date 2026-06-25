@@ -262,7 +262,20 @@ def finish_ticket(state):
     and preparing the payload for the Zammad API.
     """
     log_node_entry("finish_ticket", state)
-
+    # If the issue was asked three times, and no problem could be extracted,
+    # say instead that the off-topic issue cannot be processed by support
+    attempts = state.get("ask_issue_attempts", 0)
+    if attempts >= 3:
+        final_message = (
+            "Ich kann dein Anliegen leider nicht weiter als ZIM-IT-Support bearbeiten, "
+            "da keine eindeutige IT-/ZIM-bezogene Problemstellung erkannt wurde.\n\n"
+            "Falls du später ein IT-Problem rund um Dienste der Universität hast "
+            "(z. B. WLAN, VPN, E-Mail, Moodle oder Account-Probleme), helfe ich dir gerne weiter."
+        )
+        return {
+            "messages": [AIMessage(content=final_message)],
+            "is_complete": True
+        }
 
 
     return ticket_service.create_support_ticket(state)
