@@ -7,12 +7,13 @@ Files
 - `prompts.py` — central place for prompt templates, system messages and any few-shot examples used across the graph. Keeping prompts here improves consistency and makes prompt-testing easier.
 
 Configuration
-- The backend can be configured to use an on-prem Ollama instance or a remote SAIA-compatible API. Typical environment variables:
-  - `OLLAMA_HOST` / `OLLAMA_PORT`
-  - `SAIA_API_URL` / `SAIA_API_KEY`
+- The backend can be configured to use an on-prem Ollama instance or a remote SAIA-compatible API.  
+- Environment Variables:
+  - `USE_SAIA_API`: `true`/`false`- whether to use the SAIA API or not
+  - `SAIA_API_KEY`: The API key to be used (here: SAIA)
 
 Usage
-- Nodes that need LLM capabilities import `llm.llm` and call the appropriate function (e.g. `generate_extract`, `summarize_retrievals`).
+- Nodes that need LLM capabilities import `llm.llm` and call the appropriate function 
 - Prompt templates are stored in `prompts.py` and referenced by name. Use named templates rather than inline strings for maintainability.
 
 Best practices
