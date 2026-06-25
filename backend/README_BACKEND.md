@@ -1,300 +1,155 @@
 # Chatbot Backend
 
-This is the backend code for the chatbot, based on LangGraph and FastAPI.
-  
+This is the backend code for the chatbot, based on LangGraph and FastAPI. The code has been modularised and split into logical packages; see the repository layout below for details and links to package-level READMEs.
+
 ## 1. Installation & Setup
-* The chatbot relies on Zammad and the included Ollama container running within a Docker. 
-Therefore, these containers need to by started by:
+* The chatbot relies on Zammad and the included Ollama container running within Docker. Start the required containers from the `zammad` folder:
 
 ```bash
-$ cd ../zammad
-```
-and then:
-```bash
+cd ../zammad
 docker compose -f docker-compose.yml -f scenarios/add-ollama.yml up -d
+cd ../
 ```
-after that switch to base directory
-  ```bash
-  cd ../
-  ```
-then start the ai-ticket-management container
+
+Then build and start the ai-ticket-management stack:
+
 ```bash
 docker compose up -d --build
 ```
 
+Notes:
+- The backend expects the Zammad instance and the LLM runtime (Ollama or compatible SAIA API) to be reachable from the container network.
+- Environment variables and other runtime configuration are documented in the top-level `README.md` and `example.env`.
+
 ## 2. Architecture
+
+High-level flow:
 
 ```text
 Frontend
     │
     │ POST /chat
     ▼
-FastAPI
+FastAPI (api)
     │
     ▼
-LangGraph
+LangGraph (graph)
     │
     ├── Extract information
     ├── Ask for missing data
-    ├── Search for solutions (RAG)
-    └── Create ticket
+    ├── Search for solutions (RAG, rag)
+    └── Create ticket (services)
     │
     ▼
 Response to Frontend
 ```
-If the chatbot cannot extract an issue, it attempts to ask the user to describe its issue again three times.  
-After the third time, the chatbot ends the conversation referring to come back if there is a problem relevant for the ZIM.
 
-If solutions are found, the frontend asks the user whether they solved the issue.
+If the chatbot cannot extract an issue it asks the user to clarify up to three times and then ends the conversation politely.
 
-```text
-Frontend
-    │
-    │ POST /solution-feedback
-    ▼
-Backend
-    │
-    ├── Helpful
-    │      └── Create closed ticket in Zammad with tag "AISolved"
-    │
-    └── Not helpful
-           └── Create open ticket in Zammad for staff
-```
+If solutions are found by the RAG pipeline the frontend will offer them to the user and ask for feedback. Feedback is handled via `POST /solution-feedback` (see API section).
 
-# API Endpoints
+## Repository layout
 
-## POST /chat
+The backend is organised into the following folders (each folder contains its own README with more details):
 
-Main communication endpoint between frontend and backend.
+- `api/` - FastAPI endpoints and request/response shaping. See `api/README.md`.
+- `graph/` - LangGraph workflow, nodes and state orchestration. See `graph/README.md`.
+- `graph/models/` - Pydantic models used by the graph and nodes. See `graph/models/README.md`.
+- `llm/` - LLM wrappers, prompt templates and helpers. See `llm/README.md`.
+- `services/` - Integrations (Zammad, ticket creation, helpers). See `services/README.md`.
 
-Responsibilities:
-- Receive user input
-- Build the current chatbot state
-- Execute the LangGraph workflow
-- Return the updated state
+## API Endpoints
 
-#### Request
+See `api/README.md` for full endpoint descriptions and example requests/responses. The two main endpoints are:
+
+- `POST /chat` – primary conversation endpoint. Receives the user message and conversation state, executes the LangGraph workflow and returns an updated state and any suggested solutions.
+- `POST /solution-feedback` – called when the user indicates whether a suggested solution solved the problem. Creates/updates tickets in Zammad depending on the feedback.
+
+### Example (short)
+
+Request to `/chat`:
 
 ```json
 {
   "user_message": "My VPN connection is not working.",
-  "history": [
-    {
-      "role": "assistant",
-      "content": "Hello! How can I help you?"
-    },
-    {
-      "role": "user",
-      "content": "My VPN connection is not working."
-    }
-  ],
-  "user_email": "john.doe@example.com",
-  "matrikelnummer": "12345678",
-  "issue_description": "",
-  "additional_info": [],
-  "priority": 0
+  "history": [],
+  "user_email": "john.doe@example.com"
 }
 ```
 
-#### Response
+Response (when additional info is needed):
 
 ```json
 {
   "bot_response": "Can you tell me which operating system you are using?",
-  "issue_description": "VPN connection does not work",
-  "additional_info": [
-    "VPN"
-  ],
-  "priority": 2,
-  "solutions": [],
-  "needs_additional_info": true,
-  "is_complete": false
+  "needs_additional_info": true
 }
 ```
 
-If the chatbot already knows a suitable solution, the response contains one or more solution objects instead of asking another question.
-
-Example:
+If a solution is found, the response includes a `solutions` array with short entries:
 
 ```json
 {
   "bot_response": "Please try reconnecting to the university VPN using the AnyConnect client.",
-  "issue_description": "VPN connection does not work",
-  "additional_info": [
-    "Windows 11"
-  ],
-  "priority": 2,
-  "needs_additional_info": false,
-  "is_complete": false,
-  "solutions": [
-    {
-      "title": "VPN Troubleshooting",
-      "content": "Restart the VPN client and reconnect."
-    }
-  ]
+  "solutions": [ { "title": "VPN Troubleshooting", "content": "Restart the VPN client and reconnect." } ],
+  "needs_additional_info": false
 }
 ```
 
+## RAG System
 
-## POST /solution-feedback
-
-Called after the user indicates whether the proposed solution solved the problem.
-
-#### Request
-
-```json
-{
-  "user_message": "",
-  "history": [],
-  "user_email": "john.doe@example.com",
-  "matrikelnummer": "12345678",
-  "issue_description": "VPN connection does not work",
-  "additional_info": [
-    "Windows 11"
-  ],
-  "priority": 2,
-  "helpful": false,
-  "solutions": [
-    {
-      "title": "VPN Troubleshooting",
-      "content": "Restart the VPN client and reconnect."
-    }
-  ],
-  "message": "Please try reconnecting to the university VPN using the AnyConnect client."
-}
-```
-
-#### Response
-
-If the solution was helpful (`helpful: true`), the backend:
-- Creates a ticket in Zammad with status **closed**
-- Tags it with **AISolved**
-- Includes the chat history and offered solutions in the ticket body
-- Returns a goodbye message
-
-```json
-{
-  "bot_response": "Super, das freut mich! Wenn du in Zukunft weitere Fragen hast, stehe ich gerne zur Verfügung. Hab einen schönen Tag!"
-}
-```
-
-If the solution was not helpful (`helpful: false`), the backend creates an open support ticket in Zammad for a staff member and returns a confirmation.
-
-```json
-{
-  "bot_response": "Your support ticket has been created successfully. Our support team will contact you soon."
-}
-```
-
-# RAG System
-
-Before creating a ticket, the chatbot searches the knowledge base for relevant information.
-
-The retrieval component searches:
-- FAQ entries
-- Similar support tickets
-
-The LLM summarizes the retrieved content into a concise response.
+Before creating a ticket the chatbot searches the knowledge base (FAQ entries and similar past tickets) and uses it as context to summarise relevant results. The RAG components are located under `rag/` and the embedded vector stores are in `rag/faq_db` and `rag/ticket_db`.
 
 ---
 
-# Ticket Prioritization
+## Ticket Prioritization
 
-The chatbot automatically classifies tickets into two priority levels:
+Tickets are automatically classified into two priority levels:
 
 | Priority | Meaning                   |
 | -------- | ------------------------- |
 | 0        | Normal / non-urgent issue |
 | 1        | Urgent / important issue  |
 
-Examples for urgent tickets include:
-
-* User cannot log in
-* Exam or deadline is affected
-* Complete service outage
-* Critical account access problems
-
-The priority is extracted together with the ticket information and is included in the chatbot state and API response. The value can later be used when creating tickets in Zammad to assign a higher ticket priority.
+Urgent examples: unable to log in, exam/deadline affected, complete service outage, critical account access issues.
 
 ---
 
-# Zammad Integration
+## Zammad Integration
 
-Communication with Zammad is implemented in `zammad_endpoints.py`.
+Ticket creation and updates are implemented in `services/TicketService.py` and the lower-level Zammad helpers live in `api/Zammad.py`. Tickets created after an AI-resolve contain:
 
-Each ticket contains:
-- Title
-- Email
-- Student ID
-- Issue description
-- Priority
-- Additional information
-
-
-Tickets created after a successful AI resolution additionally contain:
-- Chat history
-- Offered solutions
-- Status: closed
-- Tag: AISolved
+- Title, Email, Student ID (Matrikelnummer)
+- Issue description, Priority, Additional information
+- Chat history and offered solutions (for AISolved tickets)
+- Tags and status (e.g. `AISolved`, closed)
 
 ---
 
-# Prompt Security
+## Prompt Security
 
-The project contains optional security checks against:
-- Prompt injection
-- Illegal content
-- Off-topic requests
-
-These checks are implemented in `prompt_security_result.py` and can be enabled if required.
-
-## Security Checks
-
-Before a user message is processed by the chatbot workflow, multiple security checks are performed.
-
-The backend currently validates:
-
-* Prompt Injection attempts
-* Illegal or harmful topics
-* Off-topic requests unrelated to ZIM support
-
-If a request violates one of these security checks, it is blocked and not forwarded to the chatbot workflow.
-
-Blocked requests are logged together with:
-
-* timestamp
-* detected category
-* model classification
-* risk score
-
-The security layer is executed before any chatbot processing or future RAG-based retrieval takes place.
+Optional security checks are available to detect prompt injection, illegal content or off-topic requests. The detection logic is implemented in `tests/prompt_security_result.py` and related helpers. Blocked requests are logged to `blocked_prompts.log` with timestamp, category, model classification and risk score.
 
 ## Current Limitations
 
-The prompt injection detector (`deepset/deberta-v3-base-injection`) occasionally produces false positives for legitimate ZIM support requests.
-
-To mitigate this issue, additional rule-based validation is currently used.
-
-The legality check also contains a temporary keyword-based workaround for ZIM-related requests because the zero-shot classifier may incorrectly classify legitimate support tickets as harmful or unrelated.
-
-These workarounds should be replaced by a more robust classifier-based solution in future iterations.
+- The prompt-injection model (`deepset/deberta-v3-base-injection`) sometimes yields false positives; additional rule-based checks are used as a fallback.
+- Some temporary keyword-based workarounds exist in the legality checks and should be replaced by more robust classifiers in the future.
 
 ---
 
-# Technologies
+## Technologies
 
 - Python
 - FastAPI
 - LangGraph
 - LangChain
-- Ollama
-- OpenAI-compatible SAIA API
+- Ollama / SAIA-compatible API
 - Pydantic
 - Zammad API
 
 ---
 
-# Summary
+## Summary
 
 The backend workflow consists of four main steps:
 
@@ -303,4 +158,4 @@ The backend workflow consists of four main steps:
 3. Search for suitable solutions using RAG.
 4. Create a support ticket in Zammad if no solution resolves the issue.
 
-The separation into **State**, **Nodes**, and **Graph** keeps the workflow modular, maintainable, and easy to extend.
+The separation into `api`, `graph`, `llm` and `services` keeps the workflow modular, maintainable and easy to extend. Each package contains a README with more implementation details.
