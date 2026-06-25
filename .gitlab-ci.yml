@@ -29,6 +29,9 @@ run_test_chat_endpoint_connectivity:
     - PoC
   image: python:3.11
   before_script:
+    - echo "LANGSMITH_TRACING=true" >> .env
+    - echo "LANGSMITH_API_KEY=$LANGSMITH_API_KEY" >> .env
+    - echo "LANGSMITH_ENDPOINT=https://eu.api.smith.langchain.com" >> .env
     - echo "SAIA_API_KEY=$SAIA_API_KEY" >> .env
     - echo "USE_SAIA_API=true" >> .env
     - python --version
