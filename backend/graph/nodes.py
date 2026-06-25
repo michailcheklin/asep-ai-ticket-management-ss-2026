@@ -1,134 +1,17 @@
-import os
-from typing import Optional, cast, List
-from pydantic import BaseModel, Field, SecretStr
-from langchain_ollama import ChatOllama
-from langchain_openai import ChatOpenAI
+from typing import cast
+from .models.ExtractedTicketData import ExtractedTicketData
+from .models.AdditionalInfoDecision import AdditionalInfoDecision
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
-from backend.state import ChatbotState
-from backend.zammad_endpoints import create_ticket_by_user_email, add_tag_to_ticket
+
+from .models.TicketCategoryDecision import TICKET_CATEGORIES, TicketCategoryDecision
+from .state import ChatbotState
 from backend.rag.retrieve_info import retrieve_relevant_entries
+from ..services.TicketService import TicketService
+from ..llm.llm import llm, structured_llm, category_llm
+from .node_logging import log_node_entry
+from ..llm.prompts import TICKET_CATEGORY_RULES
 
-USE_SAIA = os.getenv("USE_SAIA_API", "false").lower() == "true"
-# temperature 0.2 for less hallucination
-# Toggles between the SAIA API model (70B) and local Ollama (3B).
-# Defaults to 'false' to avoid useing up the monthly SAIA limit (3000 requests)
-# during standard code development and pipeline testing
-if USE_SAIA:
-    raw_key = os.getenv("SAIA_API_KEY", "")
-    # LangChain requires API keys to be wrapped in a Pydantic 'SecretStr' type
-    # This prevents the key from being exposed in plain text within logs
-    # if the application crashes or the 'llm' object is accidentally printed to the terminal
-    secure_saia_api_key = SecretStr(raw_key) if raw_key else None
-    llm = ChatOpenAI(
-        model="deepseek-r1-distill-llama-70b",
-        api_key=secure_saia_api_key,
-        base_url="https://chat-ai.academiccloud.de/v1",
-        temperature=0.2
-    )
-else:
-    ollama_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-    llm = ChatOllama(
-        model="qwen3:8b",
-        temperature=0.2,
-        base_url=ollama_url
-    )
-
-TICKET_CATEGORIES = [
-    "Zugang/Login",
-    "Technisches Problem",
-    "Allgemeine Anfrage",
-    "Beschwerde",
-    "Rechnung",
-]
-
-
-class ExtractedTicketData(BaseModel):
-    """
-    Schema defining the structured ticket data to be extracted from user messages
-    """
-    email: Optional[str] = Field(None,
-                                 description="Die E-Mail-Adresse des Users. Nur ausfüllen, wenn sie ein @-Zeichen enthält.")
-    matrikelnummer: Optional[str] = Field(None,
-                                          description="Die 7-stellige Matrikelnummer des Studenten, falls genannt.")
-    problem: Optional[str] = Field(None,
-                                   description="Das vom Nutzer explizit beschriebene IT-Problem oder die Supportanfrage. "
-                                                "Nur setzen, wenn tatsächlich ein konkretes Problem genannt wird. "
-                                                "Bei Begrüßungen, einzelnen Buchstaben, Testnachrichten, Smalltalk, "
-                                                "Dankesnachrichten oder unverständlichem Text muss der Wert null sein. "
-                                                "Niemals ein Problem erfinden oder aus Vermutungen ableiten."
-                                   )
-    additional_info: Optional[List[str]] = Field(default_factory=list,
-                                                 description="Eine Liste von spezifischen Zusatzinformationen, die für den IT-Support an einer Universität relevant sind (z.B. Gebäude, Raumnummer, Fehlermeldung, Gerätetyp, OS). Keine Füllwörter."
-                                                 )
-    priority: Optional[int] = Field(
-        None,
-        description=(
-            "Priority of the ticket. Use 1 for urgent or important issues, "
-            "for example locked account, no login possible, exam or deadline affected, "
-            "complete outage. Use 0 for normal or non-urgent issues."
-        )
-    )
-
-
-class AdditionalInfoDecision(BaseModel):
-    """Schema decision, if additional info is needed for effective problem treatment"""
-    needs_additional_info: bool = Field(
-        description="True, wenn die Zusatzinfos ausreichen, um das Problem zu bearbeiten. False, wenn wichtige Details fehlen (z.B. bei 'WLAN kaputt' fehlt das Gebäude)."
-    )
-    follow_up_question: Optional[str] = Field(
-        description="Wenn needs_additional_info False ist: Eine kurze, höfliche Frage an den User, um die fehlenden Details herauszufinden. Wenn needs_additional_info True ist, lasse dieses Feld leer (null)."
-    )
-
-
-# Forces the LLM to return data strictly matching the ExtractedTicketData schema in JSON format
-structured_llm = llm.with_structured_output(ExtractedTicketData)
-
-
-class TicketCategoryDecision(BaseModel):
-    """Schema for the LLM output of the dedicated ticket category classification step."""
-    category: str = Field(
-        description=f"Exactly one of: {', '.join(TICKET_CATEGORIES)}"
-    )
-
-
-category_llm = llm.with_structured_output(TicketCategoryDecision)
-
-_CATEGORY_RULES = """
-Klassifiziere nach Hauptabsicht des Nutzers, nicht nach einzelnen Schlüsselwörtern.
-
-Kategorien:
-
-1. Beschwerde:
-Wähle diese Kategorie nur, wenn die Hauptabsicht des Nutzers eine Beschwerde über Support,
-Bearbeitung, Wartezeit oder schlechte Kommunikation ist.
-Ein technisches Problem allein ist keine Beschwerde.
-
-2. Rechnung:
-Wähle diese Kategorie, wenn das Hauptproblem Zahlung, Gebühren, Rechnung, Rückerstattung
-oder Zahlungsstatus betrifft.
-Auch technische Fehler in einem Zahlungsportal bleiben Rechnung, wenn die Zahlung das
-eigentliche Ziel ist.
-
-3. Zugang/Login:
-Wähle diese Kategorie, wenn der Nutzer keinen Zugang zu einem Konto oder Uni-System bekommt.
-Dazu gehören Login-Probleme, Passwort, 2FA, gesperrte Accounts, falsche Zugangsdaten oder
-Authentifizierung — auch ohne explizite Nennung von Systemnamen.
-
-4. Technisches Problem:
-Wähle diese Kategorie, wenn ein System, Gerät, Netzwerk oder eine Software technisch nicht
-funktioniert, aber der Schwerpunkt nicht auf Login, Zahlung oder Beschwerde liegt.
-
-5. Allgemeine Anfrage:
-Wähle diese Kategorie, wenn der Nutzer nur Informationen möchte oder noch kein konkretes
-Problem beschreibt.
-
-Bei Überschneidungen gilt:
-Beschwerde > Rechnung > Zugang/Login > Technisches Problem > Allgemeine Anfrage.
-
-Bewerte die Kategorie immer anhand des GESAMTEN Chatverlaufs und aller bekannten Infos.
-Gib genau eine Kategorie zurück.
-"""
-
+ticket_service = TicketService()
 
 def classify_ticket_category(
     issue_description: str,
@@ -149,7 +32,7 @@ Chatverlauf (User-Nachrichten):
 Problembeschreibung: {issue_description or "(noch nicht bekannt)"}
 Zusatzinfos: {infos}
 
-{_CATEGORY_RULES}"""
+{TICKET_CATEGORY_RULES}"""
     decision = cast(TicketCategoryDecision, category_llm.invoke([SystemMessage(content=prompt)]))
     if decision.category in TICKET_CATEGORIES:
         return decision.category
@@ -181,12 +64,15 @@ def classify_ticket(state: ChatbotState):
     return {"category": category}
 
 
+
+
 def extract_information(state: ChatbotState):
     """
     Analyzes the latest user message to extract structured ticket details.
     :param state: The current state of the chatbot conversation.
     :return: A dictionary containing the newly extracted fields to update the state.
     """
+    log_node_entry("extract_information", state)
     last_user_message = [msg for msg in state["messages"] if isinstance(msg, HumanMessage)][-1]
     user_messages = [msg.content for msg in state["messages"] if isinstance(msg, HumanMessage)]
     prior_issue = state.get("issue_description", "")
@@ -195,13 +81,13 @@ def extract_information(state: ChatbotState):
 
     system_prompt = ("""Du bist ein hochpräziser KI-Daten-Extraktor für ein IT-Support-Unternehmen, das exklusiv mit Universitäten zusammenarbeitet.
         Deine Aufgabe ist es, aus den eingehenden Chat-Nachrichten von Studierenden und Mitarbeitern strukturierte Ticket-Daten zu extrahieren.
-
+        
         BEREITS BEKANNTER KONTEXT:
         Problembeschreibung: {prior_issue}
         Zusatzinfos: {prior_infos}
         Chatverlauf (User-Nachrichten):
         {conversation_context}
-
+        
         EXTRAKTIONS-REGELN:
         1. Basis-Daten (Textfelder): Suche nach der 'email', der 'matrikelnummer' und dem Haupt-'problem' und speichere diese ausschließlich in ihren jeweiligen Textfeldern.
         2. Das 'problem' darf ausschließlich gesetzt werden, wenn der Nutzer tatsächlich ein konkretes IT-Problem oder eine Supportanfrage beschreibt. Erfinde niemals ein Problem.
@@ -218,6 +104,7 @@ def extract_information(state: ChatbotState):
         prior_infos=", ".join(prior_infos) if prior_infos else "keine",
         conversation_context=conversation_context or "keine",
     ))
+
 
     # Telling python to treat output from structured llm as ExtractedTicketData instance
     extracted_data = cast(ExtractedTicketData, structured_llm.invoke([
@@ -251,6 +138,7 @@ def ask_for_email(state: ChatbotState):
     :param state: The current conversation and ticket state
     :return: A dictionary containing the newly extracted fields to update the state.
     """
+    log_node_entry("ask_for_email", state)
     system_prompt = SystemMessage(content=(
         "Du bist ein IT-Support-Bot. Dir fehlt noch die email des Users. "
         "Frage kurz und höflich nach der Uni email Adresse. Beantworte keine anderen Fragen "
@@ -269,6 +157,7 @@ def ask_for_matrikelnummer(state: ChatbotState):
     :param state: The current conversation and ticket state
     :return: A dictionary containing the newly extracted fields to update the state.
     """
+    log_node_entry("ask_for_matrikelnummer", state)
     system_prompt = SystemMessage(content=(
         "Du bist ein IT-Support-Bot. Dir fehlt noch die 7-stellige Matrikelnummer des Users. "
         "Frage kurz und höflich nach der Matrikelnummer. Beantworte keine anderen Fragen."
@@ -286,15 +175,17 @@ def ask_for_issue(state: ChatbotState):
     :param state: The current conversation and ticket state
     :return: A dictionary containing the newly extracted fields to update the state.
     """
-    attempts = state.get("ask_issue_attempts",0) + 1
+    log_node_entry("ask_for_issue", state)
+    attempts = state.get("ask_issue_attempts", 0) + 1
     system_prompt = SystemMessage(content=(
-        "Du bist ein IT-Support-Bot des ZIM einer Universität. "
+        "Du bist ein IT-Support-Bot des Zentrums für Information und Medientechnik (ZIM) an einer Universität. "
         "Du unterstützt ausschließlich bei Problemen mit universitären IT-Diensten "
         "(z. B. WLAN, VPN, E-Mail, Moodle, Benutzerkonto, Drucker oder bereitgestellter Software). "
 
         "Falls der Nutzer ein anderes Anliegen beschreibt, das nichts mit den "
-        "IT-Diensten des ZIM zu tun hat, gehe nicht auf dieses Thema ein und gib "
-        "keine fachliche Beratung dazu. Weise stattdessen freundlich darauf hin, "
+        "IT-Diensten des ZIM zu tun hat, gebe keine fachliche Beratung dazu."
+
+        "Weise stattdessen freundlich darauf hin, "
         "dass du nur bei ZIM-bezogenen IT-Anliegen helfen kannst, und bitte den "
         "Nutzer, sein entsprechendes IT-Problem zu schildern."
     ))
@@ -314,7 +205,7 @@ def ask_for_additional_info(state: ChatbotState):
     :param state: The current conversation and ticket state
     :return: A dictionary containing the newly extracted fields to update the state.
     """
-
+    log_node_entry("ask_for_additional_info", state)
     problem = state.get("issue_description", "")
     infos = state.get("additional_info", [])
     attempts = state.get("additional_info_attempts", 0)
@@ -345,7 +236,7 @@ def ask_for_additional_info(state: ChatbotState):
     decision = cast(AdditionalInfoDecision, aditionalInfo_llm.invoke([system_prompt]))
 
     # Logic switch if all information needed is collected or not
-    if len(infos) >= 3 or decision.needs_additional_info or attempts >=3:
+    if len(infos) >= 3 or decision.needs_additional_info or attempts >= 3:
         return {"needs_additional_info": True}
     else:
         return {
@@ -360,6 +251,7 @@ def give_solutions(state: ChatbotState):
     Build a RAG query from: history + user_message + issue_description + additional_info
     (in that exact order), then retrieve and return up to two solutions.
     """
+    log_node_entry("give_solutions", state)
     msgs = state.get("messages", []) or []
     # history = all messages except the last one
     history_parts = [m.content for m in msgs[:-1]] if len(msgs) > 1 else []
@@ -373,7 +265,7 @@ def give_solutions(state: ChatbotState):
 
     # Build query in the requested order
     query_parts = [history_text, user_msg, issue, additional]
-    query = "How to connect to the VPN using Forcepoint?" #" ".join(p for p in query_parts if p).strip()
+    query = "How to connect to the VPN using Forcepoint?"  # " ".join(p for p in query_parts if p).strip()
 
     if not query:
         return {"messages": [AIMessage(content="Keine ausreichende Anfrage für die Suche.")], "solutions": []}
@@ -381,7 +273,8 @@ def give_solutions(state: ChatbotState):
     try:
         print(f"[RAG QUERY] {query}")
         results = retrieve_relevant_entries(query, n_results=2)
-        print(f"[RAG RESULT] faq={len(results.get('faq_matches',[]))} tickets={len(results.get('ticket_matches',[]))} inferred={results.get('inferred')}")
+        print(
+            f"[RAG RESULT] faq={len(results.get('faq_matches', []))} tickets={len(results.get('ticket_matches', []))} inferred={results.get('inferred')}")
     except Exception as e:
         print(f"[RAG ERROR] {e}")
         return {"messages": [AIMessage(content="Fehler bei der Suche in der Wissensdatenbank.")], "solutions": []}
@@ -396,7 +289,8 @@ def give_solutions(state: ChatbotState):
         solutions.append({"title": f"FAQ: {m.get('id')}", "description": m.get("text", "")})
     if len(solutions) < 2:
         for t in ticket_matches[: 2 - len(solutions)]:
-            solutions.append({"title": f"Ähnliches Ticket ({t.get('category','unknown')})", "description": t.get("text", "")})
+            solutions.append(
+                {"title": f"Ähnliches Ticket ({t.get('category', 'unknown')})", "description": t.get("text", "")})
 
     problem = state.get("issue_description", "")
     infos = state.get("additional_info", [])
@@ -423,7 +317,7 @@ def give_solutions(state: ChatbotState):
     final_message = AIMessage(content=message_text.content + "\n\nKonnte ich Ihnen dabei helfen, Ihr Problem zu lösen?")
 
     return {
-        "messages": final_message, # hier stecken die Solutions als menschlicher, zusammenhägender Text drin
+        "messages": final_message,  # hier stecken die Solutions als menschlicher, zusammenhägender Text drin
         "solutions": solutions,
         # "rag_debug": {
         #     "query": query,
@@ -434,13 +328,15 @@ def give_solutions(state: ChatbotState):
     }
 
 
-def finish_ticket(state: ChatbotState):
+def finish_ticket(state):
     """
     Finalizes the ticket creation process by generating a concise title
     and preparing the payload for the Zammad API.
     """
+    log_node_entry("finish_ticket", state)
+    # If the issue was asked three times, and no problem could be extracted,
+    # say instead that the off-topic issue cannot be processed by support
     attempts = state.get("ask_issue_attempts", 0)
-
     if attempts >= 3:
         final_message = (
             "Ich kann dein Anliegen leider nicht weiter als ZIM-IT-Support bearbeiten, "
@@ -448,121 +344,19 @@ def finish_ticket(state: ChatbotState):
             "Falls du später ein IT-Problem rund um Dienste der Universität hast "
             "(z. B. WLAN, VPN, E-Mail, Moodle oder Account-Probleme), helfe ich dir gerne weiter."
         )
-
         return {
             "messages": [AIMessage(content=final_message)],
             "is_complete": True
         }
 
-    category = _resolve_ticket_category(state)
-
-    title_prompt = (
-        f"Du bist ein IT-Support-Assistent. Fasse das folgende Problem in maximal "
-        f"4-5 Worten als Ticket-Betreff zusammen. Antworte NUR mit dem Betreff, ohne Anführungszeichen:\n"
-        f"{state['issue_description']}"
-    )
-    title_response = llm.invoke([HumanMessage(content=title_prompt)])
-    generated_title = title_response.content.strip()
-
-    zammad_title = f"[{state['matrikelnummer']}] {generated_title}"
-    zammad_body = (
-        f"Matrikelnummer: {state['matrikelnummer']}\n"
-        f"E-Mail: {state['user_email']}\n\n"
-        f"Priorität: {'urgent' if state.get('priority') == 1 else 'normal'}\n"
-        f"Kategorie: {category}\n"
-        f"Problembeschreibung des Nutzers:\n"
-        f"{state['issue_description']}\n\n"
-        f"Zusätzliche Infos (automatisch extrahiert durch den Chatbot):\n"
-        f"{state['additional_info']}"
-    )
-
-    try:
-        create_ticket_by_user_email(
-            email=state["user_email"],
-            title=zammad_title,
-            body=zammad_body,
-            priority=state["priority"],
-        )
-        user_visible_body = (
-            f"Matrikelnummer: {state['matrikelnummer']}\n"
-            f"E-Mail: {state['user_email']}\n\n"
-            f"Problembeschreibung des Nutzers:\n"
-            f"{state['issue_description']}"
-        )
-
-        final_message = (
-            f"Perfekt! Dein Ticket wurde erfolgreich erstellt. Ein Supporter meldet sich bald bei dir.\n"
-            f"**Deine Ticket-Übersicht:**\n"
-            f"**Betreff:** {zammad_title}\n"
-            f"**Inhalt:** {user_visible_body}"
-        )
-    except Exception as e:
-        print(f"🚨 [FEHLER] Zammad API-Aufruf fehlgeschlagen: {e}")
-        final_message = "Dein Ticket ist fertiggestellt, aber es gab ein Problem bei der Übermittlung an Zammad. Bitte versuche es später noch einmal."
-
-    print("[Finish Ticket Node]: Reached end of node without exception.")
-    return {
-        "messages": [AIMessage(content=final_message)],
-        "is_complete": True,
-        "category": category,
-    }
+    return ticket_service.create_support_ticket(state)
 
 
-def finish_ai_solved_ticket(state: ChatbotState):
+def finish_ai_solved_ticket(state):
     """
-    Erstellt ein geschlossenes Ticket mit AISolved-Tag,
-    wenn der User die Bot-Lösung akzeptiert hat.
-    Kein Mitarbeiter wird involviert.
+    Finalizes the ticket creation process by generating a concise title
+    and preparing the payload for the Zammad API. Also marks the ticket with that that
+    was solved only by using the chatbot without involving the ZIM staff
     """
-    title_response = llm.invoke([HumanMessage(content=(
-        f"Fasse das folgende Problem in maximal 4-5 Worten als Ticket-Betreff zusammen. "
-        f"Antworte NUR mit dem Betreff, ohne Anführungszeichen:\n{state['issue_description']}"
-    ))])
-    generated_title = title_response.content.strip()
-    zammad_title = f"[{state['matrikelnummer']}] {generated_title}"
-
-    # Chatverlauf aufbereiten
-    verlauf = ""
-    for msg in state.get("messages", []):
-        if isinstance(msg, HumanMessage):
-            verlauf += f"Kunde: {msg.content}\n"
-        elif isinstance(msg, AIMessage):
-            verlauf += f"Bot: {msg.content}\n"
-
-    # Angebotene Lösungen aufbereiten
-    loesungen = ""
-    for i, solution in enumerate(state.get("solutions", []), 1):
-        loesungen += f"{i}. {solution.get('title', '')}\n{solution.get('description', '')}\n\n"
-
-    zammad_body = (
-        f"Matrikelnummer: {state['matrikelnummer']}\n"
-        f"E-Mail: {state['user_email']}\n\n"
-        f"Problembeschreibung: {state['issue_description']}\n"
-        f"Zusatzinfos: {state['additional_info']}\n\n"
-        f"--- Vom Bot angebotene Lösungen ---\n"
-        f"{loesungen if loesungen else 'Keine Lösungen gespeichert.'}\n"
-        f"--- Chatverlauf ---\n"
-        f"{verlauf}\n"
-        f"Status: Durch KI-Bot gelöst. Kein Mitarbeiter involviert."
-    )
-
-    try:
-        ticket_id = create_ticket_by_user_email(
-            email=state["user_email"],
-            title=zammad_title,
-            body=zammad_body,
-            priority=state["priority"],
-            state="closed"
-        )
-        if ticket_id:
-            add_tag_to_ticket(ticket_id, "AISolved")
-    except Exception as e:
-        print(f"🚨 [FEHLER] AISolved-Ticket konnte nicht erstellt werden: {e}")
-
-    return {
-        "messages": [AIMessage(content=(
-            "Super, das freut mich! Wenn du in Zukunft weitere Fragen hast, "
-            "stehe ich gerne zur Verfügung. Hab einen schönen Tag!"
-        ))],
-        "is_complete": True
-    }
+    log_node_entry("finish_ai_solved_ticket", state)
+    return ticket_service.create_ai_solved_ticket(state)

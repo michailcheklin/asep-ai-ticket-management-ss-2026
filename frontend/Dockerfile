@@ -20,7 +20,8 @@ RUN --mount=type=cache,target=/root/.cache,id=pip \
 COPY . /src
 
 # 8501 = Streamlit app
+# 8502 = Mock of Streamlit app
 # 5000 = fake IdP login page
-EXPOSE 8501 4999
+EXPOSE 8501 8502 4999
 
 CMD ["python", "./frontend/dev.py"]
