@@ -259,7 +259,52 @@ Category classification is separate from information extraction. The extractor n
 
 ## Tests
 
-Unit tests are in `test_ticket_category.py`. Mocked tests run without Ollama or SAIA. Optional live LLM tests can be enabled with `RUN_LLM_CATEGORY_TESTS=1`.
+Category classification tests live in three files:
+
+| File | Purpose |
+| ---- | ------- |
+| `test_ticket_category.py` | Unit tests with mocked LLM (no Ollama/SAIA required) |
+| `test_ticket_category_live.py` | Live LLM integration, regression, and holdout suites |
+| `category_test_support.py` | Shared fixtures and live-suite runner helpers |
+
+Run from `backend/`:
+
+```bash
+python test_ticket_category.py
+```
+
+This discovers and runs both unit and live test modules.
+
+### Live LLM tests
+
+Enable with:
+
+```bash
+RUN_LLM_CATEGORY_TESTS=1 python test_ticket_category.py
+```
+
+PowerShell:
+
+```powershell
+$env:RUN_LLM_CATEGORY_TESTS="1"; python test_ticket_category.py
+```
+
+### Regression vs. holdout
+
+| Suite | Fixture file | Purpose |
+| ----- | ------------ | ------- |
+| **REGRESSION** | `rag/old_tickets.json` | Prompt tuning on known template tickets (50 cases) |
+| **HOLDOUT** | `rag/category_holdout_tests.json` | Generalization on unseen tickets — do **not** use for prompt tuning |
+
+Optional environment variables:
+
+| Variable | Default | Description |
+| -------- | ------- | ----------- |
+| `CATEGORY_REGRESSION_MIN_ACCURACY` | `0.90` | Minimum pass rate for regression suite |
+| `CATEGORY_HOLDOUT_MIN_ACCURACY` | `0.80` | Minimum pass rate for holdout suite |
+| `CATEGORY_REGRESSION_LIMIT` | (none) | Cap regression cases, e.g. `10` for a quick run |
+
+Add new real-world edge cases to `category_holdout_tests.json`, not to `old_tickets.json`.
 
 ---
 
