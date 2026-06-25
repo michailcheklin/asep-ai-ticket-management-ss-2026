@@ -85,6 +85,7 @@ structured_llm = llm.with_structured_output(ExtractedTicketData)
 
 
 class TicketCategoryDecision(BaseModel):
+    """Schema for the LLM output of the dedicated ticket category classification step."""
     category: str = Field(
         description=f"Exactly one of: {', '.join(TICKET_CATEGORIES)}"
     )
