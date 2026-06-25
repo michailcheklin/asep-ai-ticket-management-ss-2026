@@ -1,6 +1,7 @@
-﻿from dotenv import load_dotenv
+from dotenv import load_dotenv
 import os
 import requests
+
 load_dotenv()
 
 # Format der .env-Datei, woraus die Server-Adresse und der Zugangstoken
@@ -11,32 +12,34 @@ GENERAL_TIMEOUT = 5
 
 # Anmeldung über Token
 headers = {"Authorization": f"Token token={admin_access_token}",
-           "Content-Type": "application/json",}
+           "Content-Type": "application/json", }
 
 # Anzeigen als welcher Benutzer ich aktuell angemeldet bin
-#response = requests.get(
+# response = requests.get(
 #    url=f"{server_address}/api/v1/users/me",
 #    headers = headers,
 #    timeout=GENERAL_TIMEOUT
-#)
-#print(response.status_code)
-#print(response.text)
+# )
+# print(response.status_code)
+# print(response.text)
 
 # Map von unseren Priority-Nummern zu den Zammad-Priority-Nummern
 priority_number_to_zammad_priority_id_map = {
-    0:2, # normal / non-urgent
-    1:3  # high / urgent
+    0: 2,  # normal / non-urgent
+    1: 3  # high / urgent
 }
 
 
 def create_ticket_by_user_email(
-        email:str,
-        title:str,
-        body:str,
-        priority:int=0,
-        group:str = "Users",
-        article_type:str = "web",
-        internal:bool = False
+        email: str,
+        title: str,
+        body: str,
+        priority: int = 0,
+        group: str = "Users",
+        article_type: str = "web",
+        internal: bool = False,
+        state: str = "new"
+
 ):
     """
     Erstellt ein Ticket im Zammad-System über die REST-API,
@@ -51,7 +54,9 @@ def create_ticket_by_user_email(
     :arg article_type: Typ des Artikels (erste Nachricht im Ticket,
         s. https://docs.zammad.org/en/latest/api/ticket/articles.html#general-information-about-ticket-articles) (i. d. R. note)
     :arg internal: Standardmäßig False. Falls True, ist das Ticket nur für die Mitarbeitenden des Helpdesks sichtbar
+    :arg state: Zammad-Status des Tickets, z.B. "new" oder "closed"
     """
+
     json_body_for_ticket = {
         "title": f"{title}",
         "group": f"{group}",
@@ -63,6 +68,7 @@ def create_ticket_by_user_email(
             "sender": "Customer",
         },
         "priority_id": priority_number_to_zammad_priority_id_map[priority],
+        "state": state,
     }
 
     server_response = requests.post(url=f"{server_address}/api/v1/tickets",
@@ -72,7 +78,17 @@ def create_ticket_by_user_email(
 
     print(server_response.status_code)
     print(server_response.text)
+    return server_response.json().get("id")
 
 
+def add_tag_to_ticket(ticket_id: int, tag: str):
+    """Fügt einen Tag zu einem Zammad-Ticket hinzu."""
+    response = requests.post(
+        url=f"{server_address}/api/v1/tags/add",
+        json={"object": "Ticket", "o_id": ticket_id, "item": tag},
+        headers=headers,
+        timeout=GENERAL_TIMEOUT
+    )
+    print(f"Tag '{tag}' added to ticket {ticket_id}: {response.status_code}")
 
 # create_ticket_by_user_email(email="example@example.com", title="Help request", body="Hello, I need help!",)
