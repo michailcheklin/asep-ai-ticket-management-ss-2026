@@ -11,6 +11,9 @@ services:
       OLLAMA_BASE_URL: http://ollama:11434
       SAIA_API_KEY: ${SAIA_API_KEY:-}
       USE_SAIA_API: ${USE_SAIA_API:-false}
+      LANGSMITH_TRACING: true
+      LANGSMITH_API_KEY: ${LANGSMITH_API_KEY:-}
+      LANGSMITH_ENDPOINT: https://eu.api.smith.langchain.com
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
       interval: 10s

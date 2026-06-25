@@ -1,4 +1,7 @@
 from typing import cast
+
+from langsmith import traceable
+
 from .models.ExtractedTicketData import ExtractedTicketData
 from .models.AdditionalInfoDecision import AdditionalInfoDecision
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
@@ -10,7 +13,7 @@ from .node_logging import log_node_entry
 
 ticket_service = TicketService()
 
-
+@traceable
 def extract_information(state: ChatbotState):
     """
     Analyzes the latest user message to extract structured ticket details.
@@ -60,7 +63,7 @@ def extract_information(state: ChatbotState):
 
     return state_update
 
-
+@traceable
 def ask_for_email(state: ChatbotState):
     """
     Queries Llama to politely ask the user for their missing email
@@ -79,7 +82,7 @@ def ask_for_email(state: ChatbotState):
 
     return {"messages": [response]}
 
-
+@traceable
 def ask_for_matrikelnummer(state: ChatbotState):
     """
     Queries Llama to politely ask the user for their missing matrikelnummer
@@ -97,7 +100,7 @@ def ask_for_matrikelnummer(state: ChatbotState):
 
     return {"messages": [response]}
 
-
+@traceable
 def ask_for_issue(state: ChatbotState):
     """
     Queries Llama to politely ask the user for the missing problem description
@@ -127,7 +130,7 @@ def ask_for_issue(state: ChatbotState):
         "ask_issue_attempts": attempts
     }
 
-
+@traceable
 def ask_for_additional_info(state: ChatbotState):
     """
     Queries Llama to politely ask the user for the missing additional info, if needed
@@ -174,7 +177,7 @@ def ask_for_additional_info(state: ChatbotState):
             "messages": [AIMessage(content=decision.follow_up_question)]
         }
 
-
+@traceable
 def give_solutions(state: ChatbotState):
     """
     Build a RAG query from: history + user_message + issue_description + additional_info
@@ -256,7 +259,7 @@ def give_solutions(state: ChatbotState):
         # }
     }
 
-
+@traceable
 def finish_ticket(state):
     """
     Finalizes the ticket creation process by generating a concise title
@@ -281,7 +284,7 @@ def finish_ticket(state):
 
     return ticket_service.create_support_ticket(state)
 
-
+@traceable
 def finish_ai_solved_ticket(state):
     """
     Finalizes the ticket creation process by generating a concise title

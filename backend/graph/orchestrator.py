@@ -1,3 +1,4 @@
+from langchain_core.tracers import LangChainTracer
 from langgraph.graph import StateGraph, START, END
 from .state import ChatbotState
 from .nodes import (
@@ -9,6 +10,16 @@ from .nodes import (
     give_solutions,
     finish_ticket,
 )
+from langsmith import Client
+from langsmith.anonymizer import create_anonymizer
+
+# Matches E-mail addresses and censors them in LangSmith's dashboard
+anonymizer = create_anonymizer([
+    { "pattern": r"[a-zA-Z0-9\._-]+@[a-zA-Z0-9\._-]+\.[a-zA-Z0-9\._-]+", "replace": "<email>" }
+])
+
+tracer_client = Client(anonymizer=anonymizer)
+tracer = LangChainTracer(client=tracer_client)
 
 def __execute_langchain_workflow(state: ChatbotState):
     """
@@ -134,4 +145,8 @@ workflow.add_edge("finish_node", END)
 
 # Compile the workflow into an executable LangGraph graph.
 graph = workflow.compile()
+
+# Wraps the graph with the LangSmith tracer
+# to create a detailed result on how the workflow went
+graph = graph.with_config({'callbacks': [tracer]})
 
