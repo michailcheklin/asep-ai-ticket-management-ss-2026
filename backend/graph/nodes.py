@@ -143,8 +143,9 @@ def ask_for_additional_info(state: ChatbotState):
     attempts = state.get("additional_info_attempts", 0)
 
     print(f"[DEBUG: ask_for_additional_info]: attempts: {attempts} ")
+   
+    aditionalInfo_llm = llm.with_structured_output(AdditionalInfoDecision, method="json_mode")
 
-    aditionalInfo_llm = llm.with_structured_output(AdditionalInfoDecision)
     system_prompt = SystemMessage(content=(
         f"""
         Du bist ein technischer Dispatcher im IT-Support einer Universität.
@@ -165,7 +166,18 @@ def ask_for_additional_info(state: ChatbotState):
         """
     ))
 
-    decision = cast(AdditionalInfoDecision, aditionalInfo_llm.invoke([system_prompt]))
+    # Benchmark compatibility:
+    # DeepSeek and Apertus accept prompts consisting only of a SystemMessage,
+    # but Qwen returns "No user query found in messages" in that case.
+    # Adding a minimal HumanMessage preserves the existing prompting logic
+    # while making the structured-output request compatible with all evaluated models.
+
+    decision = cast(AdditionalInfoDecision, aditionalInfo_llm.invoke([
+        system_prompt,
+        HumanMessage(
+            content="Bitte prüfe anhand des Problems und der Zusatzinfos, ob weitere Informationen benötigt werden.")
+    ]))
+
 
     # Logic switch if all information needed is collected or not
     if len(infos) >= 3 or decision.needs_additional_info or attempts >= 3:
@@ -244,8 +256,8 @@ def give_solutions(state: ChatbotState):
             4. Versuche dich am besten auf maximal 3 Sätze zu beschränken.
             """
     ))
-
-    message_text = llm.invoke([system_prompt])
+    message_text = llm.invoke([system_prompt, HumanMessage(content="Bitte fasse die Lösungen für den User zusammen.")])
+  
     final_message = AIMessage(content=message_text.content + "\n\nKonnte ich Ihnen dabei helfen, Ihr Problem zu lösen?")
 
     return {

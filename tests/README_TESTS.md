@@ -13,6 +13,16 @@ DeepEval (https://deepeval.com/) is a framework to test LLM outputs. Before the 
    6. Write into the .env file `CONFIDENT_API_KEY=<the copied ConfidentAI API key from step 2.5>`
 3. Write the SAIA API key into the .env file: `SAIA_API_KEY=<your SAIA API key>`
 4. Write `DEEPEVAL_TELEMETRY_OPT_OUT=1` into the .env file to opt out of DeepEval's telemetry if you want to.
+5. (Optional) Setup LangSmith for benchmark tracing. LangSmith logs all LLM calls and benchmark results for observability.
+   1. Create an account at LangSmith (https://smith.langchain.com). Choose **EU** as data region.
+   2. Go to Settings > API Keys > Create API Key
+   3. Write into the .env file:
+```
+      LANGCHAIN_API_KEY=<your LangSmith API key>
+      LANGCHAIN_TRACING_V2=true
+      LANGCHAIN_PROJECT=ai-ticket-benchmark
+      LANGCHAIN_ENDPOINT=https://eu.api.smith.langchain.com
+```
 
 ## How the folder structure is made to accomodate the testing
 Each script that contains test cases ("test script") is in the folder `<project root>/tests`. This helps separating test code from application code. Each test script is named like this: `test_(what_is_tested_here).py` to describe what is tested. 
@@ -94,3 +104,49 @@ The test is passed if all the three metrics return a score of over 50% (DeepEval
 **Additional notes:**
 One test case uses around 30 SAIA prompts within 5-6 minutes, out of which around three quarters are for the metrics.
 
+### LLM Model Benchmark
+**What does this test do:**
+This script benchmarks multiple GWDG/SAIA LLMs by running them through realistic IT-support conversation scenarios and evaluating their response quality using DeepEval's `ConversationCompletenessMetric`. Results are saved to `tests/benchmark_results.json` and logged to LangSmith.
+
+**Why is this test done:**
+To identify which LLM performs best as the chatbot's underlying model for the ZIM ticket management use case, and to document the strengths and weaknesses of each evaluated model.
+
+**How is the test done:**
+For each model in `MODEL_CONFIGS`, the chatbot is patched to use that model. Two realistic conversation scenarios are simulated:
+* A student whose university WLAN is not showing up in the network list
+* A student whose university account is locked
+
+Each scenario produces a `ConversationalTestCase` which is then evaluated by the judge model (Apertus-70B) using the `ConversationCompletenessMetric`. Results are collected and written to `benchmark_results.json`. All LLM calls are automatically traced in LangSmith via the LangChain integration.
+
+**When is the test passed:**
+The test always passes (it is a benchmarking script, not a pass/fail test). Results are stored for manual analysis.
+
+**Evaluated models and findings:**
+
+**deepseek-r1-distill-llama-70b** (70B):
+- Score: could not be fully evaluated due to rate limits
+- Strength: Available via SAIA, strong reasoning capabilities.
+- Weakness: Writes long reasoning chains in `<think>` tags before answering, which DeepEval cannot parse reliably. Frequently hits API rate limits.
+
+**apertus-70b-instruct-2509** (70B):
+- Score: 0.83 (WLAN scenario), 0.67 (Account scenario)
+- Strength: Answers directly without excessive follow-up questions. Best overall results.
+- Weakness: Occasionally fails when used as both chatbot and judge simultaneously due to server load (RetryError).
+
+**gemma-4-31b-it** (31B):
+- Score: 0.00 (both scenarios)
+- Strength: Compatible with the system, no technical errors.
+- Weakness: Asks multiple follow-up questions before providing a solution. Conversation ends as incomplete by the metric.
+
+**meta-llama-3.1-8b-instruct** (8B – small model):
+- Score: could not be fully evaluated due to rate limits
+- Strength: Smallest and fastest model tested, low server demand.
+- Weakness: Returns incorrect JSON structure for some scenarios (`needs_additional_info` field missing), causing errors.
+
+
+
+**Additional notes:**
+* All models are accessed via the GWDG/SAIA API (`https://chat-ai.academiccloud.de/v1/`) which is OpenAI-compatible.
+* A known RAG bug causes all models to query "How to connect to the VPN using Forcepoint?" regardless of the actual issue. This affects the quality of solutions provided by all models.
+* The judge model (Apertus-70B) evaluates responses — running Apertus as both chatbot and judge simultaneously can cause `RetryError` due to server load.
+* Rate limits (`429`) occur after many API calls in one session. 
