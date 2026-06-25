@@ -8,6 +8,6 @@ def log_node_entry(node_name:str, state):
     :param node_name: The name of the node that was entered
     :param state: The state that the node had when entered
     """
-    print(f"{datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3]} Entered node {node_name}")
+    print(f"{datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3]} Entered node {node_name}")
     print(f"Current state: {state}")
 
