@@ -17,3 +17,4 @@ class ChatRequest(BaseModel):
     bot_message: str = ""
     additional_info_attempts: int = 0
     ask_issue_attempts: int = 0
+    ticket_id: int | None = None

@@ -116,7 +116,8 @@ async def chat_endpoint(request: ChatRequest):
         "is_complete": False,
         "solutions": request.solutions,
         "additional_info_attempts": request.additional_info_attempts,
-        "ask_issue_attempts": request.ask_issue_attempts
+        "ask_issue_attempts": request.ask_issue_attempts,
+        "ticket_id": request.ticket_id,
     }
     return __execute_langchain_workflow(current_state)
 
@@ -145,15 +146,16 @@ async def solution_feedback(request: ChatRequest):
         "is_complete": False,
         "solutions": request.solutions,
         "ask_issue_attempts": request.ask_issue_attempts,
-        "additional_info_attempts": request.additional_info_attempts
+        "additional_info_attempts": request.additional_info_attempts,
+        "ticket_id": request.ticket_id,
     }
 
     if request.helpful:
         updated_state = ticket_service.create_ai_solved_ticket(current_state)
+        return {"bot_response": updated_state["messages"][-1].content}
     else:
-        updated_state = ticket_service.create_support_ticket(current_state)
-
-    return {"bot_response": updated_state["messages"][-1].content}
+        ticket_service.append_support_ticket_context(current_state, request.ticket_id)
+        return {"bot_response": "Ihr Ticket wurde an den Support weitergeleitet."}
 
 def run_local_chat():
     """

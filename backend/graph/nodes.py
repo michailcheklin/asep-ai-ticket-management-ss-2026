@@ -7,6 +7,7 @@ from backend.rag.retrieve_info import retrieve_relevant_entries
 from ..services.TicketService import TicketService
 from ..llm.llm import llm, structured_llm
 from .node_logging import log_node_entry
+from ..api.zammad import create_ticket_by_user_email
 
 ticket_service = TicketService()
 
@@ -57,6 +58,26 @@ def extract_information(state: ChatbotState):
         state_update["additional_info"] = extracted_data.additional_info
     if extracted_data.priority is not None:
         state_update["priority"] = extracted_data.priority
+    
+    ticket_id = state.get("ticket_id")
+    # If ticket already exists: append
+    if ticket_id is not None:
+        print(f"Appending to ticket {ticket_id} the user message: {last_user_message.content}")
+        ticket_service.append_message_to_ticket(ticket_id, last_user_message.content, sender="Customer")
+    # If this is the first message with a valid issue: create ticket
+    elif extracted_data.problem is not None and extracted_data.problem != "":
+        matrikelnummer = extracted_data.matrikelnummer or state.get("matrikelnummer", "unknown")
+        title = f"[{matrikelnummer}] {extracted_data.problem}"
+        result = create_ticket_by_user_email(
+            email=state["user_email"],
+            title=title,
+            body=last_user_message.content,
+            priority=extracted_data.priority if extracted_data.priority is not None else state["priority"],
+            internal=True,
+            state="new",
+        )
+        state_update["ticket_id"] = result
+        print(f"Created ticket with ID {result} for the state update: {state_update}")
 
     return state_update
 
@@ -121,6 +142,13 @@ def ask_for_issue(state: ChatbotState):
 
     full_messages = [system_prompt] + state["messages"]
     response = llm.invoke(full_messages)
+
+    if attempts >= 3:
+        return {
+            "messages": [response],
+            "ask_issue_attempts": attempts,
+            "is_complete": True
+        }
 
     return {
         "messages": [response],
@@ -189,11 +217,23 @@ def ask_for_additional_info(state: ChatbotState):
     if len(infos) >= 3 or decision.needs_additional_info or attempts >= 3:
         return {"needs_additional_info": True}
     else:
-        return {
-            "needs_additional_info": False,
-            "additional_info_attempts": attempts + 1,
-            "messages": [AIMessage(content=decision.follow_up_question)]
-        }
+        llm_msg = decision.follow_up_question
+        ticket_id = state.get("ticket_id")
+        if llm_msg:
+            try:
+                ticket_service.append_message_to_ticket(
+                    ticket_id=ticket_id,
+                    body=f"[ZIM AI-AGENT] {llm_msg}",
+                    sender="Agent",
+                    internal=True
+                )
+            except Exception as e:
+                print(f"Failed to add internal article: {e}")
+            return {
+                "needs_additional_info": False,
+                "additional_info_attempts": attempts + 1,
+                "messages": [AIMessage(content=llm_msg)]
+            }
 
 
 def give_solutions(state: ChatbotState):
@@ -264,6 +304,19 @@ def give_solutions(state: ChatbotState):
     message_text = llm.invoke([system_prompt])
     final_message = AIMessage(content=message_text.content + "\n\nKonnte ich Ihnen dabei helfen, Ihr Problem zu lösen?")
 
+    ticket_id = state.get("ticket_id")
+    try:
+        print(f"appending bot message to ticket {ticket_id}")
+        ticket_service.append_message_to_ticket(
+            ticket_id = ticket_id,
+            body=f"[ZIM AI-AGENT] {final_message.content}",
+            sender="Agent",
+            internal = True
+        )
+    except:
+        print("Could not append message to ticket (give solutions).")
+
+
     return {
         "messages": final_message,  # hier stecken die Solutions als menschlicher, zusammenhägender Text drin
         "solutions": solutions,
@@ -297,9 +350,23 @@ def finish_ticket(state):
             "is_complete": True
         }
 
+    result = ticket_service.create_support_ticket(state)
 
-    return ticket_service.create_support_ticket(state)
+    # Append the bot's confirmation reply as an Agent article to the new ticket.
+    ticket_id = result.get("ticket_id")
+    try:
+        bot_message_content = result["messages"][0].content
+        print(f"appending bot message {bot_message_content}")
+        ticket_service.append_message_to_ticket(
+            ticket_id = ticket_id,
+            body=f"[ZIM AI-AGENT] {bot_message_content}",
+            sender="Agent",
+            internal = True
+        )
+    except:
+        print("Could not append message to ticket (give solutions).")
 
+    return result
 
 def finish_ai_solved_ticket(state):
     """

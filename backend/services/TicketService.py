@@ -1,7 +1,7 @@
 # backend/services/ticket_service.py
 
 from langchain_core.messages import HumanMessage, AIMessage
-from ..api.zammad import create_ticket_by_user_email, add_tag_to_ticket
+from ..api.zammad import create_ticket_by_user_email, add_tag_to_ticket, add_article_to_ticket
 from ..llm.llm import llm
 
 
@@ -45,7 +45,7 @@ class TicketService:
     # -------------------------
     # Public API
     # -------------------------
-    def create_support_ticket(self, state):
+    def create_support_ticket(self, state, internal):
         """
         Creates a new open support ticket in Zammad.
 
@@ -64,18 +64,53 @@ class TicketService:
         body = self._build_open_body(state)
 
         try:
-            create_ticket_by_user_email(
+            ticket_id = create_ticket_by_user_email(
                 email=state["user_email"],
                 title=title,
                 body=body,
                 priority=state["priority"],
+                internal=internal
             )
-
-            return self._success_message(title, state)
+            success = self._success_message(title, state)
+            success["ticket_id"] = ticket_id
+            print(f"Successfully created ticket with ID: {ticket_id}")
+            return success
 
         except Exception as e:
             print(f"[TicketService ERROR] {e}")
             return self._error_message()
+        
+    def append_support_ticket_context(self, state, ticket_id, internal=True):
+        """
+        Appends the full ticket context to an already existing ticket.
+        
+        :param state: Current chatbot state containing all ticket information.
+        :param ticket_id: The ID of the existing ticket to append to.
+        :param internal: Whether the message should be internal.
+        """
+        body = self._build_open_body(state)
+        full_body = f"Das Gespräch mit dem Chatbot wurde abgeschlossen. Folgende Informationen wurden erfasst:\n\n{body}"
+        
+        try:
+            self.append_message_to_ticket(
+                ticket_id=ticket_id,
+                body=full_body,
+                sender="Agent",
+                internal=internal
+            )
+            print(f"Successfully appended context to ticket {ticket_id}")
+        except Exception as e:
+            print(f"[TicketService ERROR] Failed to append context: {e}")
+
+    def append_message_to_ticket(self, ticket_id: int, body: str, sender: str = "Agent", internal: bool = True) -> None:
+        """
+        Appends a follow-up article to an already-created ticket.
+        Use sender="Customer" for user messages, "Agent" for bot replies.
+        """
+        try:
+            add_article_to_ticket(ticket_id=ticket_id, body=body, sender=sender, internal=internal)
+        except Exception as e:
+            print(f"[TicketService ERROR] Failed to append article: {e}")
 
     def create_ai_solved_ticket(self, state):
         """

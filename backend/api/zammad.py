@@ -80,6 +80,27 @@ def create_ticket_by_user_email(
     print(server_response.text)
     return server_response.json().get("id")
 
+def add_article_to_ticket(ticket_id: int, body: str, sender: str = "Agent",
+                           article_type: str = "note", internal: bool = True):
+    """
+    Append an article to an existing Zammad ticket.
+    sender: "Agent" for AI reply,
+            "Customer" for customer messages.
+    """
+    response = requests.post(
+        url=f"{server_address}/api/v1/ticket_articles",
+        json={
+            "ticket_id": ticket_id,
+            "body": body,
+            "type": article_type,
+            "internal": internal,
+            "sender": sender,
+        },
+        headers=headers,
+        timeout=GENERAL_TIMEOUT
+    )
+    print(f"Article added to ticket {ticket_id}: {response.status_code}")
+    return response
 
 def add_tag_to_ticket(ticket_id: int, tag: str):
     """Fügt einen Tag zu einem Zammad-Ticket hinzu."""
