@@ -12,10 +12,45 @@ When the user sends a message, the user's input gets displayed in the chat histo
 
 After the bot has replied, the answer is written into the visible chat history and the updated state that the backend returned is applied to the frontend, so that the next chat message can reuse the new state. Technically all the chat messages are Streamlit containers (`with st.chat_message("assistant"):` and then within the with statement one or more `st.write(...)`, as per https://docs.streamlit.io/develop/api-reference/chat/st.chat_message), so the chat messages can be extended to contain other elements as well.
 
+## Project structure
+
+| File | Purpose |
+|------|---------|
+| `app.py` | Live frontend (calls AI backend via `LiveChatClient`) |
+| `app_clone.py` | Mock frontend clone (no backend calls, via `MockChatClient`) |
+| `ui/chat.py` | Shared Streamlit UI and session-state handling |
+| `clients/live_client.py` | HTTP client for `/chat` and `/solution-feedback` |
+| `clients/mock_client.py` | Keyword-based fixed responses for UI testing |
 
 ## Starting the frontend
+
+### Live frontend (with backend)
 To test the frontend alone locally:
 * run `python3 dev.py`
 * open your browser at `http:localhost:5000`
 
-Otherwise, the frontend runs on `http:localhost:5000` when the full project is started (using `docker compose`)
+Otherwise, the frontend runs on `http:localhost:8501` when the full project is started (using `docker compose`).
+
+### Mock clone (no backend / no AI)
+For layout and UI testing without starting the backend:
+
+```bash
+streamlit run app_clone.py --server.port 8502
+```
+
+Or with Docker Compose:
+
+```bash
+docker compose up frontend_clone
+```
+
+Open `http://localhost:8502`.
+
+#### Mock keywords
+
+| User message contains | UI effect |
+|-----------------------|-----------|
+| `FAQ` | FAQ placeholder (`st.info`) |
+| `Ticket` | Disabled „Ticket erstellen“ button |
+| `Lösung` or `solution` | Solution cards with Ja/Nein feedback buttons |
+| anything else | Generic fixed mock reply |
