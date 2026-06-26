@@ -180,9 +180,9 @@ def ask_for_additional_info(state: ChatbotState):
         1. Lies die Einträge in der WISSENSDATENBANK. Fehlen in unserem "AKTUELLEN PROBLEM" Details, 
            die in den alten Tickets oder FAQs zur Lösung zwingend notwendig waren?
         2. Wenn alles Wichtige da ist, ODER wenn die WISSENSDATENBANK keine relevanten Inhalte für eine Nachfrage liefert, 
-           setze needs_additional_info auf True.
+           setze needs_additional_info auf True und setze follow_up_question auf den leeren String. 
         3. Wenn wichtige Details fehlen, setze needs_additional_info auf False und formuliere 
-           EINE kurze, freundliche follow_up_question an den User basierend auf dem RAG-Kontext.
+           EINE kurze, freundliche follow_up_question an den User basierend auf dem RAG-Kontext und schreibe diese als String in das Feld follow_up_question. 
         4. Gib keine direkten Lösungen wieder. Hier geht es nur um Rückfragen.
         """
     ))
