@@ -8,6 +8,7 @@ load_dotenv()
 SAIA_API_KEY = os.environ.get("SAIA_API_KEY", "")
 SAIA_BASE_URL = "https://chat-ai.academiccloud.de/v1/"
 
+
 def make_model(model_id: str) -> GPTModel:
     return GPTModel(
         model=model_id,
@@ -27,7 +28,11 @@ MODELS_TO_EVALUATE = {
 # Wir nutzen DeepSeek als Judge, da es schon bekannt und stabil ist
 # 1.Änderungenn nach Fehlermeldung: DeepSeek-R1 schreibt zuerst langen Denkprozess in <think>-Tags — DeepEval erwartet strukturierte JSON-Antworten und kann das nicht sauber parsen
 # Apertus antwortet direkt ohne solche Tokens und ist das zuverlässigere Judge-Modell
-SAIA_MODEL = make_model("apertus-70b-instruct-2509")
+# 2.Änderung: Apertus wird im Benchmark doppelt belastet – 
+# einmal als Chatbot-Modell (das getestet wird) und gleichzeitig als Judge-Modell 
+# (das die Antworten bewertet). Das führt zu InternalServerError, weil derselbe Server zu viele
+# gleichzeitige Anfragen erhält. Und es wäre methodisch sauberer. 
+SAIA_MODEL = make_model("gemma-4-31b-it")
 
 # Simulator-Modell für DeepEval (spielt den Nutzer im Gespräch nach)
 # Teuken-7b ist ein kleines 7B-Modell und dadurch deutlich schneller als Apertus-70b,

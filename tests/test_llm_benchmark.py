@@ -6,7 +6,6 @@ from pydantic import SecretStr
 from deepeval.evaluate import evaluate
 from deepeval.metrics import ConversationCompletenessMetric
 from deepeval.test_case import ConversationalTestCase, Turn
-
 from backend.api.ZIM import chat_endpoint
 from backend.graph.models.ChatRequest import ChatRequest
 from backend.graph.models.ExtractedTicketData import ExtractedTicketData
@@ -16,20 +15,58 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+import re
+
+class ThinkStripChatOpenAI(ChatOpenAI):
+    """Wrapper für DeepSeek: entfernt <think>...</think> Tags vor dem JSON-Parsing."""
+    
+    def invoke(self, input, config=None, **kwargs):
+        result = super().invoke(input, config=config, **kwargs)
+        if hasattr(result, 'content') and isinstance(result.content, str):
+            result.content = re.sub(
+                r'<think>.*?</think>', '', result.content, flags=re.DOTALL
+            ).strip()
+        return result
+    
 # Feste Gesprächsszenarien – deterministisch, kein Simulator nötig
 SCENARIOS = [
+    # Szenario 1: WLAN (bestehend)
     [
         "Ich bin in der Bibliothek mit einem Windows 10 Laptop, das Uni-WLAN wird nicht in der Netzwerkliste angezeigt",
+        "Nein, ein physischer Schalter ist nicht vorhanden. Ich habe schon den Flugzeugmodus aus- und eingeschaltet.",
+        "Ja, andere Geräte in der Bibliothek haben WLAN. Nur mein Laptop nicht.",
     ],
+    # Szenario 2: Gesperrter Account (bestehend)
     [
         "Mein Uni-Account ist gesperrt, ich kann mich weder im Portal noch per Mail einloggen",
+        "Mein Benutzername ist s-mustermann, ich habe eine alternative Mail: mustermann@gmail.com",
+        "Ich habe mein Passwort mehrmals falsch eingegeben, seitdem ist der Account gesperrt.",
+    ],
+    # Szenario 3: Passwort vergessen
+    [
+        "Ich habe mein Passwort vergessen und kann mich nicht mehr einloggen",
+        "Ich bin Student im 3. Semester, meine Matrikelnummer ist 1234567",
+        "Ich habe keinen Zugriff mehr auf meine Uni-Mail, ich kann den Reset-Link nicht empfangen",
+    ],
+    # Szenario 4: VPN-Verbindung
+    [
+        "Ich kann mich nicht mit dem Uni-VPN verbinden, ich brauche das für mein Homeoffice",
+        "Ich nutze Windows 11 und habe den Cisco AnyConnect Client installiert",
+        "Die Fehlermeldung lautet: 'Connection attempt has failed'",
+    ],
+    # Szenario 5: Software-Lizenz
+    [
+        "Ich kann meine Campuslizenz für Microsoft Office nicht aktivieren",
+        "Ich bin Mitarbeiter der Uni, meine Dienst-Mail ist mustermann@uni-due.de",
+        "Die Fehlermeldung sagt 'Kein Abonnement gefunden' obwohl ich berechtigt sein sollte",
     ],
 ]
 
 
 MODEL_CONFIGS = {
+    
     "deepseek-r1-70b":  "deepseek-r1-distill-llama-70b",
-    #"apertus-70b":      "apertus-70b-instruct-2509",
+    "apertus-70b":      "apertus-70b-instruct-2509",
     "gemma-4-31b":   "gemma-4-31b-it",  
     "llama-3.1-8b": "meta-llama-3.1-8b-instruct",
 }
@@ -41,7 +78,10 @@ def run_benchmark_for_model(model_name: str, model_id: str):
     print(f"Teste Modell: {model_name}")
     print(f"{'='*60}\n")
 
-    new_llm = ChatOpenAI(
+    # Für DeepSeek: ThinkStripChatOpenAI, für alle anderen: normales ChatOpenAI
+    llm_class = ThinkStripChatOpenAI if "deepseek" in model_id.lower() else ChatOpenAI
+
+    new_llm = llm_class(
         model=model_id,
         api_key=SecretStr(SAIA_API_KEY),
         base_url=SAIA_BASE_URL.rstrip("/"),
@@ -75,8 +115,8 @@ def run_benchmark_for_model(model_name: str, model_id: str):
                 break
         return ConversationalTestCase(turns=turns)
 
-    with patch("backend.nodes.llm", new_llm), \
-         patch("backend.nodes.structured_llm", new_structured_llm):
+    with patch("backend.graph.nodes.llm", new_llm), \
+         patch("backend.graph.nodes.structured_llm", new_structured_llm):
 
 
         async def run_all():

@@ -1,4 +1,4 @@
-﻿# Test environment
+# Test environment
 
 ## Prerequisites for the LLM tests
 DeepEval (https://deepeval.com/) is a framework to test LLM outputs. Before the tests can start, you have to do the following steps:
@@ -29,9 +29,9 @@ Each script that contains test cases ("test script") is in the folder `<project 
 
 To ensure that the test scripts can find all the application code, each folder (frontend, backend, tests) has an empty `__init__.py` file. This tells Python to treat the folders as packages (also cf. https://docs.python.org/3/tutorial/modules.html#packages).  **Do not delete this file**. Otherwise, the test scripts cannot find the code from the backend or frontend anymore. 
 
-If you are during regular development import code from other scripts, you need to use the full module path. For example if you need to import in the backend something from `backend/nodes.py` into `backend/main.py`:
+If you are during regular development import code from other scripts, you need to use the full module path. For example if you need to import in the backend something from `backend/graph/nodes.py` into `backend/main.py`:
 * ❌ Incorrect: `from nodes import ...`
-* ✅ Correct: `from backend.nodes import ...`
+* ✅ Correct: `from backend.graph.nodes import ...`
 
 
 
@@ -49,7 +49,11 @@ If you are during regular development import code from other scripts, you need t
 3. Do now this: 
    * On Windows `pytest .\<name of test file> -s -v`
    * On Mac/Linux `pytest ./<name of test file> -s -v`
-4. The `-s -v` flag causes the normal application to print on the terminal 
+4. The `-s -v` flag causes the normal application to print on the terminal
+
+**Exception — LLM benchmark test:** This test must be run from the project root, not from the `tests/` folder, because it imports backend modules that require the project root to be on the Python path:
+   * On Windows `set PYTHONPATH=. && pytest tests/test_llm_benchmark.py -v -s`
+   * On Mac `PYTHONPATH=. pytest tests/test_llm_benchmark.py -v -s`
 
 ## What is tested
 
@@ -112,11 +116,14 @@ This script benchmarks multiple GWDG/SAIA LLMs by running them through realistic
 To identify which LLM performs best as the chatbot's underlying model for the ZIM ticket management use case, and to document the strengths and weaknesses of each evaluated model.
 
 **How is the test done:**
-For each model in `MODEL_CONFIGS`, the chatbot is patched to use that model. Two realistic conversation scenarios are simulated:
+For each model in `MODEL_CONFIGS`, the chatbot is patched to use that model. Five realistic IT-support conversation scenarios are simulated, each consisting of up to 3 user messages:
 * A student whose university WLAN is not showing up in the network list
 * A student whose university account is locked
+* A student who forgot their password and cannot receive a reset link
+* A student who cannot connect to the university VPN from home office
+* A university employee who cannot activate their Microsoft Office campus licence
 
-Each scenario produces a `ConversationalTestCase` which is then evaluated by the judge model (Apertus-70B) using the `ConversationCompletenessMetric`. Results are collected and written to `benchmark_results.json`. All LLM calls are automatically traced in LangSmith via the LangChain integration.
+Each scenario produces a `ConversationalTestCase` which is then evaluated by the judge model (Gemma-4-31B) using the `ConversationCompletenessMetric`. Results are collected and written to `benchmark_results.json`. All LLM calls are automatically traced in LangSmith via the LangChain integration.
 
 **When is the test passed:**
 The test always passes (it is a benchmarking script, not a pass/fail test). Results are stored for manual analysis.
@@ -124,29 +131,31 @@ The test always passes (it is a benchmarking script, not a pass/fail test). Resu
 **Evaluated models and findings:**
 
 **deepseek-r1-distill-llama-70b** (70B):
-- Score: could not be fully evaluated due to rate limits
-- Strength: Available via SAIA, strong reasoning capabilities.
-- Weakness: Writes long reasoning chains in `<think>` tags before answering, which DeepEval cannot parse reliably. Frequently hits API rate limits.
+- Score (5-scenario run): 1.00 (VPN scenario), 0.67 (Office scenario); scenarios 1–3 could not be evaluated due to API server errors (InternalServerError)
+- Strength: Strong reasoning capabilities and detailed step-by-step solutions. Produces the most structured, helpful responses for technical IT problems.
+- Weakness: Writes long reasoning chains inside `<think>...</think>` tags before the actual answer, which required a custom wrapper class (`ThinkStripChatOpenAI`) to strip these tags before JSON parsing. Frequently hits API rate limits and server errors under load.
 
 **apertus-70b-instruct-2509** (70B):
-- Score: 0.83 (WLAN scenario), 0.67 (Account scenario)
-- Strength: Answers directly without excessive follow-up questions. Best overall results.
-- Weakness: Occasionally fails when used as both chatbot and judge simultaneously due to server load (RetryError).
+- Score (preliminary 2-scenario run): 0.83 (WLAN scenario), 0.67 (Account scenario)
+- Score (5-scenario run): could not be evaluated — HTTP 500 error during evaluation phase
+- Strength: Answers directly and concisely without excessive follow-up questions. Best overall completeness scores in completed evaluations.
+- Weakness: Unstable under high server load — when used as chatbot model while the judge model runs simultaneously, it produced `RetryError` and HTTP 500 responses. Cannot serve as both chatbot and judge at the same time.
 
 **gemma-4-31b-it** (31B):
-- Score: 0.00 (both scenarios)
-- Strength: Compatible with the system, no technical errors.
-- Weakness: Asks multiple follow-up questions before providing a solution. Conversation ends as incomplete by the metric.
+- Score (preliminary 2-scenario run): 0.00 (WLAN scenario), 0.33 (Account scenario)
+- Score (5-scenario run): could not be evaluated — API rate limit exceeded (429)
+- Strength: Stable and compatible with the system; no technical parsing errors or JSON format issues.
+- Weakness: Tends to ask multiple follow-up questions before offering any solution, causing conversations to end before a solution is reached. Low completeness scores as a result.
 
 **meta-llama-3.1-8b-instruct** (8B – small model):
-- Score: could not be fully evaluated due to rate limits
-- Strength: Smallest and fastest model tested, low server demand.
-- Weakness: Returns incorrect JSON structure for some scenarios (`needs_additional_info` field missing), causing errors.
-
-
+- Score (5-scenario run): could not be evaluated — API rate limit exceeded (429)
+- Strength: Smallest and fastest model tested; lowest server demand of all evaluated models. Suitable as a lightweight fallback.
+- Weakness: Returns unexpected JSON structures for some extraction steps (`needs_additional_info` field sometimes missing or misformatted), which caused parsing errors. Model quality is noticeably lower than the 70B models.
 
 **Additional notes:**
-* All models are accessed via the GWDG/SAIA API (`https://chat-ai.academiccloud.de/v1/`) which is OpenAI-compatible.
-* A known RAG bug causes all models to query "How to connect to the VPN using Forcepoint?" regardless of the actual issue. This affects the quality of solutions provided by all models.
-* The judge model (Apertus-70B) evaluates responses — running Apertus as both chatbot and judge simultaneously can cause `RetryError` due to server load.
-* Rate limits (`429`) occur after many API calls in one session. 
+* All models are accessed via the GWDG/SAIA API (`https://chat-ai.academiccloud.de/v1/`) which is OpenAI-compatible. The `demand` field in the API response indicates current server load (0 = free, higher = busy).
+* The judge model is **Gemma-4-31B** (`gemma-4-31b-it`). It was chosen to avoid server overload — using the same model as both chatbot and judge simultaneously caused `RetryError` for Apertus.
+* DeepSeek's `<think>...</think>` reasoning tags are stripped automatically by the `ThinkStripChatOpenAI` wrapper class before responses are parsed.
+* Some models (especially Gemma and Llama) require up to 3 conversation turns before offering a solution. Scenarios therefore consist of 3 messages so that conservative models have enough turns to complete the conversation.
+* Rate limits (`429`) occur after many API calls in one session. Wait for the rate limit to reset before re-running the benchmark.
+* The benchmark must be run from the **project root** (not from the `tests/` folder): `PYTHONPATH=. pytest tests/test_llm_benchmark.py -v -s`
