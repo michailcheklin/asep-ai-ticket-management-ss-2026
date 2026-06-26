@@ -162,8 +162,8 @@ class TicketService:
             f"E-Mail: {state['user_email']}\n\n"
             f"Problem:\n{state['issue_description']}\n\n"
             f"Zusatzinfos:\n{self._format_additional_info(state.get('additional_info', []))}"
-            f"{self._chat_history_and_solutions_section(state)}\n\n"
-            f"Status: Durch KI gelöst"
+            f"\n\nStatus: Durch KI gelöst"
+            f"{self._chat_history_and_solutions_section(state)}"
         )
 
     def _chat_history_and_solutions_section(self, state) -> str:
