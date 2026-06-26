@@ -26,7 +26,7 @@ from category_test_support import (
     load_regression_cases,
     validate_cases,
 )
-from nodes import (
+from backend.graph.nodes import (
     TICKET_CATEGORIES,
     classify_ticket,
     classify_ticket_category,
@@ -39,7 +39,7 @@ from nodes import (
 class ClassifyTicketCategoryTests(unittest.TestCase):
     """Unit tests for classify_ticket_category prompt and fallback behavior."""
 
-    @patch("nodes.category_llm")
+    @patch("backend.graph.nodes.category_llm")
     def test_returns_valid_category_from_llm(self, mock_category_llm):
         mock_category_llm.invoke.return_value = category_decision("Technisches Problem")
 
@@ -52,7 +52,7 @@ class ClassifyTicketCategoryTests(unittest.TestCase):
         self.assertEqual(result, "Technisches Problem")
         mock_category_llm.invoke.assert_called_once()
 
-    @patch("nodes.category_llm")
+    @patch("backend.graph.nodes.category_llm")
     def test_falls_back_when_llm_returns_unknown_category(self, mock_category_llm):
         mock_category_llm.invoke.return_value = category_decision("Netzwerk")
 
@@ -64,7 +64,7 @@ class ClassifyTicketCategoryTests(unittest.TestCase):
 
         self.assertEqual(result, "Allgemeine Anfrage")
 
-    @patch("nodes.category_llm")
+    @patch("backend.graph.nodes.category_llm")
     def test_prompt_includes_full_conversation_context(self, mock_category_llm):
         mock_category_llm.invoke.return_value = category_decision("Zugang/Login")
 
@@ -83,7 +83,7 @@ class ClassifyTicketCategoryTests(unittest.TestCase):
         self.assertIn("Falsche Credentials angezeigt", prompt)
         self.assertIn("Moodle", prompt)
 
-    @patch("nodes.category_llm")
+    @patch("backend.graph.nodes.category_llm")
     def test_moodle_credentials_classified_as_zugang_login(self, mock_category_llm):
         mock_category_llm.invoke.return_value = category_decision("Zugang/Login")
 
@@ -95,7 +95,7 @@ class ClassifyTicketCategoryTests(unittest.TestCase):
 
         self.assertEqual(result, "Zugang/Login")
 
-    @patch("nodes.category_llm")
+    @patch("backend.graph.nodes.category_llm")
     def test_wlan_classified_as_technisches_problem(self, mock_category_llm):
         mock_category_llm.invoke.return_value = category_decision("Technisches Problem")
 
@@ -111,9 +111,9 @@ class ClassifyTicketCategoryTests(unittest.TestCase):
 class ExtractInformationTests(unittest.TestCase):
     """Unit tests ensuring extraction does not perform category classification."""
 
-    @patch("nodes.structured_llm")
+    @patch("backend.graph.nodes.structured_llm")
     def test_extract_information_does_not_set_category(self, mock_structured_llm):
-        from nodes import ExtractedTicketData
+        from backend.graph.models.ExtractedTicketData import ExtractedTicketData
 
         mock_structured_llm.invoke.return_value = ExtractedTicketData(
             problem="WLAN Problem",
@@ -129,9 +129,9 @@ class ExtractInformationTests(unittest.TestCase):
         self.assertEqual(state_update.get("issue_description"), "WLAN Problem")
         self.assertNotIn("category", state_update)
 
-    @patch("nodes.structured_llm")
+    @patch("backend.graph.nodes.structured_llm")
     def test_extract_prompt_does_not_include_category_rules(self, mock_structured_llm):
-        from nodes import ExtractedTicketData
+        from backend.graph.models.ExtractedTicketData import ExtractedTicketData
 
         mock_structured_llm.invoke.return_value = ExtractedTicketData()
 
@@ -149,7 +149,7 @@ class ExtractInformationTests(unittest.TestCase):
 class ClassifyTicketNodeTests(unittest.TestCase):
     """Unit tests for classify_ticket workflow node and finish_ticket reuse."""
 
-    @patch("nodes.classify_ticket_category")
+    @patch("backend.graph.nodes.classify_ticket_category")
     def test_classify_ticket_node_sets_category(self, mock_classify):
         mock_classify.return_value = "Technisches Problem"
 
@@ -163,7 +163,7 @@ class ClassifyTicketNodeTests(unittest.TestCase):
         self.assertEqual(state_update["category"], "Technisches Problem")
         mock_classify.assert_called_once()
 
-    @patch("nodes.classify_ticket_category")
+    @patch("backend.graph.nodes.classify_ticket_category")
     def test_resolve_ticket_category_reuses_existing_value(self, mock_classify):
         category = _resolve_ticket_category({
             "messages": [],
@@ -175,19 +175,19 @@ class ClassifyTicketNodeTests(unittest.TestCase):
         self.assertEqual(category, "Technisches Problem")
         mock_classify.assert_not_called()
 
-    @patch("nodes.classify_ticket_category")
-    @patch("nodes.llm")
-    @patch("nodes.create_ticket_by_user_email")
+    @patch("backend.graph.nodes.classify_ticket_category")
+    @patch("backend.graph.nodes.ticket_service.create_support_ticket")
     def test_finish_ticket_reuses_category_without_reclassifying(
         self,
         mock_create_ticket,
-        mock_llm,
         mock_classify,
     ):
-        mock_llm.invoke.return_value.content = "WLAN Problem"
-        mock_create_ticket.return_value = None
+        mock_create_ticket.return_value = {
+            "messages": [],
+            "is_complete": True,
+        }
 
-        finish_ticket({
+        result = finish_ticket({
             "messages": [HumanMessage(content="WLAN geht nicht")],
             "user_email": "user@mail.com",
             "matrikelnummer": "1234567",
@@ -199,6 +199,11 @@ class ClassifyTicketNodeTests(unittest.TestCase):
 
         mock_classify.assert_not_called()
         mock_create_ticket.assert_called_once()
+        self.assertEqual(result["category"], "Technisches Problem")
+        self.assertEqual(
+            mock_create_ticket.call_args[0][0]["category"],
+            "Technisches Problem",
+        )
 
 
 class TicketCategoryConstantsTests(unittest.TestCase):

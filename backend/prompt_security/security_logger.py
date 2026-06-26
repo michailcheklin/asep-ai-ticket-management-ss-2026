@@ -1,7 +1,7 @@
 from datetime import datetime
 
 
-LOG_FILE = "blocked_prompts.log"
+LOG_FILE = "./backend/blocked_prompts.log"
 
 
 def log_blocked_prompt(prompt: str, reason: str, risk_score: float | None = None) -> None:

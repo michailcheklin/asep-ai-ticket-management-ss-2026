@@ -5,7 +5,7 @@ import os
 import unittest
 from pathlib import Path
 
-from nodes import TICKET_CATEGORIES, TicketCategoryDecision, classify_ticket_category
+from backend.graph.nodes import TICKET_CATEGORIES, TicketCategoryDecision, classify_ticket_category
 
 OLD_TICKETS_PATH = Path(__file__).resolve().parent / "rag" / "old_tickets.json"
 HOLDOUT_TESTS_PATH = Path(__file__).resolve().parent / "rag" / "category_holdout_tests.json"

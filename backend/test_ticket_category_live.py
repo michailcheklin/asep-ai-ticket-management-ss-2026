@@ -9,7 +9,7 @@ from category_test_support import (
     regression_limit,
     run_live_category_suite,
 )
-from nodes import classify_ticket_category
+from backend.graph.nodes import classify_ticket_category
 
 
 @unittest.skipUnless(
