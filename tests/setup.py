@@ -24,18 +24,6 @@ MODELS_TO_EVALUATE = {
     "teuken-7b":        make_model("teuken-7b-instruct-research"),
 }
 
-# Judge-Modell für DeepEval (bewertet die Antworten)
-# Wir nutzen DeepSeek als Judge, da es schon bekannt und stabil ist
-# 1.Änderungenn nach Fehlermeldung: DeepSeek-R1 schreibt zuerst langen Denkprozess in <think>-Tags — DeepEval erwartet strukturierte JSON-Antworten und kann das nicht sauber parsen
-# Apertus antwortet direkt ohne solche Tokens und ist das zuverlässigere Judge-Modell
-# 2.Änderung: Apertus wird im Benchmark doppelt belastet – 
-# einmal als Chatbot-Modell (das getestet wird) und gleichzeitig als Judge-Modell 
-# (das die Antworten bewertet). Das führt zu InternalServerError, weil derselbe Server zu viele
-# gleichzeitige Anfragen erhält. Und es wäre methodisch sauberer. 
 SAIA_MODEL = make_model("gemma-4-31b-it")
 
-# Simulator-Modell für DeepEval (spielt den Nutzer im Gespräch nach)
-# Teuken-7b ist ein kleines 7B-Modell und dadurch deutlich schneller als Apertus-70b,
-# was die Simulationszeit stark reduziert. Die Qualität der Bewertung bleibt trotzdem
-# gut, da für die Metriken weiterhin Apertus als Judge-Modell (SAIA_MODEL) verwendet wird.
 SIMULATOR_MODEL = make_model("teuken-7b-instruct-research")
