@@ -1,6 +1,9 @@
 import json
 import asyncio
 from unittest.mock import patch
+
+import openai
+from langchain_core.outputs import ChatResult
 from langchain_openai import ChatOpenAI
 from pydantic import SecretStr
 from deepeval.evaluate import evaluate
@@ -27,7 +30,34 @@ class ThinkStripChatOpenAI(ChatOpenAI):
                 r'<think>.*?</think>', '', result.content, flags=re.DOTALL
             ).strip()
         return result
-    
+
+
+class LlamaPatchForChatOpenAI(ChatOpenAI):
+    def _create_chat_result(
+        self,
+        response: dict | openai.BaseModel,
+        generation_info: dict | None = None,
+    ) -> ChatResult:
+        """
+        Applying the fix suggested in https://github.com/langchain-ai/langchain/issues/26777#issuecomment-2639633410
+        to handle format issues for Llama
+        :param response:
+        :param generation_info:
+        :return:
+        """
+        for choice in response.choices:
+            message = choice.message
+            # Check if the message has a tool_calls attribute.
+            if hasattr(message, "tool_calls") and message.tool_calls:
+                for tool_call in message.tool_calls:
+                    # Check if the tool_call has a function with arguments.
+                    if hasattr(tool_call, "function") and hasattr(tool_call.function, "arguments"):
+                        if not isinstance(tool_call.function.arguments, str):
+                            tool_call.function.arguments = json.dumps(tool_call.function.arguments)
+
+        return super()._create_chat_result(response, generation_info)
+
+
 # Feste Gesprächsszenarien – deterministisch, kein Simulator nötig
 SCENARIOS = [
     # Szenario 1: WLAN (bestehend)
@@ -67,7 +97,7 @@ MODEL_CONFIGS = {
     
     "deepseek-r1-70b":  "deepseek-r1-distill-llama-70b",
     "apertus-70b":      "apertus-70b-instruct-2509",
-    "gemma-4-31b":   "gemma-4-31b-it",  
+    "gemma-4-31b":   "gemma-4-31b-it",
     "llama-3.1-8b": "meta-llama-3.1-8b-instruct",
 }
 
@@ -79,7 +109,9 @@ def run_benchmark_for_model(model_name: str, model_id: str):
     print(f"{'='*60}\n")
 
     # Für DeepSeek: ThinkStripChatOpenAI, für alle anderen: normales ChatOpenAI
-    llm_class = ThinkStripChatOpenAI if "deepseek" in model_id.lower() else ChatOpenAI
+    llm_class = ThinkStripChatOpenAI if "deepseek" in model_id.lower() \
+        else LlamaPatchForChatOpenAI if "llama" in model_id.lower() \
+        else ChatOpenAI
 
     new_llm = llm_class(
         model=model_id,
