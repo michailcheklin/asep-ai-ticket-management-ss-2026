@@ -2,31 +2,51 @@
   "HOLDOUT_TESTS": [
     {
       "ticket": "Ich kann meine Hausarbeit heute nicht hochladen, weil das Portal mich ständig abmeldet.",
-      "expected_category": "Zugang/Login"
+      "expected_category": "Incident"
     },
     {
       "ticket": "Ich habe den Semesterbeitrag bezahlt, aber im System steht immer noch offen.",
-      "expected_category": "Rechnung"
+      "expected_category": "Service Request"
     },
     {
       "ticket": "Der Drucker in der Bibliothek zieht Papier ein, aber druckt nichts.",
-      "expected_category": "Technisches Problem"
+      "expected_category": "Incident"
     },
     {
       "ticket": "Ich habe letzte Woche schon geschrieben und niemand antwortet. Das ist echt schlecht organisiert.",
-      "expected_category": "Beschwerde"
+      "expected_category": "Complaint"
     },
     {
       "ticket": "Wo finde ich eine Anleitung für eduroam auf meinem Handy?",
-      "expected_category": "Allgemeine Anfrage"
+      "expected_category": "Service Request"
     },
     {
       "ticket": "Ich wurde beim Einloggen rausgeworfen und komme nicht mehr in meine Abgabe rein.",
-      "expected_category": "Zugang/Login"
+      "expected_category": "Incident"
     },
     {
       "ticket": "Ich kann mich in Moodle anmelden, aber mein Kurs wird nicht angezeigt, obwohl ich in HisInOne eingeschrieben bin.",
-      "expected_category": "Technisches Problem"
+      "expected_category": "Incident"
+    },
+    {
+      "ticket": "Bitte ändern Sie die Berechtigung für unsere Projektgruppe, damit zwei neue Mitarbeitende Zugriff auf den gemeinsamen Ordner bekommen.",
+      "expected_category": "Change"
+    },
+    {
+      "ticket": "Der VPN-Zugang fällt seit mehreren Wochen jeden Montagmorgen für viele Mitarbeitende aus. Wir möchten die Ursache untersuchen lassen.",
+      "expected_category": "Problem"
+    },
+    {
+      "ticket": "Seit drei Wochen melden mehrere Kurse, dass Moodle-Noten nicht zuverlässig synchronisiert werden. Bitte die Grundursache analysieren.",
+      "expected_category": "Problem"
+    },
+    {
+      "ticket": "Im Wohnheim fällt eduroam fast jeden Abend gegen 20 Uhr für alle Bewohner aus. Wir brauchen eine Ursachenanalyse, nicht nur einen kurzfristigen Fix.",
+      "expected_category": "Problem"
+    },
+    {
+      "ticket": "Der Drucker im Poolraum druckt seit Monaten regelmäßig leere Seiten, obwohl er mehrfach repariert wurde. Können Sie die wiederkehrende Fehlerursache untersuchen?",
+      "expected_category": "Problem"
     }
   ]
 }

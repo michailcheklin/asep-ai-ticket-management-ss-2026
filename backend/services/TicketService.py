@@ -142,7 +142,7 @@ class TicketService:
             f"Matrikelnummer: {state['matrikelnummer']}\n"
             f"E-Mail: {state['user_email']}\n\n"
             f"Priorität: {'urgent' if state.get('priority') == 1 else 'normal'}\n"
-            f"Kategorie: {state.get('category', 'Allgemeine Anfrage')}\n"
+            f"Kategorie: {state.get('category', 'Service Request')}\n"
             f"Problem:\n{state['issue_description']}\n\n"
             f"Zusatzinfos:\n{self._format_additional_info(state.get('additional_info', []))}"
             f"{self._chat_history_and_solutions_section(state)}"
@@ -161,6 +161,8 @@ class TicketService:
         return (
             f"Matrikelnummer: {state['matrikelnummer']}\n"
             f"E-Mail: {state['user_email']}\n\n"
+            f"Priorität: {'urgent' if state.get('priority') == 1 else 'normal'}\n"
+            f"Kategorie: {state.get('category', 'Service Request')}\n"
             f"Problem:\n{state['issue_description']}\n\n"
             f"Zusatzinfos:\n{self._format_additional_info(state.get('additional_info', []))}"
             f"\n\nStatus: Durch KI gelöst"

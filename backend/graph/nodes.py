@@ -12,11 +12,11 @@ from .node_logging import log_node_entry
 ticket_service = TicketService()
 
 TICKET_CATEGORIES = [
-    "Zugang/Login",
-    "Technisches Problem",
-    "Allgemeine Anfrage",
-    "Beschwerde",
-    "Rechnung",
+    "Incident",
+    "Service Request",
+    "Change",
+    "Problem",
+    "Complaint",
 ]
 
 
@@ -30,39 +30,58 @@ class TicketCategoryDecision(BaseModel):
 category_llm = llm.with_structured_output(TicketCategoryDecision)
 
 _CATEGORY_RULES = """
-Klassifiziere nach Hauptabsicht des Nutzers, nicht nach einzelnen Schlüsselwörtern.
+Klassifiziere nach ITSM-Ticket-Typ und Hauptabsicht des Nutzers.
+Ignoriere einzelne Schlüsselwörter, wenn sie nicht zur Hauptabsicht passen.
 
-Kategorien:
+Ticket-Typen:
 
-1. Beschwerde:
-Wähle diese Kategorie nur, wenn die Hauptabsicht des Nutzers eine Beschwerde über Support,
-Bearbeitung, Wartezeit oder schlechte Kommunikation ist.
-Ein technisches Problem allein ist keine Beschwerde.
+1. Complaint:
+Wähle diesen Typ, wenn die Hauptabsicht eine Beschwerde, Unzufriedenheit,
+Frust, Ärger oder Kritik an Support, Bearbeitung, Wartezeit, Kommunikation
+oder fehlender Hilfe ist.
+Das gilt auch dann, wenn zusätzlich ein technisches Problem erwähnt wird.
+Typische Hinweise: "unhappy", "frustrated", "angry", "upset", "unacceptable",
+"complained", "nobody fixed it", "no help in time", "not answered".
 
-2. Rechnung:
-Wähle diese Kategorie, wenn das Hauptproblem Zahlung, Gebühren, Rechnung, Rückerstattung
-oder Zahlungsstatus betrifft.
-Auch technische Fehler in einem Zahlungsportal bleiben Rechnung, wenn die Zahlung das
-eigentliche Ziel ist.
+2. Problem:
+Wähle diesen Typ nur, wenn die Hauptabsicht die Analyse einer wiederkehrenden
+oder grundlegenden Ursache ist.
+Ein aktueller Ausfall bleibt Incident, auch wenn mehrere Nutzer betroffen sind.
+Problem ist passend bei Root-Cause-Analyse, wiederkehrenden Incidents,
+bekannter Fehlerursache oder systematischer Untersuchung.
 
-3. Zugang/Login:
-Wähle diese Kategorie, wenn der Nutzer keinen Zugang zu einem Konto oder Uni-System bekommt.
-Dazu gehören Login-Probleme, Passwort, 2FA, gesperrte Accounts, falsche Zugangsdaten oder
-Authentifizierung — auch ohne explizite Nennung von Systemnamen.
+3. Change:
+Wähle diesen Typ, wenn eine Änderung an System, Konfiguration, Berechtigung,
+Rolle, Gruppe, Weiterleitung oder Prozess gewünscht wird.
+Beispiele: neue Rolle vergeben, Gruppe anpassen, Zugriff ändern,
+Mailbox-Weiterleitung ändern, Berechtigung erweitern.
 
-4. Technisches Problem:
-Wähle diese Kategorie, wenn ein System, Gerät, Netzwerk oder eine Software technisch nicht
-funktioniert, aber der Schwerpunkt nicht auf Login, Zahlung oder Beschwerde liegt.
+4. Service Request:
+Wähle diesen Typ bei Anfragen, Anträgen, Informationswünschen oder
+administrativen Anliegen ohne Fokus auf eine technische Störung.
+Wichtig: Zahlungs-, Gebühren-, Rechnungs-, Rückerstattungs- und
+Accounting-Anliegen sind in diesem Projekt Service Request, auch wenn ein
+Portal einen falschen Zahlungsstatus, eine Fehlermeldung oder ein Exportproblem zeigt.
+Beispiele: Semesterbeitrag klären, Rechnung anfordern, Zahlungsstatus prüfen,
+Rückerstattung, Software anfordern, Anleitung erhalten, Zugriff beantragen.
 
-5. Allgemeine Anfrage:
-Wähle diese Kategorie, wenn der Nutzer nur Informationen möchte oder noch kein konkretes
-Problem beschreibt.
+5. Incident:
+Wähle diesen Typ, wenn ein IT-Service, System, Gerät, Netzwerk oder eine
+Software aktuell nicht funktioniert und keine speziellere Kategorie oben passt.
+Beispiele: Login unmöglich, WLAN aus, Drucker defekt, Moodle Upload geht nicht,
+VPN verbindet nicht, Anwendung stürzt ab.
 
-Bei Überschneidungen gilt:
-Beschwerde > Rechnung > Zugang/Login > Technisches Problem > Allgemeine Anfrage.
+Priorität bei Überschneidungen:
+Complaint > Problem > Change > Service Request > Incident.
 
-Bewerte die Kategorie immer anhand des GESAMTEN Chatverlaufs und aller bekannten Infos.
-Gib genau eine Kategorie zurück.
+Wenn ein Ticket sowohl eine technische Störung als auch ein Zahlungs-/Rechnungsanliegen enthält,
+wähle Service Request, sofern Zahlung, Rechnung, Gebühr oder Accounting das eigentliche Ziel ist.
+
+Wenn ein Ticket sowohl eine technische Störung als auch Ärger/Beschwerde enthält,
+wähle Complaint, sofern die Beschwerde die Hauptabsicht ist.
+
+Bewerte den Ticket-Typ immer anhand des GESAMTEN Chatverlaufs und aller bekannten Infos.
+Gib genau einen Ticket-Typ zurück.
 """
 
 
@@ -74,8 +93,8 @@ def classify_ticket_category(
     """Classify a ticket using the full conversation context, not just the last message."""
     conversation = "\n".join(f"- {msg}" for msg in user_messages) if user_messages else "(keine)"
     infos = ", ".join(additional_info) if additional_info else "(keine)"
-    prompt = f"""Du bist ein Kategorisierer für IT-Support-Tickets an einer Universität.
-Ordne das Ticket nach der Hauptabsicht des Nutzers genau einer Kategorie zu:
+    prompt = f"""Du bist ein Klassifizierer für IT-Support-Tickets an einer Universität.
+Ordne das Ticket nach ITSM-Ticket-Typ genau einem der folgenden Typen zu:
 [{", ".join(TICKET_CATEGORIES)}].
 
 KONTEXT:
@@ -89,7 +108,7 @@ Zusatzinfos: {infos}
     decision = cast(TicketCategoryDecision, category_llm.invoke([SystemMessage(content=prompt)]))
     if decision.category in TICKET_CATEGORIES:
         return decision.category
-    return "Allgemeine Anfrage"
+    return "Service Request"
 
 
 def _resolve_ticket_category(state: ChatbotState) -> str:
@@ -386,7 +405,7 @@ def give_solutions(state: ChatbotState):
     final_message = AIMessage(content=message_text.content + "\n\nKonnte ich Ihnen dabei helfen, Ihr Problem zu lösen?")
 
     return {
-        "messages": final_message,  # hier stecken die Solutions als menschlicher, zusammenhägender Text drin
+        "messages": [final_message],
         "solutions": solutions,
         # "rag_debug": {
         #     "query": query,
@@ -431,4 +450,7 @@ def finish_ai_solved_ticket(state):
     was solved only by using the chatbot without involving the ZIM staff
     """
     log_node_entry("finish_ai_solved_ticket", state)
-    return ticket_service.create_ai_solved_ticket(state)
+    category = _resolve_ticket_category(state)
+    state_with_category = {**state, "category": category}
+    result = ticket_service.create_ai_solved_ticket(state_with_category)
+    return {**result, "category": category}

@@ -151,10 +151,11 @@ async def solution_feedback(request: ChatRequest):
         "additional_info_attempts": request.additional_info_attempts
     }
 
+    current_state["category"] = _resolve_ticket_category(current_state)
+
     if request.helpful:
         updated_state = ticket_service.create_ai_solved_ticket(current_state)
     else:
-        current_state["category"] = _resolve_ticket_category(current_state)
         updated_state = ticket_service.create_support_ticket(current_state)
 
     return {

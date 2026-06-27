@@ -41,7 +41,7 @@ class ClassifyTicketCategoryTests(unittest.TestCase):
 
     @patch("backend.graph.nodes.category_llm")
     def test_returns_valid_category_from_llm(self, mock_category_llm):
-        mock_category_llm.invoke.return_value = category_decision("Technisches Problem")
+        mock_category_llm.invoke.return_value = category_decision("Incident")
 
         result = classify_ticket_category(
             issue_description="WLAN funktioniert nicht",
@@ -49,7 +49,7 @@ class ClassifyTicketCategoryTests(unittest.TestCase):
             user_messages=["Mein WLAN geht nicht", "Ich bin im Gebäude SGW"],
         )
 
-        self.assertEqual(result, "Technisches Problem")
+        self.assertEqual(result, "Incident")
         mock_category_llm.invoke.assert_called_once()
 
     @patch("backend.graph.nodes.category_llm")
@@ -62,11 +62,11 @@ class ClassifyTicketCategoryTests(unittest.TestCase):
             user_messages=["VPN geht nicht"],
         )
 
-        self.assertEqual(result, "Allgemeine Anfrage")
+        self.assertEqual(result, "Service Request")
 
     @patch("backend.graph.nodes.category_llm")
     def test_prompt_includes_full_conversation_context(self, mock_category_llm):
-        mock_category_llm.invoke.return_value = category_decision("Zugang/Login")
+        mock_category_llm.invoke.return_value = category_decision("Incident")
 
         classify_ticket_category(
             issue_description="Falsche Credentials angezeigt",
@@ -84,8 +84,8 @@ class ClassifyTicketCategoryTests(unittest.TestCase):
         self.assertIn("Moodle", prompt)
 
     @patch("backend.graph.nodes.category_llm")
-    def test_moodle_credentials_classified_as_zugang_login(self, mock_category_llm):
-        mock_category_llm.invoke.return_value = category_decision("Zugang/Login")
+    def test_moodle_login_classified_as_incident(self, mock_category_llm):
+        mock_category_llm.invoke.return_value = category_decision("Incident")
 
         result = classify_ticket_category(
             issue_description="Falsche Credentials angezeigt",
@@ -93,11 +93,11 @@ class ClassifyTicketCategoryTests(unittest.TestCase):
             user_messages=["Ich kann mich nicht in Moodle einloggen, falsche Credentials angezeigt"],
         )
 
-        self.assertEqual(result, "Zugang/Login")
+        self.assertEqual(result, "Incident")
 
     @patch("backend.graph.nodes.category_llm")
-    def test_wlan_classified_as_technisches_problem(self, mock_category_llm):
-        mock_category_llm.invoke.return_value = category_decision("Technisches Problem")
+    def test_wlan_classified_as_incident(self, mock_category_llm):
+        mock_category_llm.invoke.return_value = category_decision("Incident")
 
         result = classify_ticket_category(
             issue_description="WLAN funktioniert nicht",
@@ -105,7 +105,7 @@ class ClassifyTicketCategoryTests(unittest.TestCase):
             user_messages=["Wlan funktioniert nicht"],
         )
 
-        self.assertEqual(result, "Technisches Problem")
+        self.assertEqual(result, "Incident")
 
 
 class ExtractInformationTests(unittest.TestCase):
@@ -143,7 +143,7 @@ class ExtractInformationTests(unittest.TestCase):
 
         system_prompt = mock_structured_llm.invoke.call_args[0][0][0].content
         self.assertNotIn("4. Kategorie", system_prompt)
-        self.assertNotIn("Klassifiziere nach Hauptabsicht", system_prompt)
+        self.assertNotIn("ITSM-Ticket-Typ", system_prompt)
 
 
 class ClassifyTicketNodeTests(unittest.TestCase):
@@ -151,7 +151,7 @@ class ClassifyTicketNodeTests(unittest.TestCase):
 
     @patch("backend.graph.nodes.classify_ticket_category")
     def test_classify_ticket_node_sets_category(self, mock_classify):
-        mock_classify.return_value = "Technisches Problem"
+        mock_classify.return_value = "Incident"
 
         state_update = classify_ticket({
             "messages": [HumanMessage(content="Mein WLAN geht nicht")],
@@ -160,7 +160,7 @@ class ClassifyTicketNodeTests(unittest.TestCase):
             "category": "",
         })
 
-        self.assertEqual(state_update["category"], "Technisches Problem")
+        self.assertEqual(state_update["category"], "Incident")
         mock_classify.assert_called_once()
 
     @patch("backend.graph.nodes.classify_ticket_category")
@@ -169,10 +169,10 @@ class ClassifyTicketNodeTests(unittest.TestCase):
             "messages": [],
             "issue_description": "WLAN funktioniert nicht",
             "additional_info": [],
-            "category": "Technisches Problem",
+            "category": "Incident",
         })
 
-        self.assertEqual(category, "Technisches Problem")
+        self.assertEqual(category, "Incident")
         mock_classify.assert_not_called()
 
     @patch("backend.graph.nodes.classify_ticket_category")
@@ -194,15 +194,15 @@ class ClassifyTicketNodeTests(unittest.TestCase):
             "issue_description": "WLAN funktioniert nicht",
             "additional_info": [],
             "priority": 0,
-            "category": "Technisches Problem",
+            "category": "Incident",
         })
 
         mock_classify.assert_not_called()
         mock_create_ticket.assert_called_once()
-        self.assertEqual(result["category"], "Technisches Problem")
+        self.assertEqual(result["category"], "Incident")
         self.assertEqual(
             mock_create_ticket.call_args[0][0]["category"],
-            "Technisches Problem",
+            "Incident",
         )
 
 
@@ -213,17 +213,17 @@ class TicketCategoryConstantsTests(unittest.TestCase):
         self.assertEqual(
             TICKET_CATEGORIES,
             [
-                "Zugang/Login",
-                "Technisches Problem",
-                "Allgemeine Anfrage",
-                "Beschwerde",
-                "Rechnung",
+                "Incident",
+                "Service Request",
+                "Change",
+                "Problem",
+                "Complaint",
             ],
         )
 
     def test_regression_fixtures_load_from_old_tickets(self):
         cases = load_regression_cases()
-        self.assertEqual(len(cases), 50)
+        self.assertEqual(len(cases), 56)
         validate_cases(cases)
 
     def test_holdout_fixtures_load(self):
