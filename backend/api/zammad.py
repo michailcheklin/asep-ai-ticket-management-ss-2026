@@ -1,7 +1,7 @@
 from dotenv import load_dotenv
 import os
 import requests
-from requests.exceptions import ConnectionError
+from requests.exceptions import ConnectionError, MissingSchema
 
 load_dotenv()
 
@@ -84,6 +84,12 @@ def create_ticket_by_user_email(
     except ConnectionError:
         # Return the ticket id -1 if no connection could be built
         print(f"Connection error: Could not reach Zammad to create ticket")
+        return -1
+    except MissingSchema:
+        print(f"Invalid URL for Zammad provided: Could not reach Zammad to create ticket")
+        return -1
+    except Exception as e:
+        print(f"Other error occured: {e}")
         return -1
 
 def add_article_to_ticket(ticket_id: int, body: str, sender: str = "Agent",
