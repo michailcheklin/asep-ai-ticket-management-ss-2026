@@ -1,6 +1,7 @@
 from dotenv import load_dotenv
 import os
 import requests
+from requests.exceptions import ConnectionError
 
 load_dotenv()
 
@@ -71,14 +72,19 @@ def create_ticket_by_user_email(
         "state": state,
     }
 
-    server_response = requests.post(url=f"{server_address}/api/v1/tickets",
-                                    json=json_body_for_ticket,
-                                    headers=headers,
-                                    timeout=GENERAL_TIMEOUT)
+    try:
+        server_response = requests.post(url=f"{server_address}/api/v1/tickets",
+                                        json=json_body_for_ticket,
+                                        headers=headers,
+                                        timeout=GENERAL_TIMEOUT)
 
-    print(server_response.status_code)
-    print(server_response.text)
-    return server_response.json().get("id")
+        print(server_response.status_code)
+        print(server_response.text)
+        return server_response.json().get("id")
+    except ConnectionError:
+        # Return the ticket id -1 if no connection could be built
+        print(f"Connection error: Could not reach Zammad to create ticket")
+        return -1
 
 def add_article_to_ticket(ticket_id: int, body: str, sender: str = "Agent",
                            article_type: str = "note", internal: bool = True):
