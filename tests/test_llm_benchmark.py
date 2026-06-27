@@ -32,6 +32,7 @@ class ThinkStripChatOpenAI(ChatOpenAI):
         return result
 
 
+
 class LlamaPatchForChatOpenAI(ChatOpenAI):
     def _create_chat_result(
         self,
@@ -58,15 +59,14 @@ class LlamaPatchForChatOpenAI(ChatOpenAI):
         return super()._create_chat_result(response, generation_info)
 
 
-# Feste Gesprächsszenarien – deterministisch, kein Simulator nötig
 SCENARIOS = [
-    # Szenario 1: WLAN (bestehend)
+    # Szenario 1: WLAN 
     [
         "Ich bin in der Bibliothek mit einem Windows 10 Laptop, das Uni-WLAN wird nicht in der Netzwerkliste angezeigt",
         "Nein, ein physischer Schalter ist nicht vorhanden. Ich habe schon den Flugzeugmodus aus- und eingeschaltet.",
         "Ja, andere Geräte in der Bibliothek haben WLAN. Nur mein Laptop nicht.",
     ],
-    # Szenario 2: Gesperrter Account (bestehend)
+    # Szenario 2: Gesperrter Account 
     [
         "Mein Uni-Account ist gesperrt, ich kann mich weder im Portal noch per Mail einloggen",
         "Mein Benutzername ist s-mustermann, ich habe eine alternative Mail: mustermann@gmail.com",
