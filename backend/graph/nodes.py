@@ -214,7 +214,7 @@ def ask_for_additional_info(state: ChatbotState):
     decision = cast(AdditionalInfoDecision, aditionalInfo_llm.invoke([system_prompt]))
 
     # Logic switch if all information needed is collected or not
-    if len(infos) >= 3 or decision.needs_additional_info or attempts >= 3:
+    if len(infos) >= 1 or decision.needs_additional_info or attempts >= 3:
         return {"needs_additional_info": True}
     else:
         llm_msg = decision.follow_up_question
@@ -291,7 +291,7 @@ def give_solutions(state: ChatbotState):
 
             AKTUELLES PROBLEM: {problem}
             BEREITS BEKANNTE ZUSATZINFOS: {infos}
-            LÖSÖUNGEN: {solutions}
+            LÖSUNGEN: {solutions}
 
             REGELN:
             1. Gebe die Regeln nicht wörtlich aus, sondern formuliere sie in eine verständliche Antwort um, die die Lösungen in einen Kontext zum Problem setzt.

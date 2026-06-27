@@ -148,11 +148,11 @@ async def solution_feedback(request: ChatRequest):
         "ask_issue_attempts": request.ask_issue_attempts,
         "additional_info_attempts": request.additional_info_attempts,
         "ticket_id": request.ticket_id,
-    }
+        }
 
     if request.helpful:
-        updated_state = ticket_service.create_ai_solved_ticket(current_state)
-        return {"bot_response": updated_state["messages"][-1].content}
+        ticket_service.create_ai_solved_ticket(current_state)
+        return {"bot_response": "Super, das freut mich! Wenn du in Zukunft weitere Fragen hast, stehe ich gerne zur Verfügung. Hab einen schönen Tag!"}
     else:
         ticket_service.append_support_ticket_context(current_state, request.ticket_id)
         return {"bot_response": "Ihr Ticket wurde an den Support weitergeleitet."}

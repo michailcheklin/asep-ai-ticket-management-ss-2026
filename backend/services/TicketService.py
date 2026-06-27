@@ -114,31 +114,22 @@ class TicketService:
 
     def create_ai_solved_ticket(self, state):
         """
-        Creates a ticket that has already been solved by the AI.
-
-        The ticket is created in the closed state and receives the
-        'AISolved' tag for later analysis.
+        Marks the existing ticket as resolved by the AI chatbot.
+        Appends a resolution message, adds the 'AISolved' tag and closes the ticket.
 
         :param state: Current chatbot state containing all ticket information.
         :return: State update containing chatbot messages and completion flag.
         """
-        title = self.generate_title(
-            state["issue_description"],
-            state["matrikelnummer"],
-        )
-
-        body = self._build_ai_body(state)
+        ticket_id = state.get("ticket_id")
 
         try:
-            ticket_id = create_ticket_by_user_email(
-                email=state["user_email"],
-                title=title,
-                body=body,
-                priority=state["priority"],
-                state="closed"
-            )
-
             if ticket_id:
+                self.append_message_to_ticket(
+                    ticket_id=ticket_id,
+                    body="[ZIM AI-AGENT] Der Nutzer hat das Problem als durch den KI-Chatbot gelöst markiert. Das Ticket wird daher geschlossen.",
+                    sender="Agent",
+                    internal=True
+                )
                 add_tag_to_ticket(ticket_id, "AISolved")
 
             return {
@@ -155,7 +146,7 @@ class TicketService:
             print(f"[TicketService ERROR] {e}")
             return {
                 "messages": [
-                    AIMessage(content="Fehler beim Erstellen des Tickets.")
+                    AIMessage(content="Fehler beim Abschließen des Tickets.")
                 ],
                 "is_complete": True
             }
