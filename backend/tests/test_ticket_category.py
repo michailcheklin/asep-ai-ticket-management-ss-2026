@@ -14,9 +14,15 @@ Optional thresholds:
     CATEGORY_HOLDOUT_MIN_ACCURACY=0.80
 """
 
-import importlib
+import importlib.util
+import sys
 import unittest
+from pathlib import Path
 from unittest.mock import patch
+
+BACKEND_ROOT = Path(__file__).resolve().parents[1]
+if str(BACKEND_ROOT) not in sys.path:
+    sys.path.insert(0, str(BACKEND_ROOT))
 
 from langchain_core.messages import HumanMessage
 
@@ -124,6 +130,7 @@ class ExtractInformationTests(unittest.TestCase):
             "messages": [HumanMessage(content="WLAN geht nicht")],
             "issue_description": "",
             "additional_info": [],
+            "user_email": "test@example.com",
         })
 
         self.assertEqual(state_update.get("issue_description"), "WLAN Problem")
@@ -232,12 +239,26 @@ class TicketCategoryConstantsTests(unittest.TestCase):
         validate_cases(cases)
 
 
+def _load_test_module(module_name: str):
+    """Load a sibling test module from its file path without package-name ambiguity."""
+    module_path = Path(__file__).resolve().with_name(f"{module_name}.py")
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Could not load test module from {module_path}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
 def run_tests():
     """Discover and run unit plus live ticket category test modules."""
     loader = unittest.TestLoader()
     suite = unittest.TestSuite()
-    suite.addTests(loader.loadTestsFromModule(importlib.import_module("test_ticket_category")))
-    suite.addTests(loader.loadTestsFromModule(importlib.import_module("test_ticket_category_live")))
+
+    suite.addTests(loader.loadTestsFromModule(_load_test_module("test_ticket_category")))
+    suite.addTests(loader.loadTestsFromModule(_load_test_module("test_ticket_category_live")))
+
     runner = unittest.TextTestRunner(verbosity=2)
     result = runner.run(suite)
     return 0 if result.wasSuccessful() else 1

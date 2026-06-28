@@ -1,7 +1,13 @@
 """Live LLM tests for ticket category classification."""
 
 import os
+import sys
 import unittest
+from pathlib import Path
+
+BACKEND_ROOT = Path(__file__).resolve().parents[1]
+if str(BACKEND_ROOT) not in sys.path:
+    sys.path.insert(0, str(BACKEND_ROOT))
 
 from category_test_support import (
     load_holdout_cases,
