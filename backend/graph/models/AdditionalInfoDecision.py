@@ -9,16 +9,11 @@ class AdditionalInfoDecision(BaseModel):
         description="True, wenn die Zusatzinfos ausreichen, um das Problem zu bearbeiten. False, wenn wichtige Details fehlen (z.B. bei 'WLAN kaputt' fehlt das Gebäude)."
     )
     follow_up_question: Optional[str] = Field(
-        default=None,
-        description="Wenn needs_additional_info False ist: Eine kurze, höfliche Frage an den User, um die fehlenden Details herauszufinden. Wenn needs_additional_info True ist, lasse dieses Feld leer (null)."
+        description=(
+            "Wenn needs_additional_info False ist: Eine oder mehrere kurze, höfliche Fragen an den User, "
+            "formatiert als Bullet-Liste. Multiple-Choice-Fragen müssen als Zeilen wie "
+            " '* [Frage]? (options: [A], [B], [C])' "
+            "geliefert werden. Offene Fragen haben keine `options:`-Klammer. Wenn needs_additional_info True ist, "
+            "lasse dieses Feld leer (null)."
+        )
     )
-    follow_up_questions: Optional[List[str]] = Field(
-        default=None,
-        description="Fallback: Manche Modelle geben mehrere Fragen als Liste zurück. Der erste Eintrag wird als follow_up_question verwendet."
-    )
-
-    @model_validator(mode='after')
-    def merge_questions(self):
-        if not self.follow_up_question and self.follow_up_questions:
-            self.follow_up_question = self.follow_up_questions[0]
-        return self
