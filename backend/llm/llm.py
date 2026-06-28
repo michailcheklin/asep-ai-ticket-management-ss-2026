@@ -3,7 +3,7 @@ from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
 from pydantic import SecretStr
 from ..graph.models.ExtractedTicketData import ExtractedTicketData
-
+from ..graph.models.TicketCategoryDecision import TicketCategoryDecision
 
 USE_SAIA = os.getenv("USE_SAIA_API", "false").lower() == "true"
 # temperature 0.2 for less hallucination
@@ -31,3 +31,6 @@ else:
     )
 
 structured_llm = llm.with_structured_output(ExtractedTicketData)
+
+category_llm = llm.with_structured_output(TicketCategoryDecision)
+
