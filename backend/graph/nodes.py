@@ -321,7 +321,7 @@ def ask_for_additional_info(state: ChatbotState):
 
     print(f"[DEBUG: ask_for_additional_info]: attempts: {attempts} ")
 
-    aditionalInfo_llm = llm.with_structured_output(AdditionalInfoDecision, method="json_mode")
+    aditionalInfo_llm = llm.with_structured_output(AdditionalInfoDecision)
 
 
     search_query = problem
