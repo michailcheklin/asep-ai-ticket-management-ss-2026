@@ -98,6 +98,7 @@ class TicketService:
                 sender="Agent",
                 internal=internal
             )
+            add_tag_to_ticket(ticket_id, "AI-Created")
             print(f"Successfully appended context to ticket {ticket_id}")
         except Exception as e:
             print(f"[TicketService ERROR] Failed to append context: {e}")
@@ -130,7 +131,7 @@ class TicketService:
                     sender="Agent",
                     internal=True
                 )
-                add_tag_to_ticket(ticket_id, "AISolved")
+                add_tag_to_ticket(ticket_id, "AI-Solved")
 
             return {
                 "messages": [
