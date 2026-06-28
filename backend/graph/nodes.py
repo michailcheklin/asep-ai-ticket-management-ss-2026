@@ -1,5 +1,8 @@
 from typing import cast
 from pydantic import BaseModel, Field
+
+from langsmith import traceable
+
 from .models.ExtractedTicketData import ExtractedTicketData
 from .models.AdditionalInfoDecision import AdditionalInfoDecision
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
@@ -126,6 +129,7 @@ def _resolve_ticket_category(state: ChatbotState) -> str:
     )
 
 
+@traceable
 def classify_ticket(state: ChatbotState):
     """Workflow node: assign ticket category once enough context is available."""
     user_messages = [msg.content for msg in state["messages"] if isinstance(msg, HumanMessage)]
@@ -137,6 +141,7 @@ def classify_ticket(state: ChatbotState):
     return {"category": category}
 
 
+@traceable
 def extract_information(state: ChatbotState):
     """
     Analyzes the latest user message to extract structured ticket details.
@@ -228,7 +233,7 @@ def extract_information(state: ChatbotState):
 
     return state_update
 
-
+@traceable
 def ask_for_email(state: ChatbotState):
     """
     Queries Llama to politely ask the user for their missing email
@@ -247,7 +252,7 @@ def ask_for_email(state: ChatbotState):
 
     return {"messages": [response]}
 
-
+@traceable
 def ask_for_matrikelnummer(state: ChatbotState):
     """
     Queries Llama to politely ask the user for their missing matrikelnummer
@@ -265,7 +270,7 @@ def ask_for_matrikelnummer(state: ChatbotState):
 
     return {"messages": [response]}
 
-
+@traceable
 def ask_for_issue(state: ChatbotState):
     """
     Queries Llama to politely ask the user for the missing problem description
@@ -302,19 +307,22 @@ def ask_for_issue(state: ChatbotState):
         "ask_issue_attempts": attempts
     }
 
-
+@traceable
 def ask_for_additional_info(state: ChatbotState):
     """
     Queries Llama to politely ask the user for the missing additional info, if needed
     :param state: The current conversation and ticket state
     :return: A dictionary containing the newly extracted fields to update the state.
     """
-
+    log_node_entry("ask_for_additional_info", state)
     problem = state.get("issue_description", "")
     infos = state.get("additional_info", [])
     attempts = state.get("additional_info_attempts", 0)
 
     print(f"[DEBUG: ask_for_additional_info]: attempts: {attempts} ")
+
+    aditionalInfo_llm = llm.with_structured_output(AdditionalInfoDecision, method="json_mode")
+
 
     search_query = problem
     rag_results = retrieve_relevant_entries(search_query, n_results=2)
@@ -329,7 +337,6 @@ def ask_for_additional_info(state: ChatbotState):
     faq_context = "\n".join([f"- {match['text']}" for match in faq_matches])
     ticket_context = "\n".join([f"- {match['text']} (Kategorie: {match['category']})" for match in ticket_matches])
 
-    aditionalInfo_llm = llm.with_structured_output(AdditionalInfoDecision)
 
     system_prompt = SystemMessage(content=(
         f"""
@@ -351,14 +358,25 @@ def ask_for_additional_info(state: ChatbotState):
         1. Lies die Einträge in der WISSENSDATENBANK. Fehlen in unserem "AKTUELLEN PROBLEM" Details, 
            die in den alten Tickets oder FAQs zur Lösung zwingend notwendig waren?
         2. Wenn alles Wichtige da ist, ODER wenn die WISSENSDATENBANK keine relevanten Inhalte für eine Nachfrage liefert, 
-           setze needs_additional_info auf True.
+           setze needs_additional_info auf True und setze follow_up_question auf den leeren String. 
         3. Wenn wichtige Details fehlen, setze needs_additional_info auf False und formuliere 
-           EINE kurze, freundliche follow_up_question an den User basierend auf dem RAG-Kontext.
+           EINE kurze, freundliche follow_up_question an den User basierend auf dem RAG-Kontext und schreibe diese als String in das Feld follow_up_question. 
         4. Gib keine direkten Lösungen wieder. Hier geht es nur um Rückfragen.
         """
     ))
 
-    decision = cast(AdditionalInfoDecision, aditionalInfo_llm.invoke([system_prompt]))
+    # Benchmark compatibility:
+    # DeepSeek and Apertus accept prompts consisting only of a SystemMessage,
+    # but Qwen returns "No user query found in messages" in that case.
+    # Adding a minimal HumanMessage preserves the existing prompting logic
+    # while making the structured-output request compatible with all evaluated models.
+
+    decision = cast(AdditionalInfoDecision, aditionalInfo_llm.invoke([
+        system_prompt,
+        HumanMessage(
+            content="Bitte prüfe anhand des Problems und der Zusatzinfos, ob weitere Informationen benötigt werden.")
+    ]))
+
 
     # Logic switch if all information needed is collected or not
     if len(infos) >= 1 or decision.needs_additional_info or attempts >= 3:
@@ -382,7 +400,7 @@ def ask_for_additional_info(state: ChatbotState):
                 "messages": [AIMessage(content=llm_msg)]
             }
 
-
+@traceable
 def give_solutions(state: ChatbotState):
     """
     Build a RAG query from: history + user_message + issue_description + additional_info
@@ -447,8 +465,9 @@ def give_solutions(state: ChatbotState):
             4. Versuche dich am besten auf maximal 3 Sätze zu beschränken.
             """
     ))
+    message_text = llm.invoke([system_prompt, HumanMessage(content="Bitte fasse die Lösungen für den User zusammen.")])
 
-    message_text = llm.invoke([system_prompt])
+
     final_message = AIMessage(content=message_text.content + "\n\nKonnte ich Ihnen dabei helfen, Ihr Problem zu lösen?")
 
     ticket_id = state.get("ticket_id")
@@ -475,7 +494,7 @@ def give_solutions(state: ChatbotState):
         # }
     }
 
-
+@traceable
 def finish_ticket(state):
     """
     Finalizes the ticket creation process by generating a concise title
@@ -516,7 +535,7 @@ def finish_ticket(state):
 
     return {**result, "category": category}
 
-
+@traceable
 def finish_ai_solved_ticket(state):
     """
     Finalizes the ticket creation process by generating a concise title

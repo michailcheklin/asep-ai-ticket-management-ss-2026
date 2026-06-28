@@ -15,7 +15,7 @@ run_test_prompt_security:
     - python --version
     - pip install --upgrade pip
     # Install backend requirements if the file exists;
-    - if [ -f backend/requirements.txt ]; then pip install -r backend/requirements.txt; fi
+    - if [ -f tests/requirements.txt ]; then pip install -r tests/requirements.txt; fi
   script:
     - pytest ./tests/test_prompt_security_result.py -v
 
@@ -26,12 +26,15 @@ run_test_chat_endpoint_connectivity:
     - ude-sse
   image: python:3.11
   before_script:
+    - echo "LANGSMITH_TRACING=true" >> .env
+    - echo "LANGSMITH_API_KEY=$LANGSMITH_API_KEY" >> .env
+    - echo "LANGSMITH_ENDPOINT=https://eu.api.smith.langchain.com" >> .env
     - echo "SAIA_API_KEY=$SAIA_API_KEY" >> .env
     - echo "USE_SAIA_API=true" >> .env
     - echo "ZAMMAD_SERVER_ADDRESS=$ZAMMAD_SERVER_ADDRESS" >> .env
     - python --version
     - pip install --upgrade pip
     # Install backend requirements if the file exists;
-    - if [ -f backend/requirements.txt ]; then pip install -r backend/requirements.txt; fi
+    - if [ -f tests/requirements.txt ]; then pip install -r tests/requirements.txt; fi
   script:
     - pytest ./tests/test_chat_endpoint_connectivity.py -v
