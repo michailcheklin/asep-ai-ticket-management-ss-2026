@@ -31,6 +31,7 @@ run_test_chat_endpoint_connectivity:
     - echo "LANGSMITH_ENDPOINT=https://eu.api.smith.langchain.com" >> .env
     - echo "SAIA_API_KEY=$SAIA_API_KEY" >> .env
     - echo "USE_SAIA_API=true" >> .env
+    - echo "ZAMMAD_SERVER_ADDRESS=$ZAMMAD_SERVER_ADDRESS" >> .env
     - python --version
     - pip install --upgrade pip
     # Install backend requirements if the file exists;

@@ -45,6 +45,7 @@ def __execute_langchain_workflow(state: ChatbotState):
 
     return {
         "bot_response": bot_response,
+        "ticket_id": updated_state.get("ticket_id"),
         "user_email": updated_state.get("user_email", ""),
         "matrikelnummer": updated_state.get("matrikelnummer", ""),
         "issue_description": updated_state.get("issue_description", ""),
