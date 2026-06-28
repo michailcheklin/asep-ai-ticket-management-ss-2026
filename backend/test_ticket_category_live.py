@@ -9,7 +9,7 @@ from category_test_support import (
     regression_limit,
     run_live_category_suite,
 )
-from nodes import classify_ticket_category
+from backend.graph.nodes import classify_ticket_category
 
 
 @unittest.skipUnless(
@@ -19,23 +19,23 @@ from nodes import classify_ticket_category
 class LiveCategoryClassificationTests(unittest.TestCase):
     """Spot checks against the real LLM for representative category cases."""
 
-    def test_live_wlan_is_technisches_problem(self):
+    def test_live_wlan_is_incident(self):
         result = classify_ticket_category(
             issue_description="WLAN funktioniert nicht",
             additional_info=["Gebäude SGW", "Essen"],
             user_messages=["Mein Wlan funktioniert nicht im Gebäude SGW"],
         )
-        self.assertEqual(result, "Technisches Problem")
+        self.assertEqual(result, "Incident")
 
-    def test_live_moodle_login_is_zugang_login(self):
+    def test_live_moodle_login_is_incident(self):
         result = classify_ticket_category(
             issue_description="Falsche Credentials angezeigt",
             additional_info=["Moodle", "Windows Rechner"],
             user_messages=["Ich kann mich nicht in Moodle einloggen, falsche Credentials angezeigt"],
         )
-        self.assertEqual(result, "Zugang/Login")
+        self.assertEqual(result, "Incident")
 
-    def test_live_login_without_keywords_is_zugang_login(self):
+    def test_live_login_without_keywords_is_incident(self):
         result = classify_ticket_category(
             issue_description="Kein Zugang mehr zur Abgabe nach erneutem Einloggen",
             additional_info=[],
@@ -43,7 +43,7 @@ class LiveCategoryClassificationTests(unittest.TestCase):
                 "Ich wurde beim Einloggen rausgeworfen und komme nicht mehr in meine Abgabe rein.",
             ],
         )
-        self.assertEqual(result, "Zugang/Login")
+        self.assertEqual(result, "Incident")
 
 
 @unittest.skipUnless(

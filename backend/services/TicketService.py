@@ -2,7 +2,6 @@
 
 from langchain_core.messages import HumanMessage, AIMessage
 from ..api.zammad import create_ticket_by_user_email, add_tag_to_ticket
-from ..graph.nodes import _resolve_ticket_category
 from ..llm.llm import llm
 
 
@@ -139,15 +138,14 @@ class TicketService:
         :param state: Current chatbot state.
         :return: Formatted ticket body as plain text.
         """
-
-        category = _resolve_ticket_category(state)
         return (
             f"Matrikelnummer: {state['matrikelnummer']}\n"
             f"E-Mail: {state['user_email']}\n\n"
             f"Priorität: {'urgent' if state.get('priority') == 1 else 'normal'}\n"
-            f"Kategorie: {category}\n"
+            f"Kategorie: {state.get('category', 'Service Request')}\n"
             f"Problem:\n{state['issue_description']}\n\n"
-            f"Zusatzinfos:\n{state.get('additional_info', [])}"
+            f"Zusatzinfos:\n{self._format_additional_info(state.get('additional_info', []))}"
+            f"{self._chat_history_and_solutions_section(state)}"
         )
 
     def _build_ai_body(self, state):
@@ -163,10 +161,112 @@ class TicketService:
         return (
             f"Matrikelnummer: {state['matrikelnummer']}\n"
             f"E-Mail: {state['user_email']}\n\n"
+            f"Priorität: {'urgent' if state.get('priority') == 1 else 'normal'}\n"
+            f"Kategorie: {state.get('category', 'Service Request')}\n"
             f"Problem:\n{state['issue_description']}\n\n"
-            f"Zusatzinfos:\n{state.get('additional_info', [])}\n\n"
-            f"Status: Durch KI gelöst"
+            f"Zusatzinfos:\n{self._format_additional_info(state.get('additional_info', []))}"
+            f"\n\nStatus: Durch KI gelöst"
+            f"{self._chat_history_and_solutions_section(state)}"
         )
+
+    def _chat_history_and_solutions_section(self, state) -> str:
+        """
+        Returns the chat history and solutions selection formatted into Zammad ticket format based on the state
+        :param state: The current state of the chatbot
+        :return: The formatted chat history and solutions
+        """
+        return (
+            f"\n\n{'=' * 40}\n"
+            f"CHATVERLAUF\n"
+            f"{'=' * 40}\n\n"
+            f"{self._format_chat_history(state)}\n\n"
+            f"{'=' * 40}\n"
+            f"VOM BOT ANGEBOTENE LÖSUNGEN\n"
+            f"{'=' * 40}\n\n"
+            f"{self._format_solutions(state)}"
+        )
+
+    def _format_additional_info(self, additional_info) -> str:
+        """
+        Formats all additional info to Zammad ticket format
+        :param additional_info: The additional info from the state
+        :return: The formatted additional info
+        """
+        if not additional_info:
+            return "  (keine)"
+        if isinstance(additional_info, list):
+            return "\n".join(f"  • {info}" for info in additional_info)
+        return f"  {additional_info}"
+
+    def _format_solutions(self, state) -> str:
+        """
+        Formats all solutions that were offered to Zammad ticket format
+        :param state: The state of the chatbot
+        :return: The formatted additional info
+        """
+        solutions = state.get("solutions", [])
+        if not solutions:
+            return "  (keine Lösungen gespeichert)"
+
+        blocks = []
+        for i, solution in enumerate(solutions, 1):
+            title = solution.get("title", "Unbekannt").removeprefix("FAQ: ").strip()
+            fields = self._parse_key_value_text(solution.get("description", ""))
+
+            lines = [f"Lösung {i}: {title}", "-" * 30]
+            field_labels = {
+                "context": "Kontext",
+                "problem": "Problem",
+                "solution": "Lösung",
+                "last_update": "Stand",
+                "url": "Link",
+                "ticket": "Ticket",
+                "category": "Kategorie",
+            }
+            for key, label in field_labels.items():
+                if key in fields and fields[key]:
+                    lines.append(f"  {label:10} {fields[key]}")
+
+            if len(lines) == 2:
+                raw = solution.get("description", "").strip()
+                if raw:
+                    lines.append(f"  {raw}")
+
+            blocks.append("\n".join(lines))
+
+        return "\n\n".join(blocks)
+
+    def _parse_key_value_text(self, text: str) -> dict[str, str]:
+        """
+        Parses a string into a key-value-dict
+        :param text: The text to parse
+        :return: The dict that could be parsed
+        """
+        fields = {}
+        for line in text.splitlines():
+            if ": " in line:
+                key, _, value = line.partition(": ")
+                fields[key.strip().lower()] = value.strip()
+        return fields
+
+    def _format_chat_history(self, state) -> str:
+        """
+        Formats the chat history so that the ZIM staff can see how the user chatted with the chatbot before
+        :param state: The state of the chatbot
+        :return: The formatted chat history
+        """
+        lines = []
+        for msg in state.get("messages", []):
+            if isinstance(msg, HumanMessage):
+                content = (msg.content or "").strip()
+                if content:
+                    lines.append(f"[Kunde]\n  {content}")
+            elif isinstance(msg, AIMessage):
+                content = (msg.content or "").strip()
+                if content:
+                    lines.append(f"[Bot]\n  {content}")
+
+        return "\n\n".join(lines) if lines else "  (kein Chatverlauf vorhanden)"
 
     # -------------------------
     # Response Helpers
@@ -182,7 +282,6 @@ class TicketService:
         :param state: Current chatbot state.
         :return: State update containing the confirmation message.
         """
-        category = _resolve_ticket_category(state)
         return {
             "messages": [
                 AIMessage(content=(
@@ -195,9 +294,7 @@ class TicketService:
                     f"{state['issue_description']}"
                 ))
             ],
-            "is_complete": True,
-            "category": category,
-
+            "is_complete": True
         }
 
     def _error_message(self):

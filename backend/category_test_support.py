@@ -2,10 +2,15 @@
 
 import json
 import os
+import sys
 import unittest
 from pathlib import Path
 
-from nodes import TICKET_CATEGORIES, TicketCategoryDecision, classify_ticket_category
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
+from backend.graph.nodes import TICKET_CATEGORIES, TicketCategoryDecision, classify_ticket_category
 
 OLD_TICKETS_PATH = Path(__file__).resolve().parent / "rag" / "old_tickets.json"
 HOLDOUT_TESTS_PATH = Path(__file__).resolve().parent / "rag" / "category_holdout_tests.json"

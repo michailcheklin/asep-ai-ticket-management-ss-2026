@@ -6,6 +6,7 @@ from ..graph.models.ChatRequest import ChatRequest
 from langchain_core.messages import HumanMessage, AIMessage
 from ..graph.state import ChatbotState
 from ..graph.orchestrator import __execute_langchain_workflow, graph
+from ..graph.nodes import _resolve_ticket_category
 from ..services.TicketService import TicketService
 
 ticket_service = TicketService()
@@ -32,6 +33,18 @@ def _zammad_headers() -> dict[str, str]:
     if not ZAMMAD_TOKEN:
         return {}
     return {"Authorization": f"Token token={ZAMMAD_TOKEN}"}
+
+
+def _history_to_langchain_messages(history: list[dict]) -> list:
+    """Convert frontend chat history to LangChain message objects."""
+    messages = []
+    for msg in history:
+        role = msg.get("role")
+        if role == "user":
+            messages.append(HumanMessage(content=msg["content"]))
+        elif role in ("bot", "assistant"):
+            messages.append(AIMessage(content=msg["content"]))
+    return messages
 
 
 @app.get("/")
@@ -90,13 +103,7 @@ async def chat_endpoint(request: ChatRequest):
             "is_complete": False
         }
     """
-    langchain_messages = []
-    for msg in request.history:
-        if msg["role"] == "user":
-            langchain_messages.append(HumanMessage(content=msg["content"]))
-        elif msg["role"] == "bot":
-            langchain_messages.append(AIMessage(content=msg["content"]))
-
+    langchain_messages = _history_to_langchain_messages(request.history)
     langchain_messages.append(HumanMessage(content=request.user_message))
 
     current_state : ChatbotState = {
@@ -126,13 +133,7 @@ async def solution_feedback(request: ChatRequest):
     :param request: Feedback request
     :return: Backend response
     """
-    langchain_messages = []
-    for msg in request.history:
-        if msg["role"] == "user":
-            langchain_messages.append(HumanMessage(content=msg["content"]))
-        elif msg["role"] == "bot":
-            langchain_messages.append(AIMessage(content=msg["content"]))
-
+    langchain_messages = _history_to_langchain_messages(request.history)
     langchain_messages.append(HumanMessage(content=request.user_message))
 
     current_state: ChatbotState = {
@@ -143,6 +144,7 @@ async def solution_feedback(request: ChatRequest):
         "additional_info": request.additional_info,
         "needs_additional_info": False,
         "priority": request.priority,
+        "category": request.category,
         "is_complete": False,
         "solutions": request.solutions,
         "ask_issue_attempts": request.ask_issue_attempts,
@@ -151,12 +153,17 @@ async def solution_feedback(request: ChatRequest):
 
     }
 
+    current_state["category"] = _resolve_ticket_category(current_state)
+
     if request.helpful:
         updated_state = ticket_service.create_ai_solved_ticket(current_state)
     else:
         updated_state = ticket_service.create_support_ticket(current_state)
 
-    return {"bot_response": updated_state["messages"][-1].content}
+    return {
+        "bot_response": updated_state["messages"][-1].content,
+        "category": current_state.get("category", ""),
+    }
 
 def run_local_chat():
     """

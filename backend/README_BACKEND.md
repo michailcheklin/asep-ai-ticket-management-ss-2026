@@ -37,7 +37,7 @@ LangGraph (graph)
     │
     ├── Extract information
     ├── Ask for missing data
-    ├── Classify ticket category
+    ├── Classify ticket type (ITSM)
     ├── Search for solutions (RAG, rag)
     └── Create ticket (services)
     │
@@ -49,20 +49,6 @@ If the chatbot cannot extract an issue it asks the user to clarify up to three t
 
 If solutions are found by the RAG pipeline the frontend will offer them to the user and ask for feedback. Feedback is handled via `POST /solution-feedback` (see API section).
 
-```text
-Frontend
-    │
-    │ POST /solution-feedback
-    ▼
-Backend
-    │
-    ├── Helpful
-    │      └── Create closed ticket in Zammad with tag "AISolved"
-    │
-    └── Not helpful
-           └── Create open ticket in Zammad for staff
-```
-
 ## Repository layout
 
 The backend is organised into the following folders (each folder contains its own README with more details):
@@ -72,7 +58,6 @@ The backend is organised into the following folders (each folder contains its ow
 - `graph/models/` - Pydantic models used by the graph and nodes. See `graph/models/README.md`.
 - `llm/` - LLM wrappers, prompt templates and helpers. See `llm/README.md`.
 - `services/` - Integrations (Zammad, ticket creation, helpers). See `services/README.md`.
-
 
 ## API Endpoints
 
@@ -131,23 +116,25 @@ Urgent examples: unable to log in, exam/deadline affected, complete service outa
 
 ---
 
-# Ticket Category Classification
+---
 
-The chatbot classifies each support request into exactly one ticket category using an LLM-based classifier implemented in `nodes.py`.
+## Ticket Type Classification (ITSM)
 
-## Supported Categories
+The chatbot classifies each support request into exactly one ITSM ticket type using an LLM-based classifier implemented in `graph/nodes.py`.
 
-| Category | Typical use case |
-| -------- | ---------------- |
-| Zugang/Login | Login, password, 2FA, locked accounts, authentication |
-| Technisches Problem | Software, device, network, or system malfunction |
-| Allgemeine Anfrage | Information requests or unclear issues |
-| Beschwerde | Complaints about support, waiting time, or communication |
-| Rechnung | Payments, fees, invoices, refunds, payment status |
+### Supported Ticket Types
 
-## How It Works
+| Ticket type | Typical use case |
+| ----------- | ---------------- |
+| Incident | Current service outage or malfunction (login, WLAN, printer, app crash) |
+| Service Request | Information, access request, payment status, software request |
+| Change | Requested change to system, role, group, or configuration |
+| Problem | Recurring or root cause behind multiple incidents |
+| Complaint | Complaint about support, waiting time, or communication |
 
-The main function is `classify_ticket_category()` in `nodes.py`. It uses a structured LLM output (`TicketCategoryDecision`) and prompt rules (`_CATEGORY_RULES`) to choose one category based on the user's main intent.
+### How It Works
+
+The main function is `classify_ticket_category()` in `graph/nodes.py`. It uses a structured LLM output (`TicketCategoryDecision`) and prompt rules (`_CATEGORY_RULES`) to choose one ITSM ticket type based on the user's main intent.
 
 Classification uses the full conversation context, not only the latest message:
 
@@ -159,17 +146,17 @@ The workflow node `classify_ticket_node` (defined in `classify_ticket()`) runs a
 
 When a ticket is created, `_resolve_ticket_category()` reuses an already stored category from the chatbot state. If no valid category exists yet, classification is performed once at ticket creation.
 
-The determined category is:
+The determined ticket type is:
 
-* stored in the chatbot state (`category` field in `state.py`)
+* stored in the chatbot state (`category` field in `graph/state.py`)
 * returned in the `/chat` API response
 * included in the Zammad ticket body as `Kategorie: ...`
 
-If the LLM returns an unknown category, the fallback is `Allgemeine Anfrage`.
+If the LLM returns an unknown type, the fallback is `Service Request`.
 
-Category classification is separate from information extraction. The extractor node only collects ticket data; category assignment is handled by the dedicated classification node.
+Ticket type classification is separate from information extraction. The extractor node only collects ticket data; type assignment is handled by the dedicated classification node.
 
-## Tests
+### Tests
 
 Category classification tests live in three files:
 
@@ -187,7 +174,7 @@ python test_ticket_category.py
 
 This discovers and runs both unit and live test modules.
 
-### Live LLM tests
+#### Live LLM tests
 
 Enable with:
 
@@ -201,11 +188,11 @@ PowerShell:
 $env:RUN_LLM_CATEGORY_TESTS="1"; python test_ticket_category.py
 ```
 
-### Regression vs. holdout
+#### Regression vs. holdout
 
 | Suite | Fixture file | Purpose |
 | ----- | ------------ | ------- |
-| **REGRESSION** | `rag/old_tickets.json` | Prompt tuning on known template tickets (50 cases) |
+| **REGRESSION** | `rag/old_tickets.json` | Prompt tuning on known template tickets (56 cases) |
 | **HOLDOUT** | `rag/category_holdout_tests.json` | Generalization on unseen tickets — do **not** use for prompt tuning |
 
 Optional environment variables:
@@ -225,7 +212,7 @@ Add new real-world edge cases to `category_holdout_tests.json`, not to `old_tick
 Ticket creation and updates are implemented in `services/TicketService.py` and the lower-level Zammad helpers live in `api/Zammad.py`. Tickets created after an AI-resolve contain:
 
 - Title, Email, Student ID (Matrikelnummer)
-- Issue description, Priority, Additional information
+- Issue description, Priority, Category, Additional information
 - Chat history and offered solutions (for AISolved tickets)
 - Tags and status (e.g. `AISolved`, closed)
 
@@ -260,7 +247,7 @@ The backend workflow consists of five main steps:
 
 1. Extract information from the conversation.
 2. Request missing information.
-3. Classify the ticket category.
+3. Classify the ITSM ticket type.
 4. Search for suitable solutions using RAG.
 5. Create a support ticket in Zammad if no solution resolves the issue.
 

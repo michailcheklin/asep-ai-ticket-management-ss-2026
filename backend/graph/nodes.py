@@ -1,17 +1,89 @@
 from typing import cast
+from pydantic import BaseModel, Field
 from .models.ExtractedTicketData import ExtractedTicketData
 from .models.AdditionalInfoDecision import AdditionalInfoDecision
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
-
-from .models.TicketCategoryDecision import TICKET_CATEGORIES, TicketCategoryDecision
 from .state import ChatbotState
 from backend.rag.retrieve_info import retrieve_relevant_entries
 from ..services.TicketService import TicketService
-from ..llm.llm import llm, structured_llm, category_llm
+from ..llm.llm import llm, structured_llm
 from .node_logging import log_node_entry
-from ..llm.prompts import TICKET_CATEGORY_RULES
 
 ticket_service = TicketService()
+
+TICKET_CATEGORIES = [
+    "Incident",
+    "Service Request",
+    "Change",
+    "Problem",
+    "Complaint",
+]
+
+
+class TicketCategoryDecision(BaseModel):
+    """Schema for the LLM output of the dedicated ticket category classification step."""
+    category: str = Field(
+        description=f"Exactly one of: {', '.join(TICKET_CATEGORIES)}"
+    )
+
+
+category_llm = llm.with_structured_output(TicketCategoryDecision)
+
+_CATEGORY_RULES = """
+Klassifiziere nach ITSM-Ticket-Typ und Hauptabsicht des Nutzers.
+Ignoriere einzelne Schlüsselwörter, wenn sie nicht zur Hauptabsicht passen.
+
+Ticket-Typen:
+
+1. Complaint:
+Wähle diesen Typ, wenn die Hauptabsicht eine Beschwerde, Unzufriedenheit,
+Frust, Ärger oder Kritik an Support, Bearbeitung, Wartezeit, Kommunikation
+oder fehlender Hilfe ist.
+Das gilt auch dann, wenn zusätzlich ein technisches Problem erwähnt wird.
+Typische Hinweise: "unhappy", "frustrated", "angry", "upset", "unacceptable",
+"complained", "nobody fixed it", "no help in time", "not answered".
+
+2. Problem:
+Wähle diesen Typ nur, wenn die Hauptabsicht die Analyse einer wiederkehrenden
+oder grundlegenden Ursache ist.
+Ein aktueller Ausfall bleibt Incident, auch wenn mehrere Nutzer betroffen sind.
+Problem ist passend bei Root-Cause-Analyse, wiederkehrenden Incidents,
+bekannter Fehlerursache oder systematischer Untersuchung.
+
+3. Change:
+Wähle diesen Typ, wenn eine Änderung an System, Konfiguration, Berechtigung,
+Rolle, Gruppe, Weiterleitung oder Prozess gewünscht wird.
+Beispiele: neue Rolle vergeben, Gruppe anpassen, Zugriff ändern,
+Mailbox-Weiterleitung ändern, Berechtigung erweitern.
+
+4. Service Request:
+Wähle diesen Typ bei Anfragen, Anträgen, Informationswünschen oder
+administrativen Anliegen ohne Fokus auf eine technische Störung.
+Wichtig: Zahlungs-, Gebühren-, Rechnungs-, Rückerstattungs- und
+Accounting-Anliegen sind in diesem Projekt Service Request, auch wenn ein
+Portal einen falschen Zahlungsstatus, eine Fehlermeldung oder ein Exportproblem zeigt.
+Beispiele: Semesterbeitrag klären, Rechnung anfordern, Zahlungsstatus prüfen,
+Rückerstattung, Software anfordern, Anleitung erhalten, Zugriff beantragen.
+
+5. Incident:
+Wähle diesen Typ, wenn ein IT-Service, System, Gerät, Netzwerk oder eine
+Software aktuell nicht funktioniert und keine speziellere Kategorie oben passt.
+Beispiele: Login unmöglich, WLAN aus, Drucker defekt, Moodle Upload geht nicht,
+VPN verbindet nicht, Anwendung stürzt ab.
+
+Priorität bei Überschneidungen:
+Complaint > Problem > Change > Service Request > Incident.
+
+Wenn ein Ticket sowohl eine technische Störung als auch ein Zahlungs-/Rechnungsanliegen enthält,
+wähle Service Request, sofern Zahlung, Rechnung, Gebühr oder Accounting das eigentliche Ziel ist.
+
+Wenn ein Ticket sowohl eine technische Störung als auch Ärger/Beschwerde enthält,
+wähle Complaint, sofern die Beschwerde die Hauptabsicht ist.
+
+Bewerte den Ticket-Typ immer anhand des GESAMTEN Chatverlaufs und aller bekannten Infos.
+Gib genau einen Ticket-Typ zurück.
+"""
+
 
 def classify_ticket_category(
     issue_description: str,
@@ -21,8 +93,8 @@ def classify_ticket_category(
     """Classify a ticket using the full conversation context, not just the last message."""
     conversation = "\n".join(f"- {msg}" for msg in user_messages) if user_messages else "(keine)"
     infos = ", ".join(additional_info) if additional_info else "(keine)"
-    prompt = f"""Du bist ein Kategorisierer für IT-Support-Tickets an einer Universität.
-Ordne das Ticket nach der Hauptabsicht des Nutzers genau einer Kategorie zu:
+    prompt = f"""Du bist ein Klassifizierer für IT-Support-Tickets an einer Universität.
+Ordne das Ticket nach ITSM-Ticket-Typ genau einem der folgenden Typen zu:
 [{", ".join(TICKET_CATEGORIES)}].
 
 KONTEXT:
@@ -32,11 +104,11 @@ Chatverlauf (User-Nachrichten):
 Problembeschreibung: {issue_description or "(noch nicht bekannt)"}
 Zusatzinfos: {infos}
 
-{TICKET_CATEGORY_RULES}"""
+{_CATEGORY_RULES}"""
     decision = cast(TicketCategoryDecision, category_llm.invoke([SystemMessage(content=prompt)]))
     if decision.category in TICKET_CATEGORIES:
         return decision.category
-    return "Allgemeine Anfrage"
+    return "Service Request"
 
 
 def _resolve_ticket_category(state: ChatbotState) -> str:
@@ -64,8 +136,6 @@ def classify_ticket(state: ChatbotState):
     return {"category": category}
 
 
-
-
 def extract_information(state: ChatbotState):
     """
     Analyzes the latest user message to extract structured ticket details.
@@ -81,13 +151,13 @@ def extract_information(state: ChatbotState):
 
     system_prompt = ("""Du bist ein hochpräziser KI-Daten-Extraktor für ein IT-Support-Unternehmen, das exklusiv mit Universitäten zusammenarbeitet.
         Deine Aufgabe ist es, aus den eingehenden Chat-Nachrichten von Studierenden und Mitarbeitern strukturierte Ticket-Daten zu extrahieren.
-        
+
         BEREITS BEKANNTER KONTEXT:
         Problembeschreibung: {prior_issue}
         Zusatzinfos: {prior_infos}
         Chatverlauf (User-Nachrichten):
         {conversation_context}
-        
+
         EXTRAKTIONS-REGELN:
         1. Basis-Daten (Textfelder): Suche nach der 'email', der 'matrikelnummer' und dem Haupt-'problem' und speichere diese ausschließlich in ihren jeweiligen Textfeldern.
         2. Das 'problem' darf ausschließlich gesetzt werden, wenn der Nutzer tatsächlich ein konkretes IT-Problem oder eine Supportanfrage beschreibt. Erfinde niemals ein Problem.
@@ -104,7 +174,6 @@ def extract_information(state: ChatbotState):
         prior_infos=", ".join(prior_infos) if prior_infos else "keine",
         conversation_context=conversation_context or "keine",
     ))
-
 
     # Telling python to treat output from structured llm as ExtractedTicketData instance
     extracted_data = cast(ExtractedTicketData, structured_llm.invoke([
@@ -184,7 +253,7 @@ def ask_for_issue(state: ChatbotState):
 
         "Falls der Nutzer ein anderes Anliegen beschreibt, das nichts mit den "
         "IT-Diensten des ZIM zu tun hat, gebe keine fachliche Beratung dazu."
-
+        
         "Weise stattdessen freundlich darauf hin, "
         "dass du nur bei ZIM-bezogenen IT-Anliegen helfen kannst, und bitte den "
         "Nutzer, sein entsprechendes IT-Problem zu schildern."
@@ -205,14 +274,28 @@ def ask_for_additional_info(state: ChatbotState):
     :param state: The current conversation and ticket state
     :return: A dictionary containing the newly extracted fields to update the state.
     """
-    log_node_entry("ask_for_additional_info", state)
+
     problem = state.get("issue_description", "")
     infos = state.get("additional_info", [])
     attempts = state.get("additional_info_attempts", 0)
 
     print(f"[DEBUG: ask_for_additional_info]: attempts: {attempts} ")
 
+    search_query = problem
+    rag_results = retrieve_relevant_entries(search_query, n_results=2)
+
+    faq_matches = rag_results.get("faq_matches", [])
+    ticket_matches = rag_results.get("ticket_matches", [])
+
+    if not faq_matches and not ticket_matches:
+        print("[DEBUG] RAG lieferte keine Ergebnisse. Überspringe Rückfrage.")
+        return {"needs_additional_info": True}
+
+    faq_context = "\n".join([f"- {match['text']}" for match in faq_matches])
+    ticket_context = "\n".join([f"- {match['text']} (Kategorie: {match['category']})" for match in ticket_matches])
+
     aditionalInfo_llm = llm.with_structured_output(AdditionalInfoDecision)
+
     system_prompt = SystemMessage(content=(
         f"""
         Du bist ein technischer Dispatcher im IT-Support einer Universität.
@@ -222,14 +305,21 @@ def ask_for_additional_info(state: ChatbotState):
         AKTUELLES PROBLEM: {problem}
         BEREITS BEKANNTE ZUSATZINFOS: {infos}
 
+        WISSENSDATENBANK (Historische Tickets & FAQs für dieses Problem):
+        FAQs:
+        {faq_context}
+
+        Alte Tickets:
+        {ticket_context}
+
         REGELN:
-        1. Überlege, ob für dieses spezifische Problem essenzielle Details fehlen. 
-           (Beispiele: Bei WLAN-Problemen braucht man den Ort/das Gebäude. Bei Software-Problemen das Betriebssystem).
-        2. Wenn alles Wichtige da ist, setze needs_additional_info auf True.
-        3. Halte dich bei deinen Rückfragen kurz und präzise.
-        4. Gib keine direkten Lösungen wieder. Hier geht es nur um Rückfragen stellen, damit man später basierend auf den erhaltenen Informationen eine Lösung anbieten kann.
-        5.. Wenn wichtige Details fehlen, setze needs_additional_info auf False und formuliere 
-           eine kurze, freundliche follow_up_question an den User.
+        1. Lies die Einträge in der WISSENSDATENBANK. Fehlen in unserem "AKTUELLEN PROBLEM" Details, 
+           die in den alten Tickets oder FAQs zur Lösung zwingend notwendig waren?
+        2. Wenn alles Wichtige da ist, ODER wenn die WISSENSDATENBANK keine relevanten Inhalte für eine Nachfrage liefert, 
+           setze needs_additional_info auf True.
+        3. Wenn wichtige Details fehlen, setze needs_additional_info auf False und formuliere 
+           EINE kurze, freundliche follow_up_question an den User basierend auf dem RAG-Kontext.
+        4. Gib keine direkten Lösungen wieder. Hier geht es nur um Rückfragen.
         """
     ))
 
@@ -263,9 +353,7 @@ def give_solutions(state: ChatbotState):
     issue = (state.get("issue_description") or "").strip()
     additional = " ".join(state.get("additional_info", [])) if state.get("additional_info") else ""
 
-    # Build query in the requested order
-    query_parts = [history_text, user_msg, issue, additional]
-    query = "How to connect to the VPN using Forcepoint?"  # " ".join(p for p in query_parts if p).strip()
+    query = issue
 
     if not query:
         return {"messages": [AIMessage(content="Keine ausreichende Anfrage für die Suche.")], "solutions": []}
@@ -317,7 +405,7 @@ def give_solutions(state: ChatbotState):
     final_message = AIMessage(content=message_text.content + "\n\nKonnte ich Ihnen dabei helfen, Ihr Problem zu lösen?")
 
     return {
-        "messages": final_message,  # hier stecken die Solutions als menschlicher, zusammenhägender Text drin
+        "messages": [final_message],
         "solutions": solutions,
         # "rag_debug": {
         #     "query": query,
@@ -349,7 +437,10 @@ def finish_ticket(state):
             "is_complete": True
         }
 
-    return ticket_service.create_support_ticket(state)
+    category = _resolve_ticket_category(state)
+    state_with_category = {**state, "category": category}
+    result = ticket_service.create_support_ticket(state_with_category)
+    return {**result, "category": category}
 
 
 def finish_ai_solved_ticket(state):
@@ -359,4 +450,7 @@ def finish_ai_solved_ticket(state):
     was solved only by using the chatbot without involving the ZIM staff
     """
     log_node_entry("finish_ai_solved_ticket", state)
-    return ticket_service.create_ai_solved_ticket(state)
+    category = _resolve_ticket_category(state)
+    state_with_category = {**state, "category": category}
+    result = ticket_service.create_ai_solved_ticket(state_with_category)
+    return {**result, "category": category}
