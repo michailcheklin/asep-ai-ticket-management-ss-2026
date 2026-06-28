@@ -360,8 +360,15 @@ def ask_for_additional_info(state: ChatbotState):
         2. Wenn alles Wichtige da ist, ODER wenn die WISSENSDATENBANK keine relevanten Inhalte für eine Nachfrage liefert, 
            setze needs_additional_info auf True und setze follow_up_question auf den leeren String. 
         3. Wenn wichtige Details fehlen, setze needs_additional_info auf False und formuliere 
-           EINE kurze, freundliche follow_up_question an den User basierend auf dem RAG-Kontext und schreibe diese als String in das Feld follow_up_question. 
-        4. Gib keine direkten Lösungen wieder. Hier geht es nur um Rückfragen.
+           wenige, direkt-relevante, kurze, follow-up-question(s) an den User basierend auf dem RAG-Kontext.
+        4. Gib die Fragen als Bullet-Liste zurück. Es muss dieses genaues Syntax befolgen:
+           Multiple-Choice-Fragen müssen das Format verwenden:
+           "* [Frage]? (options: [A], [B], [C])"
+           Offene Fragen dürfen ohne Optionen geschrieben werden:
+           "* [Frage]?"
+        5. Stelle die Fragen soweit wie möglich immer als Multiple-Choice mit dem gezeigten Format, wo du nur die Felder in [] ändern darsf.
+        6. Deine Nachricht MUSS IMMER mit "Um Ihnen weiter helfen zu können, beantworten Sie bitte folgende Fragen" beginnen. (dieser Satz ist kein Teil der Liste)
+        7. Begrenze dich auf maximal 5 Optionen, wobei "Andere" immer eine Option sein muss.
         """
     ))
 
@@ -388,7 +395,7 @@ def ask_for_additional_info(state: ChatbotState):
             try:
                 ticket_service.append_message_to_ticket(
                     ticket_id=ticket_id,
-                    body=f"[ZIM AI-AGENT] {llm_msg}",
+                    body=f"[ZIM AI-AGENT]\n\n{llm_msg}",
                     sender="Agent",
                     internal=True
                 )
@@ -475,7 +482,7 @@ def give_solutions(state: ChatbotState):
         print(f"appending bot message to ticket {ticket_id}")
         ticket_service.append_message_to_ticket(
             ticket_id = ticket_id,
-            body=f"[ZIM AI-AGENT] {final_message.content}",
+            body=f"[ZIM AI-AGENT]\n\n{final_message.content}",
             sender="Agent",
             internal = True
         )
@@ -526,7 +533,7 @@ def finish_ticket(state):
         print(f"appending bot message {bot_message_content}")
         ticket_service.append_message_to_ticket(
             ticket_id = ticket_id,
-            body=f"[ZIM AI-AGENT] {bot_message_content}",
+            body=f"[ZIM AI-AGENT]\n\n{bot_message_content}",
             sender="Agent",
             internal = True
         )
