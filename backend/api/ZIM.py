@@ -118,7 +118,8 @@ async def chat_endpoint(request: ChatRequest):
         "is_complete": False,
         "solutions": request.solutions,
         "additional_info_attempts": request.additional_info_attempts,
-        "ask_issue_attempts": request.ask_issue_attempts
+        "ask_issue_attempts": request.ask_issue_attempts,
+        "ticket_id": request.ticket_id,
     }
     return __execute_langchain_workflow(current_state)
 
@@ -149,20 +150,27 @@ async def solution_feedback(request: ChatRequest):
         "solutions": request.solutions,
         "ask_issue_attempts": request.ask_issue_attempts,
         "additional_info_attempts": request.additional_info_attempts,
-
+        "ticket_id": request.ticket_id,
     }
 
     current_state["category"] = _resolve_ticket_category(current_state)
 
     if request.helpful:
-        updated_state = ticket_service.create_ai_solved_ticket(current_state)
-    else:
-        updated_state = ticket_service.create_support_ticket(current_state)
+        ticket_service.create_ai_solved_ticket(current_state)
+        return {
+            "bot_response": "Super, das freut mich! Wenn du in Zukunft weitere Fragen hast, stehe ich gerne zur Verfügung. Hab einen schönen Tag!",
+            "category": current_state.get("category", "")
+        }
 
-    return {
-        "bot_response": updated_state["messages"][-1].content,
-        "category": current_state.get("category", ""),
-    }
+    else:
+        ticket_service.append_support_ticket_context(current_state, request.ticket_id)
+        return {
+            "bot_response": "Ihr Ticket wurde an den Support weitergeleitet.",
+            "category": current_state.get("category", "")
+        }
+
+
+
 
 def run_local_chat():
     """

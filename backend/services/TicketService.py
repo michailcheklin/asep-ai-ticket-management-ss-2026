@@ -1,7 +1,7 @@
 # backend/services/ticket_service.py
 
 from langchain_core.messages import HumanMessage, AIMessage
-from ..api.zammad import create_ticket_by_user_email, add_tag_to_ticket
+from ..api.zammad import create_ticket_by_user_email, add_tag_to_ticket, add_article_to_ticket
 from ..llm.llm import llm
 
 
@@ -45,7 +45,7 @@ class TicketService:
     # -------------------------
     # Public API
     # -------------------------
-    def create_support_ticket(self, state):
+    def create_support_ticket(self, state, internal):
         """
         Creates a new open support ticket in Zammad.
 
@@ -64,46 +64,72 @@ class TicketService:
         body = self._build_open_body(state)
 
         try:
-            create_ticket_by_user_email(
-                email=state["user_email"],
-                title=title,
-                body=body,
-                priority=state["priority"],
-            )
-
-            return self._success_message(title, state)
-
-        except Exception as e:
-            print(f"[TicketService ERROR] {e}")
-            return self._error_message()
-
-    def create_ai_solved_ticket(self, state):
-        """
-        Creates a ticket that has already been solved by the AI.
-
-        The ticket is created in the closed state and receives the
-        'AISolved' tag for later analysis.
-
-        :param state: Current chatbot state containing all ticket information.
-        :return: State update containing chatbot messages and completion flag.
-        """
-        title = self.generate_title(
-            state["issue_description"],
-            state["matrikelnummer"],
-        )
-
-        body = self._build_ai_body(state)
-
-        try:
             ticket_id = create_ticket_by_user_email(
                 email=state["user_email"],
                 title=title,
                 body=body,
                 priority=state["priority"],
-                state="closed"
+                internal=internal
             )
+            success = self._success_message(title, state)
+            success["ticket_id"] = ticket_id
+            print(f"Successfully created ticket with ID: {ticket_id}")
+            return success
 
+        except Exception as e:
+            print(f"[TicketService ERROR] {e}")
+            return self._error_message()
+        
+    def append_support_ticket_context(self, state, ticket_id, internal=True):
+        """
+        Appends the full ticket context to an already existing ticket.
+        
+        :param state: Current chatbot state containing all ticket information.
+        :param ticket_id: The ID of the existing ticket to append to.
+        :param internal: Whether the message should be internal.
+        """
+        body = self._build_open_body(state)
+        full_body = f"Das Gespräch mit dem Chatbot wurde abgeschlossen. Folgende Informationen wurden erfasst:\n\n{body}"
+        
+        try:
+            self.append_message_to_ticket(
+                ticket_id=ticket_id,
+                body=full_body,
+                sender="Agent",
+                internal=internal
+            )
+            print(f"Successfully appended context to ticket {ticket_id}")
+        except Exception as e:
+            print(f"[TicketService ERROR] Failed to append context: {e}")
+
+    def append_message_to_ticket(self, ticket_id: int, body: str, sender: str = "Agent", internal: bool = True) -> None:
+        """
+        Appends a follow-up article to an already-created ticket.
+        Use sender="Customer" for user messages, "Agent" for bot replies.
+        """
+        try:
+            add_article_to_ticket(ticket_id=ticket_id, body=body, sender=sender, internal=internal)
+        except Exception as e:
+            print(f"[TicketService ERROR] Failed to append article: {e}")
+
+    def create_ai_solved_ticket(self, state):
+        """
+        Marks the existing ticket as resolved by the AI chatbot.
+        Appends a resolution message, adds the 'AISolved' tag and closes the ticket.
+
+        :param state: Current chatbot state containing all ticket information.
+        :return: State update containing chatbot messages and completion flag.
+        """
+        ticket_id = state.get("ticket_id")
+
+        try:
             if ticket_id:
+                self.append_message_to_ticket(
+                    ticket_id=ticket_id,
+                    body="[ZIM AI-AGENT] Der Nutzer hat das Problem als durch den KI-Chatbot gelöst markiert. Das Ticket wird daher geschlossen.",
+                    sender="Agent",
+                    internal=True
+                )
                 add_tag_to_ticket(ticket_id, "AISolved")
 
             return {
@@ -120,7 +146,7 @@ class TicketService:
             print(f"[TicketService ERROR] {e}")
             return {
                 "messages": [
-                    AIMessage(content="Fehler beim Erstellen des Tickets.")
+                    AIMessage(content="Fehler beim Abschließen des Tickets.")
                 ],
                 "is_complete": True
             }
