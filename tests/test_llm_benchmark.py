@@ -94,11 +94,10 @@ SCENARIOS = [
 
 
 MODEL_CONFIGS = {
-    
+    "llama-3.1-8b": "meta-llama-3.1-8b-instruct",
     "deepseek-r1-70b":  "deepseek-r1-distill-llama-70b",
     "apertus-70b":      "apertus-70b-instruct-2509",
     "gemma-4-31b":   "gemma-4-31b-it",
-    "llama-3.1-8b": "meta-llama-3.1-8b-instruct",
 }
 
 
