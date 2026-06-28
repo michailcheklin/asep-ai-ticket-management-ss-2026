@@ -3,7 +3,8 @@ import copy
 import re
 
 import streamlit as st
-from clients.base import ChatClient
+
+from frontend.clients.base import ChatClient
 
 INITIAL_STATES = {
     "messages": [
@@ -17,6 +18,7 @@ INITIAL_STATES = {
     "issue_description": "",
     "additional_info": [],
     "priority": 0,
+    "category": "",
     "additional_info_attempts": 0,
     "ask_issue_attempts": 0,
 }
@@ -63,6 +65,7 @@ def build_chat_payload(user_input: str) -> dict:
         "issue_description": st.session_state.issue_description,
         "additional_info": st.session_state.additional_info,
         "priority": st.session_state.priority,
+        "category": st.session_state.category,
         "additional_info_attempts": st.session_state.additional_info_attempts,
         "ask_issue_attempts": st.session_state.ask_issue_attempts,
         "ticket_id": st.session_state.get("ticket_id"),
@@ -79,6 +82,7 @@ def build_feedback_payload(message_index: int, helpful: bool) -> dict:
         "issue_description": st.session_state.issue_description,
         "additional_info": st.session_state.additional_info,
         "priority": st.session_state.priority,
+        "category": st.session_state.category,
         "helpful": helpful,
         "solutions": message.get("solutions"),
         "bot_message": message["content"],
@@ -107,6 +111,7 @@ def apply_response_to_session(user_input: str, res_json: dict) -> None:
     st.session_state.priority = res_json.get("priority", 0)
     st.session_state.additional_info_attempts = res_json.get("additional_info_attempts", 0)
     st.session_state.ask_issue_attempts = res_json.get("ask_issue_attempts", 0)
+    st.session_state.category = res_json.get("category", "")
     if "ticket_id" in res_json:
         st.session_state.ticket_id = res_json.get("ticket_id")
 
@@ -134,13 +139,13 @@ def process_user_message(client: ChatClient, user_input: str) -> None:
 def process_solution_feedback(client: ChatClient, message_index: int, helpful: bool) -> str:
     message = st.session_state.messages[message_index]
     payload = build_feedback_payload(message_index, helpful)
-    
+
     # If user says "No", just append message to ticket without parsing JSON response
     if not helpful:
         client.send_feedback(payload)
         message["solutions"] = []
         return "Ich habe dein Feedback notiert und ein Support-Ticket erstellt. Ein Agent wird sich bald um dein Anliegen kümmern."
-    
+
     # For "Yes" response, parse the JSON response
     res_json = client.send_feedback(payload)
     message["solutions"] = []

@@ -6,6 +6,7 @@ from ..graph.models.ChatRequest import ChatRequest
 from langchain_core.messages import HumanMessage, AIMessage
 from ..graph.state import ChatbotState
 from ..graph.orchestrator import __execute_langchain_workflow, graph
+from ..graph.nodes import _resolve_ticket_category
 from ..services.TicketService import TicketService
 
 ticket_service = TicketService()
@@ -113,6 +114,7 @@ async def chat_endpoint(request: ChatRequest):
         "additional_info": request.additional_info,
         "needs_additional_info": False,
         "priority": request.priority,
+        "category": request.category,
         "is_complete": False,
         "solutions": request.solutions,
         "additional_info_attempts": request.additional_info_attempts,
@@ -143,19 +145,32 @@ async def solution_feedback(request: ChatRequest):
         "additional_info": request.additional_info,
         "needs_additional_info": False,
         "priority": request.priority,
+        "category": request.category,
         "is_complete": False,
         "solutions": request.solutions,
         "ask_issue_attempts": request.ask_issue_attempts,
         "additional_info_attempts": request.additional_info_attempts,
         "ticket_id": request.ticket_id,
-        }
+    }
+
+    current_state["category"] = _resolve_ticket_category(current_state)
 
     if request.helpful:
         ticket_service.create_ai_solved_ticket(current_state)
-        return {"bot_response": "Super, das freut mich! Wenn du in Zukunft weitere Fragen hast, stehe ich gerne zur Verfügung. Hab einen schönen Tag!"}
+        return {
+            "bot_response": "Super, das freut mich! Wenn du in Zukunft weitere Fragen hast, stehe ich gerne zur Verfügung. Hab einen schönen Tag!",
+            "category": current_state.get("category", "")
+        }
+
     else:
         ticket_service.append_support_ticket_context(current_state, request.ticket_id)
-        return {"bot_response": "Ihr Ticket wurde an den Support weitergeleitet."}
+        return {
+            "bot_response": "Ihr Ticket wurde an den Support weitergeleitet.",
+            "category": current_state.get("category", "")
+        }
+
+
+
 
 def run_local_chat():
     """
