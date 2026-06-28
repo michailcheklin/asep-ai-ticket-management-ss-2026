@@ -48,17 +48,21 @@ def extract_information(state: ChatbotState):
 
     state_update = {}
 
-    if extracted_data.email:
+    if extracted_data.email and not state.get("user_email"):
         state_update["user_email"] = extracted_data.email
-    if extracted_data.matrikelnummer:
+    if extracted_data.matrikelnummer and not state.get("matrikelnummer"):
         state_update["matrikelnummer"] = extracted_data.matrikelnummer
-    if extracted_data.problem:
+    if extracted_data.problem and not state.get("issue_description"):
         state_update["issue_description"] = extracted_data.problem
-    if extracted_data.additional_info:
-        state_update["additional_info"] = extracted_data.additional_info
-    if extracted_data.priority is not None:
+    if extracted_data.priority is not None and not state.get("priority"):
         state_update["priority"] = extracted_data.priority
-    
+    if extracted_data.additional_info:
+        current_infos = state.get("additional_info", [])
+
+        new_infos = [info for info in extracted_data.additional_info if info not in current_infos]
+        if new_infos:
+            state_update["additional_info"] = new_infos
+
     ticket_id = state.get("ticket_id")
     # If ticket already exists: append
     if ticket_id is not None:
@@ -78,6 +82,7 @@ def extract_information(state: ChatbotState):
         )
         state_update["ticket_id"] = result
         print(f"Created ticket with ID {result} for the state update: {state_update}")
+
 
     return state_update
 

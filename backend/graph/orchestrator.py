@@ -23,6 +23,14 @@ def __execute_langchain_workflow(state: ChatbotState):
 
     updated_state = graph.invoke(state)
     bot_response = updated_state["messages"][-1].content
+
+    print("\n===== FINAL UPDATED STATE =====")
+    print(f"Email:       {updated_state.get('user_email')}")
+    print(f"Matrikelnr.:    {updated_state.get('matrikelnummer')}")
+    print(f"Problem:     {updated_state.get('issue_description')}")
+    print(f"Additional Info: {updated_state.get('additional_info')}")
+    print("==============================================\n")
+
     return {
         "bot_response": bot_response,
         "ticket_id": updated_state.get("ticket_id"),
