@@ -124,4 +124,22 @@ def add_tag_to_ticket(ticket_id: int, tag: str):
     )
     print(f"Tag '{tag}' added to ticket {ticket_id}: {response.status_code}")
 
+def replace_tag_for_ticket(ticket_id: int, old_tag: str, new_tag: str):
+    """Ersetzt einen Tag eines Zammad-Tickets."""
+    response = requests.delete(
+        url=f"{server_address}/api/v1/tags/remove",
+        json={"object": "Ticket", "o_id": ticket_id, "item": old_tag},
+        headers=headers,
+        timeout=GENERAL_TIMEOUT
+    )
+    print(f"Tag '{old_tag}' removed from ticket {ticket_id}: {response.status_code}")
+
+    response = requests.post(
+        url=f"{server_address}/api/v1/tags/add",
+        json={"object": "Ticket", "o_id": ticket_id, "item": new_tag},
+        headers=headers,
+        timeout=GENERAL_TIMEOUT
+    )
+    print(f"Tag '{new_tag}' added to ticket {ticket_id}: {response.status_code}")
+
 # create_ticket_by_user_email(email="example@example.com", title="Help request", body="Hello, I need help!",)
