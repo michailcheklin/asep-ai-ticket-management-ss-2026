@@ -21,7 +21,6 @@ INITIAL_STATES = {
     "category": "",
     "additional_info_attempts": 0,
     "ask_issue_attempts": 0,
-    "category": "",
 }
 
 WAITING_MESSAGE = '*:color[Bitte warten. Antwort wird generiert...]{foreground="#888888"}*'

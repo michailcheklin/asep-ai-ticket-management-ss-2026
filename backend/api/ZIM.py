@@ -149,7 +149,6 @@ async def solution_feedback(request: ChatRequest):
         "solutions": request.solutions,
         "ask_issue_attempts": request.ask_issue_attempts,
         "additional_info_attempts": request.additional_info_attempts,
-        "category": request.category,
 
     }
 
