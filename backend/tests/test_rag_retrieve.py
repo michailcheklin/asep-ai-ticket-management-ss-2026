@@ -1,4 +1,10 @@
 import sys
+from pathlib import Path
+
+RAG_ROOT = Path(__file__).resolve().parents[1] / "rag"
+if str(RAG_ROOT) not in sys.path:
+    sys.path.insert(0, str(RAG_ROOT))
+
 from retrieve_info import retrieve_relevant_entries
 
 CI_SIMILARITY_THRESHOLD = 0.60
