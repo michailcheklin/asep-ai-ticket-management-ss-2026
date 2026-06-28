@@ -8,7 +8,7 @@ from backend.rag.retrieve_info import retrieve_relevant_entries
 from ..services.TicketService import TicketService
 from ..llm.llm import llm, structured_llm
 from .node_logging import log_node_entry
-from ..api.zammad import create_ticket_by_user_email
+from ..api.zammad import create_ticket_by_user_email, add_tag_to_ticket
 
 ticket_service = TicketService()
 
@@ -221,6 +221,8 @@ def extract_information(state: ChatbotState):
             state="new",
         )
         state_update["ticket_id"] = result
+        add_tag_to_ticket(result, "AI-Created")
+
         print(f"Created ticket with ID {result} for the state update: {state_update}")
 
 

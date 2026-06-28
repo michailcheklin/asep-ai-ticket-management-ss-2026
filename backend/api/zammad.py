@@ -116,12 +116,45 @@ def add_article_to_ticket(ticket_id: int, body: str, sender: str = "Agent",
 
 def add_tag_to_ticket(ticket_id: int, tag: str):
     """Fügt einen Tag zu einem Zammad-Ticket hinzu."""
-    response = requests.post(
-        url=f"{server_address}/api/v1/tags/add",
-        json={"object": "Ticket", "o_id": ticket_id, "item": tag},
-        headers=headers,
-        timeout=GENERAL_TIMEOUT
-    )
-    print(f"Tag '{tag}' added to ticket {ticket_id}: {response.status_code}")
+    try:
+        response = requests.post(
+            url=f"{server_address}/api/v1/tags/add",
+            json={"object": "Ticket", "o_id": ticket_id, "item": tag},
+            headers=headers,
+            timeout=GENERAL_TIMEOUT
+        )
+        print(f"Tag '{tag}' added to ticket {ticket_id}: {response.status_code}")
+    except ConnectionError:
+        print(f"Connection error: Could not reach Zammad to add tag to ticket")
+    except MissingSchema:
+        print(f"Invalid URL for Zammad provided: Could not reach Zammad to add tag to ticket")
+    except Exception as e:
+        print(f"Other error occured during tag addition: {e}")
 
+
+def replace_tag_for_ticket(ticket_id: int, old_tag: str, new_tag: str):
+    """Ersetzt einen Tag eines Zammad-Tickets."""
+    try:
+
+        response = requests.delete(
+            url=f"{server_address}/api/v1/tags/remove",
+            json={"object": "Ticket", "o_id": ticket_id, "item": old_tag},
+            headers=headers,
+            timeout=GENERAL_TIMEOUT
+        )
+        print(f"Tag '{old_tag}' removed from ticket {ticket_id}: {response.status_code}")
+
+        response = requests.post(
+            url=f"{server_address}/api/v1/tags/add",
+            json={"object": "Ticket", "o_id": ticket_id, "item": new_tag},
+            headers=headers,
+            timeout=GENERAL_TIMEOUT
+        )
+        print(f"Tag '{new_tag}' added to ticket {ticket_id}: {response.status_code}")
+    except ConnectionError:
+        print(f"Connection error: Could not reach Zammad to replace tag on ticket")
+    except MissingSchema:
+        print(f"Invalid URL for Zammad provided: Could not reach Zammad to replace tag on ticket")
+    except Exception as e:
+        print(f"Other error occured during tag replacement: {e}")
 # create_ticket_by_user_email(email="example@example.com", title="Help request", body="Hello, I need help!",)
