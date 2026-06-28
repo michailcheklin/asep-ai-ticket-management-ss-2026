@@ -7,6 +7,7 @@ from .nodes import (
     ask_for_matrikelnummer,
     ask_for_issue,
     ask_for_additional_info,
+    classify_ticket,
     give_solutions,
     finish_ticket,
 )
@@ -34,6 +35,14 @@ def __execute_langchain_workflow(state: ChatbotState):
 
     updated_state = graph.invoke(state)
     bot_response = updated_state["messages"][-1].content
+
+    print("\n===== FINAL UPDATED STATE =====")
+    print(f"Email:       {updated_state.get('user_email')}")
+    print(f"Matrikelnr.:    {updated_state.get('matrikelnummer')}")
+    print(f"Problem:     {updated_state.get('issue_description')}")
+    print(f"Additional Info: {updated_state.get('additional_info')}")
+    print("==============================================\n")
+
     return {
         "bot_response": bot_response,
         "user_email": updated_state.get("user_email", ""),
@@ -42,6 +51,7 @@ def __execute_langchain_workflow(state: ChatbotState):
         "additional_info": updated_state.get("additional_info", []),
         "needs_additional_info": updated_state.get("needs_additional_info", False),
         "priority": updated_state.get("priority", 0),
+        "category": updated_state.get("category", ""),
         "is_complete": updated_state.get("is_complete", False),
         "solutions": updated_state.get("solutions", []),
         "additional_info_attempts": updated_state.get("additional_info_attempts", 0),
@@ -78,7 +88,7 @@ def route_after_evaluator(state: ChatbotState):
     provide additional information.
     """
     if state.get("needs_additional_info"):
-        return "give_solutions_node"
+        return "classify_ticket_node"
     else:
         return END
 
@@ -112,6 +122,7 @@ workflow.add_node("ask_email_node", ask_for_email)
 workflow.add_node("ask_matrikel_node", ask_for_matrikelnummer)
 workflow.add_node("ask_issue_node", ask_for_issue)
 workflow.add_node("ask_for_additional_info", ask_for_additional_info)
+workflow.add_node("classify_ticket_node", classify_ticket)
 workflow.add_node("give_solutions_node", give_solutions)
 workflow.add_node("finish_node", finish_ticket)
 
@@ -129,6 +140,8 @@ workflow.add_conditional_edges(
     "ask_for_additional_info",
     route_after_evaluator
 )
+
+workflow.add_edge("classify_ticket_node", "give_solutions_node")
 
 # Route after retrieving possible solutions.
 workflow.add_conditional_edges(

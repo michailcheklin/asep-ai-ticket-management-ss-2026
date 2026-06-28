@@ -21,6 +21,9 @@ class ChatbotState(TypedDict):
     #Priority of the ticket:0 =non-ungent/normal, 1 = urgent/important
     priority:int
 
+    # Support category assigned by classify_ticket_node (or at ticket creation)
+    category: str
+
     # signal if user needs more information
     needs_additional_info: bool
 

@@ -12,6 +12,7 @@ class ChatRequest(BaseModel):
     issue_description: str = ""
     additional_info: List[str] = []
     priority: int = 0
+    category: str = ""
     helpful: bool = False
     solutions: List[Dict] = []
     bot_message: str = ""
