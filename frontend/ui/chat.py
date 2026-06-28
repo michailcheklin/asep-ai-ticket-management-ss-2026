@@ -68,7 +68,6 @@ def build_chat_payload(user_input: str) -> dict:
         "category": st.session_state.category,
         "additional_info_attempts": st.session_state.additional_info_attempts,
         "ask_issue_attempts": st.session_state.ask_issue_attempts,
-        "category": st.session_state.category,
     }
 
 
