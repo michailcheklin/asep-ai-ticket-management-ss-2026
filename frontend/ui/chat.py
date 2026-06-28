@@ -3,7 +3,8 @@ import copy
 import re
 
 import streamlit as st
-from ..clients.base import ChatClient
+
+from frontend.clients.base import ChatClient
 
 INITIAL_STATES = {
     "messages": [
