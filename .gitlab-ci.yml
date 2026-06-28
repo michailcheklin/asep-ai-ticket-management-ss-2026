@@ -7,10 +7,8 @@ stages:
 run_test_prompt_security:
   stage: test_prompt_security
   tags:
-    - shared
-    - docker
-    - PoC
-    - pilot
+    - dind
+    - ude-sse
   # Use a specific Python image for a predictable runtime
   image: python:3.11
   before_script:
@@ -24,9 +22,8 @@ run_test_prompt_security:
 run_test_chat_endpoint_connectivity:
   stage: test_chat_endpoint_connectivity
   tags:
-    - shared
-    - docker
-    - PoC
+    - dind
+    - ude-sse
   image: python:3.11
   before_script:
     - echo "SAIA_API_KEY=$SAIA_API_KEY" >> .env
