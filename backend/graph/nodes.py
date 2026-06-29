@@ -175,7 +175,8 @@ def extract_information(state: ChatbotState):
         Setze priority auf 1 bei dringenden Problemen wie gesperrtem Account,
         Login nicht möglich, Prüfungs-/Abgabeproblemen oder komplettem Ausfall.
         Setze priority auf 0 bei normalen oder weniger dringenden Problemen.
-    	""".format(
+        4. Zusammenfassung (full_conversation): Dieses Feld MUSS bei jeder Antwort neu gesetzt werden - auch wenn sich nur wenig geändert hat. Schreibe eine aktualisierte Zusammenfassung des gesamten bisherigen Gesprächs aus der Perspektive eines Support-Agenten, der einem Kollegen den Fall erklärt. Integriere alle bisher bekannten Informationen, einschließlich Antworten auf Rückfragen. Beispiel: "Der Student fragt nach einer kostenlosen Windows 10 Lizenz für sein universitätseigenes Gerät. Er hat bereits ein qualifizierendes Betriebssystem und benötigt eine Vollversion." Maximal 3 Sätze, keine Aufzählung.
+        """.format(
         prior_issue=prior_issue or "noch nicht bekannt",
         prior_infos=", ".join(prior_infos) if prior_infos else "keine",
         conversation_context=conversation_context or "keine",
@@ -207,6 +208,7 @@ def extract_information(state: ChatbotState):
         new_infos = [info for info in extracted_data.additional_info if info not in current_infos]
         if new_infos:
             state_update["additional_info"] = new_infos
+    state_update["full_conversation"] = extracted_data.full_conversation or state.get("full_conversation", "")
 
     ticket_id = state.get("ticket_id")
     # If ticket already exists: append
@@ -368,7 +370,7 @@ def ask_for_additional_info(state: ChatbotState):
            "* [Frage]?"
         5. Stelle die Fragen soweit wie möglich immer als Multiple-Choice mit dem gezeigten Format, wo du nur die Felder in [] ändern darsf.
         6. Deine Nachricht MUSS IMMER mit "Um Ihnen weiter helfen zu können, beantworten Sie bitte folgende Fragen" beginnen. (dieser Satz ist kein Teil der Liste)
-        7. Begrenze dich auf maximal 5 Optionen, wobei "Andere" immer eine Option sein muss.
+        7. Begrenze dich auf maximal 5 Optionen, wobei "Andere" IMMER eine Option sein muss.
         """
     ))
 
@@ -470,6 +472,7 @@ def give_solutions(state: ChatbotState):
             2. Wenn Lösungen vorhanden sind, fasse sie kurz zusammen und erkläre, wie sie dem User helfen können.
             3. Vermeide es, die Lösungen einfach nur zu wiederholen, sondern biete eine Interpretation oder Empfehlung an.
             4. Versuche dich am besten auf maximal 3 Sätze zu beschränken.
+            5. Gib immer ein Link, wenn das den Nutzer helfen könnte.
             """
     ))
     message_text = llm.invoke([system_prompt, HumanMessage(content="Bitte fasse die Lösungen für den User zusammen.")])
