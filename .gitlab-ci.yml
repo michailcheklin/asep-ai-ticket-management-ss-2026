@@ -4,18 +4,31 @@ stages:
   - test_prompt_security
   - test_chat_endpoint_connectivity
 
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  VENV_DIR: "$CI_PROJECT_DIR/venv"
+
+# Caching the Python dependencies per branch, or otherwise
+# adding dependencies in one branch that cause a conflict
+# would cause conflicts in all other branches
+cache:
+  key: ${CI_COMMIT_REF_SLUG}
+  paths:
+    - .cache/pip
+    - venv/
+
+before_script:
+  - python --version
+  - python -m venv $VENV_DIR
+  - source $VENV_DIR/bin/activate
+  - pip install --upgrade pip
+  - if [ -f tests/requirements.txt ]; then pip install -r tests/requirements.txt; fi
+
 run_test_prompt_security:
   stage: test_prompt_security
   tags:
     - dind
     - ude-sse
-  # Use a specific Python image for a predictable runtime
-  image: python:3.11
-  before_script:
-    - python --version
-    - pip install --upgrade pip
-    # Install backend requirements if the file exists;
-    - if [ -f tests/requirements.txt ]; then pip install -r tests/requirements.txt; fi
   script:
     - pytest ./tests/test_prompt_security_result.py -v -s
 
@@ -24,7 +37,6 @@ run_test_chat_endpoint_connectivity:
   tags:
     - dind
     - ude-sse
-  image: python:3.11
   before_script:
     - echo "LANGSMITH_TRACING=true" >> .env
     - echo "LANGSMITH_API_KEY=$LANGSMITH_API_KEY" >> .env
@@ -32,9 +44,5 @@ run_test_chat_endpoint_connectivity:
     - echo "SAIA_API_KEY=$SAIA_API_KEY" >> .env
     - echo "USE_SAIA_API=true" >> .env
     - echo "ZAMMAD_SERVER_ADDRESS=$ZAMMAD_SERVER_ADDRESS" >> .env
-    - python --version
-    - pip install --upgrade pip
-    # Install backend requirements if the file exists;
-    - if [ -f tests/requirements.txt ]; then pip install -r tests/requirements.txt; fi
   script:
     - pytest ./tests/test_chat_endpoint_connectivity.py -v -s
