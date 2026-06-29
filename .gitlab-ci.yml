@@ -17,7 +17,7 @@ run_test_prompt_security:
     # Install backend requirements if the file exists;
     - if [ -f tests/requirements.txt ]; then pip install -r tests/requirements.txt; fi
   script:
-    - pytest ./tests/test_prompt_security_result.py -v
+    - pytest ./tests/test_prompt_security_result.py -v -s
 
 run_test_chat_endpoint_connectivity:
   stage: test_chat_endpoint_connectivity
@@ -37,4 +37,4 @@ run_test_chat_endpoint_connectivity:
     # Install backend requirements if the file exists;
     - if [ -f tests/requirements.txt ]; then pip install -r tests/requirements.txt; fi
   script:
-    - pytest ./tests/test_chat_endpoint_connectivity.py -v
+    - pytest ./tests/test_chat_endpoint_connectivity.py -v -s
