@@ -23,7 +23,6 @@ run_test_chat_endpoint_connectivity:
     key: ${CI_COMMIT_REF_SLUG}
     paths:
       - $PIP_CACHE_DIR
-      - $VENV_DIR
   script:
     - python --version
     - pip install --upgrade pip
@@ -44,11 +43,11 @@ run_test_prompt_security:
     key: ${CI_COMMIT_REF_SLUG}
     paths:
       - $PIP_CACHE_DIR
-      - $VENV_DIR
     policy: pull
   tags:
     - dind
     - ude-sse
   script:
+    - python -m venv $VENV_DIR
     - source $VENV_DIR/bin/activate
     - pytest ./tests/test_prompt_security_result.py -v -s
