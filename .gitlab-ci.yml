@@ -35,13 +35,17 @@ run_test_chat_endpoint_connectivity:
       - $VENV_DIR
     expire_in: 1 hour
   script:
+    - python --version
+    - pip install --upgrade pip
+    - python -m venv $VENV_DIR
+    - source $VENV_DIR/bin/activate
+    - if [ -f tests/requirements.txt ]; then pip install -r tests/requirements.txt; fi
     - echo "LANGSMITH_TRACING=true" >> .env
     - echo "LANGSMITH_API_KEY=$LANGSMITH_API_KEY" >> .env
     - echo "LANGSMITH_ENDPOINT=https://eu.api.smith.langchain.com" >> .env
     - echo "SAIA_API_KEY=$SAIA_API_KEY" >> .env
     - echo "USE_SAIA_API=true" >> .env
     - echo "ZAMMAD_SERVER_ADDRESS=$ZAMMAD_SERVER_ADDRESS" >> .env
-    - source $VENV_DIR/bin/activate
     - pytest ./tests/test_chat_endpoint_connectivity.py -v -s
 
 run_test_prompt_security:
