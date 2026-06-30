@@ -69,6 +69,7 @@ run_test_prompt_security:
     - dind
     - ude-sse
   script:
+    - export HF_HOME=$HF_HOME
     - python --version
     - pip install --upgrade pip
     - python -m venv $VENV_DIR
