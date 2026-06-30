@@ -1,3 +1,5 @@
+import concurrent.futures
+
 import pytest
 
 from backend.prompt_security.helper import (
@@ -65,10 +67,25 @@ def session_counters():
     }
 
     # Evaluiere alle Prompts, bevor die Metriken gegen die Schwellenwerte verglichen werden
-    for prompt in expected_ok_prompts:
-        evaluate_prompt(prompt, counters, expected_allowed=True)
-    for prompt in expected_not_ok_prompts:
-        evaluate_prompt(prompt, counters, expected_allowed=False)
+    # Helper function to evaluate a batch of prompts
+    def evaluate_batch(prompts, expected_allowed):
+        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+            futures = [
+                executor.submit(evaluate_prompt, prompt, counters, expected_allowed)
+                for prompt in prompts
+            ]
+            # Wait for all futures to complete
+            concurrent.futures.wait(futures)
+
+    # Evaluate OK prompts in batches of 3
+    for i in range(0, len(expected_ok_prompts), 3):
+        batch = expected_ok_prompts[i:i + 3]
+        evaluate_batch(batch, expected_allowed=True)
+
+    # Evaluate NOT OK prompts in batches of 3
+    for i in range(0, len(expected_not_ok_prompts), 3):
+        batch = expected_not_ok_prompts[i:i + 3]
+        evaluate_batch(batch, expected_allowed=False)
 
     return counters
 
