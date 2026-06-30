@@ -1,23 +1,18 @@
 image: python:3.11
 
 stages:
-  - test_prompt_security
   - test_chat_endpoint_connectivity
+  - test_prompt_security
+
 
 variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
   VENV_DIR: "$CI_PROJECT_DIR/venv"
 
-# Caching the Python dependencies per branch, or otherwise
-# adding dependencies in one branch that cause a conflict
-# would cause conflicts in all other branches
-cache:
-  key: ${CI_COMMIT_REF_SLUG}
-  paths:
-    - $PIP_CACHE_DIR
 
-run_test_prompt_security:
-  stage: test_prompt_security
+
+run_test_chat_endpoint_connectivity:
+  stage: test_chat_endpoint_connectivity
   tags:
     - shared
     - docker
@@ -26,32 +21,19 @@ run_test_prompt_security:
     - dind
     - ude-sse
     - michail
-  script:
-    - python --version
-    - pip install --upgrade pip
-    - python -m venv $VENV_DIR
-    - source $VENV_DIR/bin/activate
-    - if [ -f tests/requirements.txt ]; then pip install -r tests/requirements.txt; fi
-    - pytest ./tests/test_prompt_security_result.py -v -s
+  # Caching the Python dependencies per branch, or otherwise
+  # adding dependencies in one branch that cause a conflict
+  # would cause conflicts in all other branches
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}
+    paths:
+      - $PIP_CACHE_DIR
   # Pass the venv directory where the packages are to
   # the next stage
   artifacts:
     paths:
       - $VENV_DIR
     expire_in: 1 hour
-
-run_test_chat_endpoint_connectivity:
-  stage: test_chat_endpoint_connectivity
-  dependencies:
-    - run_test_prompt_security
-  tags:
-    - shared
-    - docker
-    - PoC
-    - pilot
-    - dind
-    - ude-sse
-    - michail
   script:
     - echo "LANGSMITH_TRACING=true" >> .env
     - echo "LANGSMITH_API_KEY=$LANGSMITH_API_KEY" >> .env
@@ -61,3 +43,18 @@ run_test_chat_endpoint_connectivity:
     - echo "ZAMMAD_SERVER_ADDRESS=$ZAMMAD_SERVER_ADDRESS" >> .env
     - source $VENV_DIR/bin/activate
     - pytest ./tests/test_chat_endpoint_connectivity.py -v -s
+
+run_test_prompt_security:
+  stage: test_prompt_security
+  dependencies:
+    - run_test_chat_endpoint_connectivity
+  tags:
+    - shared
+    - docker
+    - PoC
+    - pilot
+    - dind
+    - ude-sse
+    - michail
+  script:
+    - pytest ./tests/test_prompt_security_result.py -v -s
