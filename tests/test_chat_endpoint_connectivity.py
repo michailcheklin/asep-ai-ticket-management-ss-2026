@@ -1,5 +1,6 @@
 ﻿import json
 import pytest
+from openai import InternalServerError
 
 from backend.api.ZIM import chat_endpoint
 from backend.graph.models.ChatRequest import ChatRequest
@@ -23,6 +24,7 @@ testcases = [
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("testcase", testcases)
+@pytest.mark.flaky(reruns=3, reruns_delay=1, only_on=[InternalServerError])
 async def test_chat_endpoint_connectivity(testcase):
     """
     This test checks whether the LLM can generate a well-formed response at all,
