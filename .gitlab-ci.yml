@@ -23,12 +23,7 @@ run_test_chat_endpoint_connectivity:
     key: ${CI_COMMIT_REF_SLUG}
     paths:
       - $PIP_CACHE_DIR
-  # Pass the venv directory where the packages are to
-  # the next stage
-  artifacts:
-    paths:
       - $VENV_DIR
-    expire_in: 1 hour
   script:
     - python --version
     - pip install --upgrade pip
@@ -45,8 +40,12 @@ run_test_chat_endpoint_connectivity:
 
 run_test_prompt_security:
   stage: test_prompt_security
-  dependencies:
-    - run_test_chat_endpoint_connectivity
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}
+    paths:
+      - $PIP_CACHE_DIR
+      - $VENV_DIR
+    policy: pull
   tags:
     - dind
     - ude-sse
