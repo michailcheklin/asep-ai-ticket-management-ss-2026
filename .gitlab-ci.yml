@@ -60,11 +60,11 @@ run_test_prompt_security:
       paths:
         - $PIP_CACHE_DIR
         - $VENV_DIR
-      policy: pull
+      policy: pull-push
     - key: hf-models
       paths:
-        - $HF_HOME
-      policy: pull
+        - .cache/huggingface/
+      policy: pull-push
   tags:
     - dind
     - ude-sse
@@ -94,7 +94,7 @@ run_test_chat_endpoint_connectivity:
       policy: pull
     - key: hf-models
       paths:
-        - $HF_HOME
+        - .cache/huggingface/
       policy: pull
   script:
     - source $VENV_DIR/bin/activate
