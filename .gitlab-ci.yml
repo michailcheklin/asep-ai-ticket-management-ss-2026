@@ -1,16 +1,57 @@
 image: python:3.11
 
 stages:
+  - prepare_downloads_for_tests
   - test_prompt_security
   - test_chat_endpoint_connectivity
-
-
 
 variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
   VENV_DIR: "$CI_PROJECT_DIR/venv"
   HF_HOME: "$CI_PROJECT_DIR/.cache/huggingface"
 
+download_python_dependencies:
+  stage:
+    prepare_downloads_for_tests
+  script:
+    - python --version
+    - pip install --upgrade pip
+    - python -m venv $VENV_DIR
+    - source $VENV_DIR/bin/activate
+    - if [ -f tests/requirements.txt ]; then pip install -r tests/requirements.txt; fi
+  cache:
+    - key: ${CI_COMMIT_REF_SLUG}
+      paths:
+        - $PIP_CACHE_DIR
+        - $VENV_DIR
+      policy: push
+  # Redownload for the python dependency cache only if the requirements.txt file was changed
+  rules:
+    - changes:
+        paths:
+          - ./tests/requirements.txt
+
+download_hugging_face_models:
+  stage:
+    prepare_downloads_for_tests
+  script:
+    - python --version
+    - pip install --upgrade pip
+    - python -m venv $VENV_DIR
+    - source $VENV_DIR/bin/activate
+    - if [ -f tests/requirements.txt ]; then pip install -r tests/requirements.txt; fi
+    - python ./backend/prompt_security/prompt_check_model_setup.py
+  cache:
+    - key: hf-models
+      paths:
+        - $HF_HOME
+      policy: push
+  # Redownload the Hugging Face models for the prompt security check only if the
+  # prompt check model setup file is changed, e. g. to choose a different model
+  rules:
+    - changes:
+        paths:
+          - ./backend/prompt_security/prompt_check_model_setup.py
 
 run_test_prompt_security:
   stage: test_prompt_security
@@ -19,9 +60,11 @@ run_test_prompt_security:
       paths:
         - $PIP_CACHE_DIR
         - $VENV_DIR
+      policy: pull
     - key: hf-models
       paths:
         - $HF_HOME
+      policy: pull
   tags:
     - dind
     - ude-sse
