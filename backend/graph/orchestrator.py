@@ -190,5 +190,5 @@ if __name__ == "__main__":
 
     with open(filename_for_graph_image, "wb") as f:
         print("Creating PNG visualisation of the graph...")
-        f.write(graph.get_graph().draw_mermaid_png())
+        f.write(graph.get_graph().draw_png())
         print(f'Image saved at {filename_for_graph_image}.')
