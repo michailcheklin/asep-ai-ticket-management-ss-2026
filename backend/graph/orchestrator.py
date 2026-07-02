@@ -117,6 +117,14 @@ def route_after_solutions(state: ChatbotState):
 
 
 def build_pathmap_from_nodes_list_for_visualisation(nodes_list:list[str]):
+    """
+    Builds the path map for the visualization.
+    The path map in a conditional edge takes the node names that are associated to the path names
+    for the internal Graph object in the Langgraph graph. Without doing this, no conditional edges
+    would appear if converting the graph to a PNG image
+    :param nodes_list: The list of the nodes
+    :return: A dictionary which is formed like this: Input: ["a", "b", "c"] - Output: {"a":"a", "b":"b", "c":"c"}
+    """
     output = {}
     for node_name in nodes_list:
         output[node_name] = node_name
@@ -186,6 +194,7 @@ graph = graph.with_config({'callbacks': [tracer]})
 
 
 if __name__ == "__main__":
+    # Runs only if run from the terminal without Docker
     filename_for_graph_image = os.path.join(Path(__file__).parent, "langgraph.png")
 
     with open(filename_for_graph_image, "wb") as f:
