@@ -202,11 +202,21 @@ class TicketService:
         :return: The formatted chat history and solutions
         """
         summary = (state.get("full_conversation") or "").strip() or "(keine Zusammenfassung vorhanden)"
+        addendum = (state.get("user_addendum") or "").strip()
+        addendum_section = ""
+        if addendum:
+            addendum_section = (
+                f"\n\n{'=' * 40}\n"
+                f"ERGÄNZUNG DURCH NUTZER\n"
+                f"{'=' * 40}\n\n"
+                f"{addendum}\n"
+            )
         return (
             f"\n\n{'=' * 40}\n"
             f"GESPRÄCHSZUSAMMENFASSUNG\n"
             f"{'=' * 40}\n\n"
-            f"{summary}\n\n"
+            f"{summary}"
+            f"{addendum_section}\n\n"
             f"{'=' * 40}\n"
             f"VOM BOT ANGEBOTENE LÖSUNGEN\n"
             f"{'=' * 40}\n\n"

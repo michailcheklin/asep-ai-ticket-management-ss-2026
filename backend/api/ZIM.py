@@ -153,6 +153,7 @@ async def solution_feedback(request: ChatRequest):
         "additional_info_attempts": request.additional_info_attempts,
         "ticket_id": request.ticket_id,
         "full_conversation": request.full_conversation,
+        "user_addendum": request.user_addendum,
     }
 
     current_state["category"] = _resolve_ticket_category(current_state)

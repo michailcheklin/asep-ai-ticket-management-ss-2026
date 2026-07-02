@@ -22,6 +22,9 @@ INITIAL_STATES = {
     "additional_info_attempts": 0,
     "ask_issue_attempts": 0,
     "full_conversation": "",
+    # ── Ticket confirmation (frontend-only, before finalising support ticket) ──
+    "pending_ticket_confirmation": None,  # message index with unhelpful solution feedback
+    "show_ticket_addendum_form": False,
     # ── Q&A widget state (frontend-only, never sent to the backend) ──────────
     "pending_questions": [],   # list of {text: str, options: list[str] | None}
     "current_question_idx": 0,
@@ -141,7 +144,7 @@ def build_chat_payload(user_input: str) -> dict:
     }
 
 
-def build_feedback_payload(message_index: int, helpful: bool) -> dict:
+def build_feedback_payload(message_index: int, helpful: bool, user_addendum: str = "") -> dict:
     message = st.session_state.messages[message_index]
     return {
         "user_message": "",
@@ -159,7 +162,21 @@ def build_feedback_payload(message_index: int, helpful: bool) -> dict:
         "ask_issue_attempts": st.session_state.ask_issue_attempts,
         "ticket_id": st.session_state.get("ticket_id"),
         "full_conversation": st.session_state.full_conversation,
+        "user_addendum": user_addendum,
     }
+
+
+def get_issue_summary() -> str:
+    """Return the chatbot summary shown before ticket finalisation."""
+    summary = (st.session_state.full_conversation or "").strip()
+    if summary:
+        return summary
+    parts = []
+    if st.session_state.issue_description:
+        parts.append(st.session_state.issue_description)
+    if st.session_state.additional_info:
+        parts.append(", ".join(st.session_state.additional_info))
+    return "\n".join(parts) or "(keine Zusammenfassung vorhanden)"
 
 
 # ── Core message processing ───────────────────────────────────────────────────
@@ -216,20 +233,31 @@ def process_user_message(client: ChatClient, user_input: str) -> None:
         apply_response_to_session(user_input, res_json)
 
 
-def process_solution_feedback(client: ChatClient, message_index: int, helpful: bool) -> str:
+def process_solution_feedback(
+    client: ChatClient,
+    message_index: int,
+    helpful: bool,
+    user_addendum: str = "",
+) -> str:
     message = st.session_state.messages[message_index]
-    payload = build_feedback_payload(message_index, helpful)
+    payload = build_feedback_payload(message_index, helpful, user_addendum=user_addendum)
 
-    # If user says "No", just append message to ticket without parsing JSON response
     if not helpful:
         client.send_feedback(payload)
         message["solutions"] = []
+        st.session_state.pending_ticket_confirmation = None
+        st.session_state.show_ticket_addendum_form = False
         return "Ich habe dein Feedback notiert und ein Support-Ticket erstellt. Ein Agent wird sich bald um dein Anliegen kümmern."
 
-    # For "Yes" response, parse the JSON response
     res_json = client.send_feedback(payload)
     message["solutions"] = []
     return res_json.get("bot_response", "")
+
+
+def start_ticket_confirmation(message_index: int) -> None:
+    """Enter the summary confirmation step after an unhelpful solution."""
+    st.session_state.pending_ticket_confirmation = message_index
+    st.session_state.show_ticket_addendum_form = False
 
 
 # ── Rendering ────────────────────────────────────────────────────────────────
@@ -243,7 +271,7 @@ def render_message_extras(message: dict, message_index: int, client: ChatClient)
     if "show_ticket_button" in ui_flags:
         st.button("Ticket erstellen", disabled=True, key=f"ticket_btn_{message_index}")
 
-    if message.get("solutions"):
+    if message.get("solutions") and st.session_state.pending_ticket_confirmation is None:
         col1, col2 = st.columns(2)
 
         with col1:
@@ -257,12 +285,52 @@ def render_message_extras(message: dict, message_index: int, client: ChatClient)
 
         with col2:
             if st.button("Nein", key=f"solution_no_{message_index}"):
-                st.session_state.messages.append({
-                    "role": "assistant",
-                    "content": process_solution_feedback(client, message_index, False),
-                })
-                st.session_state.bot_thinking = True
+                start_ticket_confirmation(message_index)
                 st.rerun()
+
+
+def render_ticket_confirmation_widget(client: ChatClient) -> None:
+    """Let the user confirm the issue summary or add free-text before finalising."""
+    message_index = st.session_state.pending_ticket_confirmation
+    if message_index is None:
+        return
+
+    with st.container(border=True):
+        st.markdown("**Zusammenfassung deines Anliegens**")
+        st.info(get_issue_summary())
+
+        if st.session_state.show_ticket_addendum_form:
+            addendum = st.text_area(
+                "Ergänze hier weitere Informationen zu deinem Anliegen:",
+                key="ticket_addendum_input",
+                height=120,
+            )
+            if st.button("Ticket absenden", key="ticket_submit_with_addendum", use_container_width=True):
+                if not addendum.strip():
+                    st.error("Bitte gib eine Ergänzung ein oder bestätige die Zusammenfassung ohne Änderungen.")
+                else:
+                    st.session_state.messages.append({
+                        "role": "assistant",
+                        "content": process_solution_feedback(
+                            client, message_index, False, user_addendum=addendum.strip()
+                        ),
+                    })
+                    st.session_state.bot_thinking = True
+                    st.rerun()
+        else:
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("Zusammenfassung bestätigen", key="ticket_confirm_summary", use_container_width=True):
+                    st.session_state.messages.append({
+                        "role": "assistant",
+                        "content": process_solution_feedback(client, message_index, False),
+                    })
+                    st.session_state.bot_thinking = True
+                    st.rerun()
+            with col2:
+                if st.button("Informationen ergänzen", key="ticket_show_addendum", use_container_width=True):
+                    st.session_state.show_ticket_addendum_form = True
+                    st.rerun()
 
 
 def render_chat_history(client: ChatClient) -> None:
@@ -382,20 +450,30 @@ def run_app(client: ChatClient, *, mock_mode: bool = False) -> None:
         st.session_state.bot_thinking = False
         st.rerun()
 
-    # Priority 2: guide the user through pending questions one at a time.
+    # Priority 2: confirm issue summary before finalising the support ticket.
+    elif st.session_state.pending_ticket_confirmation is not None:
+        render_ticket_confirmation_widget(client)
+
+    # Priority 3: guide the user through pending questions one at a time.
     elif st.session_state.pending_questions:
         render_question_widget(client)
 
-    # Priority 3: normal freeform chat input.
+    # Priority 4: normal freeform chat input.
     else:
         has_pending_solutions = any(msg.get("solutions") for msg in st.session_state.messages)
+        chat_disabled = (
+            st.session_state.bot_thinking
+            or not are_form_fields_valid()
+            or has_pending_solutions
+            or st.session_state.pending_ticket_confirmation is not None
+        )
         if user_input := st.chat_input(
             placeholder=(
                 "Bitte E-Mail-Adresse und Matrikelnummer eingeben"
                 if not are_form_fields_valid()
                 else "Beschreibe dein Anliegen..."
             ),
-            disabled=st.session_state.bot_thinking or not are_form_fields_valid() or has_pending_solutions,
+            disabled=chat_disabled,
             on_submit=bot_starting_thinking,
         ):
             process_user_message(client, user_input)
