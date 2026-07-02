@@ -1,3 +1,6 @@
+import os
+from pathlib import Path
+
 from langchain_core.tracers import LangChainTracer
 from langgraph.graph import StateGraph, START, END
 from .state import ChatbotState
@@ -113,6 +116,13 @@ def route_after_solutions(state: ChatbotState):
         return "finish_node"
 
 
+def build_pathmap_from_nodes_list_for_visualisation(nodes_list:list[str]):
+    output = {}
+    for node_name in nodes_list:
+        output[node_name] = node_name
+    return output
+
+
 
 # Initialize the workflow using the ChatbotState schema.
 workflow = StateGraph(ChatbotState)
@@ -132,22 +142,32 @@ workflow.add_edge(START, "extractor_node")
 
 # Route dynamically based on the extracted conversation state.
 workflow.add_conditional_edges(
-    "extractor_node",
-    route_based_on_state
+    source="extractor_node",
+    path=route_based_on_state,
+    path_map=build_pathmap_from_nodes_list_for_visualisation(
+        ["ask_email_node", "ask_matrikel_node", "ask_issue_node",
+         "ask_for_additional_info", "finish_node"]
+    )
 )
 
 # Route after evaluating the additional information.
 workflow.add_conditional_edges(
-    "ask_for_additional_info",
-    route_after_evaluator
+    source="ask_for_additional_info",
+    path=route_after_evaluator,
+    path_map=build_pathmap_from_nodes_list_for_visualisation(
+        ["classify_ticket_node", "__end__"]
+    )
 )
 
 workflow.add_edge("classify_ticket_node", "give_solutions_node")
 
 # Route after retrieving possible solutions.
 workflow.add_conditional_edges(
-    "give_solutions_node",
-    route_after_solutions
+    source="give_solutions_node",
+    path=route_after_solutions,
+    path_map=build_pathmap_from_nodes_list_for_visualisation(
+        ["finish_node", "__end__"]
+    )
 )
 
 
@@ -164,3 +184,11 @@ graph = workflow.compile()
 # to create a detailed result on how the workflow went
 graph = graph.with_config({'callbacks': [tracer]})
 
+
+if __name__ == "__main__":
+    filename_for_graph_image = os.path.join(Path(__file__).parent, "langgraph.png")
+
+    with open(filename_for_graph_image, "wb") as f:
+        print("Creating PNG visualisation of the graph...")
+        f.write(graph.get_graph().draw_mermaid_png())
+        print(f'Image saved at {filename_for_graph_image}.')
