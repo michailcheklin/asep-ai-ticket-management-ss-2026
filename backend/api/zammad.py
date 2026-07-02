@@ -157,4 +157,26 @@ def replace_tag_for_ticket(ticket_id: int, old_tag: str, new_tag: str):
         print(f"Invalid URL for Zammad provided: Could not reach Zammad to replace tag on ticket")
     except Exception as e:
         print(f"Other error occured during tag replacement: {e}")
-# create_ticket_by_user_email(email="example@example.com", title="Help request", body="Hello, I need help!",)
+
+def mark_ticket_as_closed(ticket_id:int):
+    """
+    Sends a Zammad API call to close the ticket (state is set to closed) with the provided ticket ID.
+    :param ticket_id: The ticket id of the ticket to close
+    """
+    try:
+        response = requests.put(
+            url=f"{server_address}/api/v1/tickets/{ticket_id}",
+            json={
+                "state":"closed",
+            },
+            headers=headers,
+            timeout=GENERAL_TIMEOUT
+        )
+
+        print(f"Ticket {ticket_id} marked as closed.")
+    except ConnectionError:
+        print(f"Connection error: Could not reach Zammad to add mark ticket as closed")
+    except MissingSchema:
+        print(f"Invalid URL for Zammad provided: Could not reach Zammad to mark ticket as closed")
+    except Exception as e:
+        print(f"Other error occured during marking ticket as closed: {e}")

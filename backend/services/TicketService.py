@@ -1,7 +1,13 @@
 # backend/services/ticket_service.py
 
 from langchain_core.messages import HumanMessage, AIMessage
-from ..api.zammad import create_ticket_by_user_email, add_tag_to_ticket, add_article_to_ticket, replace_tag_for_ticket
+from ..api.zammad import (
+    create_ticket_by_user_email,
+    add_tag_to_ticket,
+    add_article_to_ticket,
+    replace_tag_for_ticket,
+    mark_ticket_as_closed
+)
 from ..llm.llm import llm
 
 
@@ -131,7 +137,7 @@ class TicketService:
                     internal=True
                 )
                 replace_tag_for_ticket(ticket_id=ticket_id, old_tag="AI-Created", new_tag="AI-Solved")
-
+                mark_ticket_as_closed(ticket_id=ticket_id)
             return {
                 "messages": [
                     AIMessage(content=(
