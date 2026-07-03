@@ -44,7 +44,7 @@ download_hugging_face_models:
   cache:
     - key: hf-models
       paths:
-        - .cache/huggingface/
+        - $HF_HOME
       policy: push
   # Redownload the Hugging Face models for the prompt security check only if the
   # prompt check model setup file is changed, e. g. to choose a different model
