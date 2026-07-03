@@ -2,9 +2,7 @@ image: python:3.11
 
 stages:
   - prepare_downloads_for_tests
-  - test_prompt_security
-  - test_chat_endpoint_connectivity
-
+  - before_deepeval
 variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
   VENV_DIR: "$CI_PROJECT_DIR/venv"
@@ -65,7 +63,7 @@ download_hugging_face_models:
     - ude-sse
 
 run_test_prompt_security:
-  stage: test_prompt_security
+  stage: before_deepeval
   cache:
     - key: ${CI_COMMIT_REF_SLUG}
       paths:
@@ -90,7 +88,7 @@ run_test_prompt_security:
 
 
 run_test_chat_endpoint_connectivity:
-  stage: test_chat_endpoint_connectivity
+  stage: before_deepeval
   tags:
     - dind
     - ude-sse
