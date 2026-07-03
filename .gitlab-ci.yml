@@ -22,6 +22,7 @@ download_python_dependencies:
   cache:
     - key: ${CI_COMMIT_REF_SLUG}
       paths:
+        - $PIP_CACHE_DIR
         - $VENV_DIR/lib/python*/site-packages/
       policy: push
   # Redownload for the python dependency cache only if the requirements.txt file was changed
@@ -46,6 +47,7 @@ download_hugging_face_models:
   cache:
     - key: ${CI_COMMIT_REF_SLUG}
       paths:
+        - $PIP_CACHE_DIR
         - $VENV_DIR/lib/python*/site-packages/
       policy: pull
     - key: hf-models
@@ -67,6 +69,7 @@ run_test_prompt_security:
   cache:
     - key: ${CI_COMMIT_REF_SLUG}
       paths:
+        - $PIP_CACHE_DIR
         - $VENV_DIR/lib/python*/site-packages/
       policy: pull
     - key: hf-models
@@ -97,6 +100,7 @@ run_test_chat_endpoint_connectivity:
   cache:
     - key: ${CI_COMMIT_REF_SLUG}
       paths:
+        - $PIP_CACHE_DIR
         - $VENV_DIR/lib/python*/site-packages/
       policy: pull
     - key: hf-models
