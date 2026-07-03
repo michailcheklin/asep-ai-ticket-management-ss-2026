@@ -23,7 +23,7 @@ download_python_dependencies:
     - key: ${CI_COMMIT_REF_SLUG}
       paths:
         - $PIP_CACHE_DIR
-        - $VENV_DIR
+        - $VENV_DIR/lib/python*/site-packages/
       policy: push
   # Redownload for the python dependency cache only if the requirements.txt file was changed
   rules:
@@ -45,6 +45,11 @@ download_hugging_face_models:
     - if [ -f tests/requirements.txt ]; then pip install -r tests/requirements.txt; fi
     - python ./backend/prompt_security/prompt_check_model_setup.py
   cache:
+    - key: ${CI_COMMIT_REF_SLUG}
+      paths:
+        - $PIP_CACHE_DIR
+        - $VENV_DIR/lib/python*/site-packages/
+      policy: pull
     - key: hf-models
       paths:
         - $HF_HOME
@@ -65,7 +70,7 @@ run_test_prompt_security:
     - key: ${CI_COMMIT_REF_SLUG}
       paths:
         - $PIP_CACHE_DIR
-        - $VENV_DIR
+        - $VENV_DIR/lib/python*/site-packages/
       policy: pull
     - key: hf-models
       paths:
@@ -96,15 +101,18 @@ run_test_chat_endpoint_connectivity:
     - key: ${CI_COMMIT_REF_SLUG}
       paths:
         - $PIP_CACHE_DIR
-        - $VENV_DIR
+        - $VENV_DIR/lib/python*/site-packages/
       policy: pull
     - key: hf-models
       paths:
         - .cache/huggingface/
       policy: pull
   script:
+    - python --version
+    - pip install --upgrade pip
+    - python -m venv $VENV_DIR
     - source $VENV_DIR/bin/activate
-    #- if [ -f tests/requirements.txt ]; then pip install -r tests/requirements.txt; fi
+    - if [ -f tests/requirements.txt ]; then pip install -r tests/requirements.txt; fi
     - echo "LANGSMITH_TRACING=true" >> .env
     - echo "LANGSMITH_API_KEY=$LANGSMITH_API_KEY" >> .env
     - echo "LANGSMITH_ENDPOINT=https://eu.api.smith.langchain.com" >> .env
