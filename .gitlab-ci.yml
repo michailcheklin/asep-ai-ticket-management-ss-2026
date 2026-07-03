@@ -29,7 +29,7 @@ download_python_dependencies:
   rules:
     - changes:
         paths:
-          - ./tests/requirements.txt
+          - tests/requirements.txt
 
 download_hugging_face_models:
   stage:
@@ -51,7 +51,7 @@ download_hugging_face_models:
   rules:
     - changes:
         paths:
-          - ./backend/prompt_security/prompt_check_model_setup.py
+          - backend/prompt_security/prompt_check_model_setup.py
 
 run_test_prompt_security:
   stage: test_prompt_security
@@ -63,7 +63,7 @@ run_test_prompt_security:
       policy: pull
     - key: hf-models
       paths:
-        - .cache/huggingface/
+        - $HF_HOME
       policy: pull
   tags:
     - dind
