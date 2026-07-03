@@ -30,6 +30,9 @@ download_python_dependencies:
     - changes:
         paths:
           - tests/requirements.txt
+  tags:
+    - dind
+    - ude-sse
 
 download_hugging_face_models:
   stage:
@@ -52,6 +55,9 @@ download_hugging_face_models:
     - changes:
         paths:
           - backend/prompt_security/prompt_check_model_setup.py
+  tags:
+    - dind
+    - ude-sse
 
 run_test_prompt_security:
   stage: test_prompt_security
