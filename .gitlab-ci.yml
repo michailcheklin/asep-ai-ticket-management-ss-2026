@@ -3,6 +3,8 @@ image: python:3.11
 stages:
   - prepare_downloads_for_tests
   - before_deepeval
+  - deepeval
+
 variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
   VENV_DIR: "$CI_PROJECT_DIR/venv"
@@ -118,3 +120,39 @@ run_test_chat_endpoint_connectivity:
     - echo "USE_SAIA_API=true" >> .env
     - echo "ZAMMAD_SERVER_ADDRESS=$ZAMMAD_SERVER_ADDRESS" >> .env
     - pytest ./tests/test_chat_endpoint_connectivity.py -v -s
+
+run_deepeval_tests:
+  stage: deepeval
+  # Merge request pipeline
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+  tags:
+    - dind
+    - ude-sse
+  # Caching the Python dependencies per branch, or otherwise
+  # adding dependencies in one branch that cause a conflict
+  # would cause conflicts in all other branches
+  cache:
+    - key: ${CI_COMMIT_REF_SLUG}
+      paths:
+        - $PIP_CACHE_DIR
+        - $VENV_DIR/lib/python*/site-packages/
+      policy: pull
+    - key: hf-models
+      paths:
+        - .cache/huggingface/
+      policy: pull
+  script:
+    - python --version
+    - pip install --upgrade pip
+    - python -m venv $VENV_DIR
+    - source $VENV_DIR/bin/activate
+    - if [ -f tests/requirements.txt ]; then pip install -r tests/requirements.txt; fi
+    - echo "LANGSMITH_TRACING_V2=true" >> .env
+    - echo "LANGSMITH_API_KEY=$LANGSMITH_API_KEY" >> .env
+    - echo "LANGSMITH_ENDPOINT=https://eu.api.smith.langchain.com" >> .env
+    - echo "LANGCHAIN_PROJECT=ai-ticket-benchmark" >> .env
+    - echo "SAIA_API_KEY=$SAIA_API_KEY" >> .env
+    - echo "USE_SAIA_API=true" >> .env
+    - echo "ZAMMAD_SERVER_ADDRESS=$ZAMMAD_SERVER_ADDRESS" >> .env
+    - PYTHONPATH=. pytest tests/test_llm_benchmark.py -v -s
