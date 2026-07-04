@@ -1,0 +1,1262 @@
+{
+  "extracted_urls": [
+    {
+      "id": "Beitritt zur Domäne",
+      "urls": [
+        "http://www.uni-due.de/imperia/md/content/zim/services/benutzerverwaltung/antrag_ou.pdf"
+      ]
+    },
+    {
+      "id": "Anmeldung funktioniert nicht",
+      "urls": [
+        "http://owa.uni-due.de",
+        "https://selfcare.uni-due.de/",
+        "https://www.uni-due.de/zim/hilfecenter/hotline.php"
+      ]
+    },
+    {
+      "id": "Nutzerzertifikat beantragen",
+      "urls": [
+        "https://www.uni-due.de/zim/it-sicherheit/nutzerzertifikat.php"
+      ]
+    },
+    {
+      "id": "Serverzertifikat beantragen",
+      "urls": [
+        "https://www.uni-due.de/zim/services/zertifikate-serverzertifikat.php"
+      ]
+    },
+    {
+      "id": "Gruppenzertifikat (für Funktionsmailadressen) beantragen",
+      "urls": [
+        "https://www.uni-due.de/zim/services/zertifikate-gruppenzertifikat.php"
+      ]
+    },
+    {
+      "id": "Zertifikat abgelaufen",
+      "urls": [
+        "https://www.uni-due.de/zim/it-sicherheit/nutzerzertifikat.php"
+      ]
+    },
+    {
+      "id": "Informationen zum Drucken",
+      "urls": [
+        "https://www.uni-due.de/zim/services/oeffentliche_arbeitsplaetze/drucken.shtml"
+      ]
+    },
+    {
+      "id": "Passwort für WhiteCard ändern",
+      "urls": [
+        "https://qpilot.uni-due.de:1081/#/login"
+      ]
+    },
+    {
+      "id": "Druckkosten / Mindestaufladung",
+      "urls": [
+        "https://www.uni-due.de/zim/services/oeffentliche_arbeitsplaetze/drucken-info.php"
+      ]
+    },
+    {
+      "id": "Konfiguration verschiedener Mailprogramme für mailbox Konten",
+      "urls": [
+        "https://www.uni-due.de/zim/services/serveradressen.shtml",
+        "https://www.uni-due.de/zim/services/e-mail/konfigurationsanleitungen/"
+      ]
+    },
+    {
+      "id": "Mail-Versand über einen externen Provider (z.B. Telekom)",
+      "urls": [
+        "http://www.uni-duisburg-essen.de/zim/services/email/"
+      ]
+    },
+    {
+      "id": "Abwesenheitsnachricht konfigurieren",
+      "urls": [
+        "https://webmailer.uni-duisburg-essen.de/",
+        "https://www.uni-due.de/zim/services/e-mail/konfigurationsanleitungen/roundcube-einstellungen.php#abwesenheit"
+      ]
+    },
+    {
+      "id": "Weiterleitung einrichten",
+      "urls": [
+        "https://webmailer.uni-duisburg-essen.de/",
+        "https://www.uni-due.de/zim/services/e-mail/konfigurationanleitungen/roundcube-einstellungen.php#weiterleitung"
+      ]
+    },
+    {
+      "id": "Konfiguration von Exchange 2010 Konten",
+      "urls": [
+        "https://www.uni-due.de/zim/services/groupware/anleitungen.shtml"
+      ]
+    },
+    {
+      "id": "Abwesenheitsnachricht für Exchange 2010 Konten konfigurieren",
+      "urls": [
+        "http://www.uni-due.de/zim/quick/owa-2010",
+        "http://www.uni-due.de/zim/services/groupware/anleitungen.shtml"
+      ]
+    },
+    {
+      "id": "Weiterleitung für Exchange Konten einrichten",
+      "urls": [
+        "http://www.uni-due.de/zim/services/groupware/anleitungen.shtml"
+      ]
+    },
+    {
+      "id": "Cache Modus einschalten",
+      "urls": [
+        "http://www.uni-due.de/zim/services/groupware/outlook_2016_cache_modus.php"
+      ]
+    },
+    {
+      "id": "Outlook von extern nutzen",
+      "urls": [
+        "http://www.uni-due.de/zim/services/groupware/outlook_anywhere.shtml"
+      ]
+    },
+    {
+      "id": "iCloud Kalender einbinden",
+      "urls": [
+        "http://www.apple.com/de/icloud/setup/pc.html"
+      ]
+    },
+    {
+      "id": "Webmail-Interface",
+      "urls": [
+        "https://webmail.uni-duisburg-essen.de/"
+      ]
+    },
+    {
+      "id": "Welches Webmail-Interface muss ich nutzen?",
+      "urls": [
+        "https://webmail.uni-duisburg-essen.de/webmail/src/login.php",
+        "http://www.uni-due.de/zim/services/e-mail/ma"
+      ]
+    },
+    {
+      "id": "Webmail-Interface für Exchange-Postfächer",
+      "urls": [
+        "http://www.uni-due.de/zim/quick/selfcarportal",
+        "https://owa2010.uni-due.de/owa"
+      ]
+    },
+    {
+      "id": "Kalender kann in OWA 2010 nicht eingebunden werden",
+      "urls": [
+        "http://www.uni-due.de/zim/quick/owa-2010"
+      ]
+    },
+    {
+      "id": "Umstellung auf deutsche Sprachumgebung",
+      "urls": [
+        "http://www.uni-due.de/zim/quick/owa-2010"
+      ]
+    },
+    {
+      "id": "Reiter 'Filter' bzw. 'Vacation' ist in Webmail nicht vorhanden",
+      "urls": [
+        "https://benutzerverwaltung.uni-duisburg-essen.de/portal/",
+        "https://owa.uni-due.de"
+      ]
+    },
+    {
+      "id": "Webmail-Zugang gesperrt",
+      "urls": [
+        "http://www.uni-due.de/zim/services/e-mail/spam.shtml",
+        "https://benutzerverwaltung.uni-due.de/portal/",
+        "http://www.uni-due.de/zim/soforthilfe/faqs/knowledgebase-public.php?id=312#a_312"
+      ]
+    },
+    {
+      "id": "Ständige Passwortabfrage bei OWA bei der Anmeldung",
+      "urls": [
+        "https://owa2010.uni-due.de"
+      ]
+    },
+    {
+      "id": "Quota abfragen für Postfächer auf mailbox",
+      "urls": [
+        "http://www.uni-due.de/zim/quick/selfcareportal"
+      ]
+    },
+    {
+      "id": "E-Mails sichern bei mailbox-Konten",
+      "urls": [
+        "http://www.mailstore.com/de/]",
+        "http://www.uni-due.de/zim/services/e-mail/konfigurationsanleitungen/mailstore.shtml"
+      ]
+    },
+    {
+      "id": "Spam-Abwehr ändert sich zum Januar 2017",
+      "urls": [
+        "https://benutzerverwaltung.uni-duisburg-essen.de/"
+      ]
+    },
+    {
+      "id": "Spam-Filter Einstellungen",
+      "urls": [
+        "https://benutzerverwaltung.uni-due.de/portal/",
+        "http://www.uni-due.de/zim/soforthilfe/faqs/knowledgebase-public.php?id=466#a_466",
+        "http://www.uni-due.de/zim/services/e-mail/spam_filtern.shtml"
+      ]
+    },
+    {
+      "id": "Wie erkenne ich als Spam markierte E-Mails?",
+      "urls": [
+        "http://www.uni-due.de/zim/soforthilfe/faqs/knowledgebase-public.php?id=429#a_429",
+        "http://www.uni-due.de/zim/soforthilfe/faqs/knowledgebase-public.php?id=449#a_449"
+      ]
+    },
+    {
+      "id": "Spam melden",
+      "urls": [
+        "http://imperia.uni-due.de/zim/services/e-mail/mailpolicy-selfcareportal.shtml",
+        "http://www.uni-due.de/zim/services/e-mail/spam_filtern.shtml"
+      ]
+    },
+    {
+      "id": "Spam Filter für Alumni",
+      "urls": [
+        "http://imperia.uni-due.de/zim/services/e-mail/mailpolicy-neu.shtml"
+      ]
+    },
+    {
+      "id": "Mailingliste mailservice@lists.uni-due.de",
+      "urls": [
+        "http://lists.uni-due.de/mailman/listinfo/mailservice",
+        "http://www.uni-due.de/zim/services/e-mail/massenmail.shtml"
+      ]
+    },
+    {
+      "id": "E-Mails an größere Gruppen",
+      "urls": [
+        "http://www.uni-due.de/zim/services/e-mail/massenmail.shtml"
+      ]
+    },
+    {
+      "id": "Abmelden aus zentralen Mailinglisten der UDE",
+      "urls": [
+        "https://benutzerverwaltung.uni-due.de"
+      ]
+    },
+    {
+      "id": "E-Mail-Adresse",
+      "urls": [
+        "http://www.uni-due.de/zim/quick/selfcareportal"
+      ]
+    },
+    {
+      "id": "Gelöschte Objekte wiederherstellen",
+      "urls": [
+        "https://owa2010.uni-due.de",
+        "http://www.uni-due.de/zim/services/groupware/ex-2010_wiederherstellung.shtml"
+      ]
+    },
+    {
+      "id": "Verschicken großer Dateien",
+      "urls": [
+        "http://www.uni-due.de/zim/services/e-mail/mailpolicy.shtml",
+        "http://www.uni-due.de/zim/services/gigamove.shtml"
+      ]
+    },
+    {
+      "id": "Daten retten bei Konto Deaktivierung",
+      "urls": [
+        "http://www.mailstore.com/de/",
+        "http://www.uni-due.de/zim/services/e-mail/konfigurationsanleitungen/mailstore.shtml"
+      ]
+    },
+    {
+      "id": "Absenderadresse ändern",
+      "urls": [
+        "http://www.uni-due.de/zim/services/benutzerverwaltung/unikennung.shtml"
+      ]
+    },
+    {
+      "id": "E-Mail Adresse beim Wechsel vom Studierenden zum/r Mitarbeiter/in",
+      "urls": [
+        "https://benutzerverwaltung.uni-due.de",
+        "http://www.uni-due.de/zim/soforthilfe/faqs/knowledgebase-public.php?id=526#a_526"
+      ]
+    },
+    {
+      "id": "Persönliche E-Mail Adresse vom Institut",
+      "urls": [
+        "https://benutzerverwaltung.uni-due.de"
+      ]
+    },
+    {
+      "id": "Zugriff auf Exchange-Gruppenkalender",
+      "urls": [
+        "https://www.uni-due.de/zim/soforthilfe/faqs/knowledgebase-public.php?p[0]=67&p[1]=7#a_521"
+      ]
+    },
+    {
+      "id": "Adresse in Mailverteiler ändern",
+      "urls": [
+        "https://webmailer.uni-due.de/",
+        "https://www.uni-due.de/zim/services/e-mail/konfigurationsanleitungen/roundcube-einstellungen.php"
+      ]
+    },
+    {
+      "id": "Einloggen nicht möglich",
+      "urls": [
+        "http://www.uni-duisburg-essen.de/imperia/md/content/zentralverwaltung/formulare_intern/antragmbs_fsv.pdf"
+      ]
+    },
+    {
+      "id": "Citrix-Client fehlt",
+      "urls": [
+        "http://www.uni-duisburg-essen.de/zentralverwaltung/intern/welche_programme.shtml"
+      ]
+    },
+    {
+      "id": "Einloggen nicht möglich: 'EA-Fehler...'",
+      "urls": [
+        "http://www.uni-due.de/zim/soforthilfe/faqs/knowledgebase-public.php?id=110#a_110"
+      ]
+    },
+    {
+      "id": "Änderung der Daten zur FSV Nutzerkennung",
+      "urls": [
+        "https://www.uni-duisburg-essen.de/imperia/md/content/zentralverwaltung/formulare_intern/antragmbs_fsv.pdf"
+      ]
+    },
+    {
+      "id": "Fehler beim Buchen der Festlegung im Auftrag",
+      "urls": [
+        "http://www.uni-due.de/zim/soforthilfe/faqs/knowledgebase-public.php?id=132#a_132"
+      ]
+    },
+    {
+      "id": "Bewerbungsportale für Orts-NC Studiengänge",
+      "urls": [
+        "https://campus.uni-due.de/cm",
+        "https://campus.uni-due.de/app_hfs",
+        "https://campus.uni-due.de/cm",
+        "https://campus.uni-due.de/app_aaa/",
+        "https://www.uni-due.de/international/",
+        "https://www.uni-due.de/zim/hilfecenter/faqs?id=747#a_747",
+        "https://www.uni-due.de/studierendensekretariat/bewerbung.shtml",
+        "https://www.uni-due.de/studierendensekretariat/kontakt_zulassung.shtml"
+      ]
+    },
+    {
+      "id": "Angaben falsch bzw. vergessen",
+      "urls": [
+        "http://www.uni-due.de/studierendensekretariat/kontakt_zulassung.shtml"
+      ]
+    },
+    {
+      "id": "Frage zur Onlinebewerbung",
+      "urls": [
+        "https://www.uni-due.de/faq-studium/bewerbung.php",
+        "http://www.uni-due.de/studierendensekretariat/kontakt_zulassung.shtml"
+      ]
+    },
+    {
+      "id": "Passwort für Online-Bewerbung vergessen",
+      "urls": [
+        "https://www.uni-due.de/zim/soforthilfe/faqs/knowledgebase-public.php?id=748#a_748",
+        "https://campus.uni-due.de/cm",
+        "http://www.uni-due.de/zim/soforthilfe/faqs/knowledgebase-public.php?id=374#a_374"
+      ]
+    },
+    {
+      "id": "Passwort / Benutzername vergessen für ausländische Bewerber (Uni-Assist)",
+      "urls": [
+        "https://www.uni-assist.de/online/uni-due/",
+        "https://www.uni-assist.de/online/uni-due/Passwortvergessen",
+        "https://www.uni-due.de/international"
+      ]
+    },
+    {
+      "id": "Nutzerkennung für Online-Bewerbung vergessen",
+      "urls": [
+        "https://campus.uni-due.de/cm",
+        "https://campus.uni-due.de/cm"
+      ]
+    },
+    {
+      "id": "Zulassungs- bzw. Ablehnungsbescheide",
+      "urls": [
+        "https://www.uni-due.de/studierendensekretariat/bewerbung.shtml"
+      ]
+    },
+    {
+      "id": "Bewerbung höhere Fachsemester",
+      "urls": [
+        "https://www.uni-due.de/studierendensekretariat/hoehere_fachsemester.shtml"
+      ]
+    },
+    {
+      "id": "Bewerbung mit alter Bewerberkennung funktioniert nicht",
+      "urls": [
+        "https://campus.uni-due.de/cm)"
+      ]
+    },
+    {
+      "id": "Aktuelle Studienbescheinigung kann nicht angefordert/ausgedruckt werden",
+      "urls": [
+        "https://www.uni-due.de/studierendensekretariat/kontakt.shtml"
+      ]
+    },
+    {
+      "id": "Im Studienservice wird mir eine Sperre angezeigt",
+      "urls": [
+        "https://www.uni-due.de/studierendensekretariat/kontakt.shtml"
+      ]
+    },
+    {
+      "id": "Studienbescheinigung ausdrucken",
+      "urls": [
+        "https://campus.uni-due.de/cm",
+        "https://www.uni-due.de/studierendensekretariat/kontakt.shtml"
+      ]
+    },
+    {
+      "id": "Informationen zur Rückmeldung/Semesterbeitrag",
+      "urls": [
+        "http://www.uni-due.de/studierendensekretariat/rueckmeldung.shtml",
+        "http://www.uni-due.de/studierendensekretariat/sozial_studierendenschaftsbeitrag.shtml",
+        "https://www.uni-due.de/studierendensekretariat/kontakt.shtml"
+      ]
+    },
+    {
+      "id": "Studienbescheinigung kann nicht gedruckt werden",
+      "urls": [
+        "http://support.microsoft.com/kb/969360/de",
+        "https://campus.uni-due.de/cm/"
+      ]
+    },
+    {
+      "id": "Studienbescheinigung als exmatrikulierter Studierender ausdrucken",
+      "urls": [
+        "https://www.uni-due.de/studierendensekretariat/kontakt.shtml"
+      ]
+    },
+    {
+      "id": "Studienverlaufsbescheiniging",
+      "urls": [
+        "https://www.uni-due.de/studierendensekretariat/"
+      ]
+    },
+    {
+      "id": "Semesterticket",
+      "urls": [
+        "https://www.uni-due.de/faq-studium/semesterticket.php"
+      ]
+    },
+    {
+      "id": "Anmeldebutton für Prüfungen fehlt",
+      "urls": [
+        "http://www.uni-due.de/verwaltung/pruefungswesen/startseite.shtml"
+      ]
+    },
+    {
+      "id": "Fehler: 'Zuordnung ließen sich nicht eintragen'",
+      "urls": [
+        "http://www.uni-due.de/verwaltung/pruefungswesen/startseite.shtml"
+      ]
+    },
+    {
+      "id": "Raumangabe/Termin fehlt bei einer Prüfung",
+      "urls": [
+        "http://www.uni-due.de/verwaltung/pruefungswesen/startseite.shtml"
+      ]
+    },
+    {
+      "id": "Prüfung fehlt",
+      "urls": [
+        "http://www.uni-due.de/verwaltung/pruefungswesen/startseite.shtml"
+      ]
+    },
+    {
+      "id": "Note fehlt",
+      "urls": [
+        "http://www.uni-due.de/verwaltung/pruefungswesen/startseite.shtml"
+      ]
+    },
+    {
+      "id": "An- / Abmeldung zu Prüfungen - Notenspiegel",
+      "urls": [
+        "https://campus.uni-due.de/cm",
+        "https://campus.uni-due.de/lsf"
+      ]
+    },
+    {
+      "id": "Prüferrolle in HISinOne beantragen",
+      "urls": [
+        "https://www.uni-due.de/verwaltung/pruefungswesen/studiengaenge.shtml"
+      ]
+    },
+    {
+      "id": "Zuordnung einer Prüfung zu einem Prüfer",
+      "urls": [
+        "https://www.uni-due.de/verwaltung/pruefungswesen/studiengaenge.shtml"
+      ]
+    },
+    {
+      "id": "Prüferrolle in HISinOne",
+      "urls": [
+        "https://campus.uni-due.de/cm",
+        "https://campus.uni-due.de/cm_ude"
+      ]
+    },
+    {
+      "id": "BI-Rolle in HISinOne",
+      "urls": [
+        "https://www.uni-due.de/imperia/md/content/zentralverwaltung/formulare/antrag-his-in-one-bi.pdf"
+      ]
+    },
+    {
+      "id": "Kursangebot",
+      "urls": [
+        "http://www.uni-due.de/zim/services/weiterbildung/kurse/kurse.php?campus=0",
+        "http://www.uni-due.de/peoe/fb_angebote.php",
+        "http://www.uni-due.de/zim/services/weiterbildung/cisco/",
+        "http://www.uni-due.de/zim/services/weiterbildung/microsoft/ms_it_academy.php"
+      ]
+    },
+    {
+      "id": "Anmeldung zu Kursen",
+      "urls": [
+        "http://www.uni-due.de/zim/services/weiterbildung/kurse/kurse.php"
+      ]
+    },
+    {
+      "id": "Benutzername / Passwort für BSCW vergessen",
+      "urls": [
+        "https://bscw.uni-duisburg-essen.de/pub",
+        "https://bscw.uni-duisburg-essen.de/pub/bscw.cgi/?op=chpwd"
+      ]
+    },
+    {
+      "id": "Zugang und erste Schritte zu Moodle",
+      "urls": [
+        "http://lehre.moodle.uni-due.de",
+        "https://www.uni-due.de/imperia/md/content/zim/services/moodle/moodle-einstieg.pdf"
+      ]
+    },
+    {
+      "id": "Benutzername / Passwort für Moodle vergessen",
+      "urls": [
+        "https://www.uni-due.de/zim/soforthilfe/",
+        "http://www.uni-due.de/zim/soforthilfe/faqs/knowledgebase-public.php?id=312#a_312",
+        "http://moodle.uni-due.de/login/forgot_password.php"
+      ]
+    },
+    {
+      "id": "Keine Anmeldung an Moodle Kurs möglich",
+      "urls": [
+        "https://www.uni-due.de/zim/intranet/dokumentation/knowledgebase-intern.php?id=194#a_194"
+      ]
+    },
+    {
+      "id": "Moodle-Versionen",
+      "urls": [
+        "http://wiki.uni-due.de/moodle/index.php/Überblick"
+      ]
+    },
+    {
+      "id": "Zugang für externe Studierende",
+      "urls": [
+        "https://moodle.uni-due.de/login/signup.php"
+      ]
+    },
+    {
+      "id": "Wo finde ich ... ?",
+      "urls": [
+        "https://www.uni-due.de/imperia/md/content/zim/services/moodle/moodle-einstieg.pdf"
+      ]
+    },
+    {
+      "id": "Dashboard",
+      "urls": [
+        "https://www.uni-due.de/imperia/md/content/zim/services/moodle/moodle-einstieg.pdf"
+      ]
+    },
+    {
+      "id": "Kurszugang ohne Unikennung",
+      "urls": [
+        "https://wiki.uni-due.de/moodle/index.php/Kurszugang_ohne_Unikennung"
+      ]
+    },
+    {
+      "id": "Mein/e Dozent/in kann mich nicht zum Prüfungsraum hinzufügen",
+      "urls": [
+        "https://www.uni-due.de/imperia/md/images/zim/services/moodle/moodle_pr%C3%BCfungsserver.pdf"
+      ]
+    },
+    {
+      "id": "Moodle-App",
+      "urls": [
+        "https://moodle.uni-due.de/"
+      ]
+    },
+    {
+      "id": "Ausgabe der Teilnehmerliste über die Belegungsfunktion",
+      "urls": [
+        "https://wiki.uni-due.de/lsf/index.php/Veranstaltungsbelegung_(Administration)"
+      ]
+    },
+    {
+      "id": "Fehlermeldung \"de.his.exceptions.AsiException\"",
+      "urls": [
+        "https://campus.uni-due.de/lsf",
+        "https://belegung.uni-due.de"
+      ]
+    },
+    {
+      "id": "Raumbuchung",
+      "urls": [
+        "https://www.uni-due.de/verwaltung/gebaeudemanagement/bereich_lm.php",
+        "http://www.uni-due.de/zim/soforthilfe/werkstatt/servicezentrale.shtml"
+      ]
+    },
+    {
+      "id": "Telefonnummer für das SRM-Portal in LSF nicht zugreifbar",
+      "urls": [
+        "https://www.uni-due.de/suche/"
+      ]
+    },
+    {
+      "id": "Beamerbild ist unscharf bzw. unvollständig",
+      "urls": [
+        "https://www.uni-due.de/zim/hilfecenter/servicezentrale.php"
+      ]
+    },
+    {
+      "id": "Freischaltung einer Netzwerkdose",
+      "urls": [
+        "http://www.uni-due.de/zim/services/online/netzanschluss.php"
+      ]
+    },
+    {
+      "id": "Rechnername wird nicht gefunden",
+      "urls": [
+        "https://www.uni-due.de/zim/intern-ma/serveradressen.php"
+      ]
+    },
+    {
+      "id": "Keine Verbindung zum Netz",
+      "urls": [
+        "https://www.uni-due.de/zim/services/internetzugang/festnetzanschluss.php",
+        "https://www.uni-due.de/zim/services/internetzugang/macadresse.php"
+      ]
+    },
+    {
+      "id": "BKA- und andere Trojaner",
+      "urls": [
+        "http://www.bka-trojaner.de",
+        "http://www.heise.de/security/dienste/Der-Scan-1106674.html)",
+        "http://www.uni-due.de/zim/services/sicherheit/bka-trojaner.shtml"
+      ]
+    },
+    {
+      "id": "Windows 10 kostenlos?",
+      "urls": [
+        "https://uni-due.asknet.de/cgi-bin/result?mode=search&partial=Y&start=1&nexus=and&suchbegriff=basisbetriebssystem&x=0&y=0",
+        "http://www.microsoft.com/de-de/licensing/produktlizenzierung/windows-8.1/qualifizierende-betriebssysteme.aspx",
+        "https://www.uni-due.de/zim/services/software/microsoft-campus.shtml"
+      ]
+    },
+    {
+      "id": "14.02 Ansprechpartner für SAP",
+      "urls": [
+        "https://www.uni-due.de/verwaltung/sap_erp/kontakt.php"
+      ]
+    },
+    {
+      "id": "Reisekostenabrechnung für externe Mitarbeiter/innen ist nicht möglich",
+      "urls": [
+        "http://www.uni-due.de/zim/soforthilfe/faqs/knowledgebase-public.php?id=513#a_513"
+      ]
+    },
+    {
+      "id": "'Arbeitsvorrat' ist leer",
+      "urls": [
+        "http://www.uni-due.de/imperia/md/images/zim/knowledgebase/arbeitssvorrat.gif"
+      ]
+    },
+    {
+      "id": "SAP Zugriff von extern funktioniert nicht",
+      "urls": [
+        "http://www.uni-due.de/zim/quick/vpn",
+        "http://www.uni-due.de/imperia/md/content/zim/services/internetzugang/vpn-extern-nat.pcf"
+      ]
+    },
+    {
+      "id": "Abmelden aus dem SAP Verteiler",
+      "urls": [
+        "https://benutzerverwaltung.uni-due.de"
+      ]
+    },
+    {
+      "id": "Bericht kann nicht nach Excel exportiert werden",
+      "urls": [
+        "http://www.oracle.com/technetwork/java/javase/downloads/jre8-downloads-2133155.html"
+      ]
+    },
+    {
+      "id": "Maske öffnet sich aber dann passiert nichts mehr",
+      "urls": [
+        "https://www.uni-due.de/zim/intranet/dokumentation/knowledgebase-intern.php?id=724#a_724"
+      ]
+    },
+    {
+      "id": "Zugriff von extern funktioniert nicht",
+      "urls": [
+        "http://www.uni-due.de/zim/quick/vpn"
+      ]
+    },
+    {
+      "id": "Anmeldung funktioniert nicht",
+      "urls": [
+        "http://azureforeducation.microsoft.com/devtools"
+      ]
+    },
+    {
+      "id": "MS 365 Nutzung",
+      "urls": [
+        "https://www.uni-due.de/zim/services/software/office-365.php"
+      ]
+    },
+    {
+      "id": "MS 365 - Konto deaktiviert",
+      "urls": [
+        "https://www.microsoft.com/de-de/education/products/office"
+      ]
+    },
+    {
+      "id": "Office 365 - Access fehlt",
+      "urls": [
+        "https://www.uni-due.de/zim/services/software/microsoft-produkte"
+      ]
+    },
+    {
+      "id": "@…onmicrosoft.com funktioniert nicht mehr",
+      "urls": [
+        "https://www.uni-due.de/zim/services/software/microsoft_office-365.php"
+      ]
+    },
+    {
+      "id": "Wie nutze ich Mendeley mit Word (MS Office 365)?",
+      "urls": [
+        "https://www.mendeley.com/download-mendeley-desktop-legacy/macOS",
+        "https://www.mendeley.com/download-mendeley-desktop-legacy/windows",
+        "https://www.mendeley.com/guides/download-mendeley-desktop/windows/instructions",
+        "https://www.mendeley.com/guides/download-mendeley-desktop/mac/instructions",
+        "https://www.mendeley.com/guides/using-citation-editor/01-installing-citation-plugin"
+      ]
+    },
+    {
+      "id": "Ich habe mein Sciebo-Passwort vergessen",
+      "urls": [
+        "https://hochschulcloud.nrw/de/hilfe/konto/",
+        "https://sns-sp.sciebo.de/secure/mysciebo/de.php"
+      ]
+    },
+    {
+      "id": "Wie melde ich mich bei Sciebo an?",
+      "urls": [
+        "https://sns-sp.sciebo.de/secure/mysciebo/de.php"
+      ]
+    },
+    {
+      "id": "Zugriff auf die Daten",
+      "urls": [
+        "https://www.uni-due.de/zim/services/sciebo/konfiguration-client.php",
+        "https://uni-duisburg-essen.sciebo.de/"
+      ]
+    },
+    {
+      "id": "Informationen zu sciebo",
+      "urls": [
+        "https://www.uni-due.de/zim/services/sciebo/",
+        "https://www.uni-due.de/zim/services/sciebo/projektboxen.php",
+        "https://www.uni-due.de/zim/services/sciebo/verschluesselung.php",
+        "http://www.sciebo.de/de/hilfe/index.html"
+      ]
+    },
+    {
+      "id": "Sciebo: Quotaerhöhung",
+      "urls": [
+        "http://www.sciebo.de/de/helpcenter/quota.html"
+      ]
+    },
+    {
+      "id": "Sciebo: Projektboxen",
+      "urls": [
+        "https://www.uni-due.de/imperia/md/content/zim/services/identity_management/antrag_sciebo_pbox.pdf",
+        "http://www.sciebo.de/de/hilfe/funktionen.html#a1_2",
+        "https://www.uni-due.de/zim/services/sciebo/projektboxen.php"
+      ]
+    },
+    {
+      "id": "Dateien in sciebo teilen (Projektbox?)",
+      "urls": [
+        "http://www.sciebo.de/de/hilfe/funktionen.html#a1_2"
+      ]
+    },
+    {
+      "id": "Sciebo Account läuft ab",
+      "urls": [
+        "http://www.uni-due.de/zim/services/sciebo/reauthentifizierung.php"
+      ]
+    },
+    {
+      "id": "Wie synchronisiere ich Dateien?",
+      "urls": [
+        "http://www.sciebo.de/de/hilfe/funktionen.html#a1_0",
+        "https://www.sciebo.de/anleitung/desktop.html"
+      ]
+    },
+    {
+      "id": "Bietet sciebo Etherpad?",
+      "urls": [
+        "https://www.uni-due.de/zim/services/moodle/",
+        "https://www.uni-due.de/zim/services/mahara.php"
+      ]
+    },
+    {
+      "id": "Daten aus bestehender Dateistruktur (nicht Ordner sciebo) synchronisieren",
+      "urls": [
+        "https://www.uni-due.de/zim/services/sciebo/konfiguration-client.php"
+      ]
+    },
+    {
+      "id": "Homeverzeichnis auf dem Fileserver ist nicht erreichbar",
+      "urls": [
+        "https://www.uni-due.de/zim/services/fileservice/"
+      ]
+    },
+    {
+      "id": "Zugriff auf Fileserver unter Windows 8",
+      "urls": [
+        "http://www.uni-due.de/imperia/md/content/zim/services/fileservice/requiresecurenegotiate.zip"
+      ]
+    },
+    {
+      "id": "17.01 Abschaltung / Änderung / Neuer Telefonanschluß",
+      "urls": [
+        "https://www.uni-due.de/imperia/md/content/zim/tk-services/telefon_abschaltung_ude.pdf]",
+        "https://www.uni-due.de/imperia/md/content/zim/tk-services/telefon_aenderung_ude.pdf]",
+        "https://www.uni-due.de/imperia/md/content/zim/tk-services/telefon_neueinrichtung_ude.pdf]"
+      ]
+    },
+    {
+      "id": "17.02 Bedienung der Telefone",
+      "urls": [
+        "https://www.uni-due.de/zim/tk-services/index.php"
+      ]
+    },
+    {
+      "id": "19.02 Warum kann ich auf der Linux Distribution \"xy\" den Forcepoint-VPN Client nicht installieren?",
+      "urls": [
+        "https://www.uni-due.de/zim/services/internetzugang/forcepoint-linux.php"
+      ]
+    },
+    {
+      "id": "Umstellung auf das neue Wurzelzertifikat",
+      "urls": [
+        "https://www.uni-due.de/zim/services/wlan/eduroam-konfiguration.php"
+      ]
+    },
+    {
+      "id": "Zugang zum WLAN an der UDE",
+      "urls": [
+        "http://www.uni-due.de/zim/services/wlan/eduroam-konfiguration.shtml"
+      ]
+    },
+    {
+      "id": "Gastzugang zum WLAN an der UDE",
+      "urls": [
+        "http://www.uni-due.de/zim/services/wlan/eduroam-konfiguration.shtml"
+      ]
+    },
+    {
+      "id": "Zugang für Studierende der FOM",
+      "urls": [
+        "https://www.uni-due.de/imperia/md/content/zim/services/wlan/fom-internetzugang_wlan_mit_eduroam_einrichten.pdf",
+        "https://www.uni-due.de/imperia/md/content/zim/services/wlan/bcw-gruppe_eduroam_wlan_setup.exe"
+      ]
+    },
+    {
+      "id": "eduroam außerhalb der UDE",
+      "urls": [
+        "http://airoserv4.dfn.de/",
+        "http://www.eduroam.org/?p=europe",
+        "http://www.eduroamus.org/eduroam_us_institutions",
+        "https://wiki.bc.net/atl-conf/display/Services/Who%27s+Connected",
+        "http://www.aarnet.edu.au/Content.aspx?p=137"
+      ]
+    },
+    {
+      "id": "WLAN Passwort vergessen",
+      "urls": [
+        "https://benutzerverwaltung.uni-duisburg-essen.de/portal/)"
+      ]
+    },
+    {
+      "id": "Keine Verbindung zu eduroam",
+      "urls": [
+        "https://benutzerverwaltung.uni-duisburg-essen.de/portal/",
+        "https://cat.eduroam.org/",
+        "https://www.uni-due.de/zim/soforthilfe/e-point/"
+      ]
+    },
+    {
+      "id": "Keine Funkverbindung",
+      "urls": [
+        "http://www.uni-due.de/zim/quick/wlan_ausbau"
+      ]
+    },
+    {
+      "id": "PDF wird nur intern gefunden",
+      "urls": [
+        "https://imperia.uni-due.de/imperia/md/content/",
+        "https://www.uni-due.de",
+        "https://imperia.uni-due.de"
+      ]
+    },
+    {
+      "id": "PDF in Mediendatenbank wird nicht gefunden",
+      "urls": [
+        "https://www.uni-due.de",
+        "https://imperia.uni-due.de"
+      ]
+    },
+    {
+      "id": "Lesezeichen setzen",
+      "urls": [
+        "https://imperia.uni-due.de/imp/dashboard"
+      ]
+    },
+    {
+      "id": "Kurz-URL anlegen",
+      "urls": [
+        "http://udue.de/"
+      ]
+    },
+    {
+      "id": "Vergabe der Unikennung",
+      "urls": [
+        "http://www.uni-due.de/imperia/md/content/zim/services/benutzerverwaltung/antrag_uni_kennung.pdf",
+        "http://www.uni-due.de/zim/quick/selfcareportal"
+      ]
+    },
+    {
+      "id": "Unikennung freischalten",
+      "urls": [
+        "https://benutzerverwaltung.uni-duisburg-essen.de"
+      ]
+    },
+    {
+      "id": "Unikennung bei Wechsel vom Studierenden zum/r Mitarbeiter/in",
+      "urls": [
+        "http://www.uni-due.de/zim/soforthilfe/faqs/knowledgebase-public.php?id=521#a_521"
+      ]
+    },
+    {
+      "id": "Unikennung bei erneuter Einschreibung",
+      "urls": [
+        "http://www.uni-due.de/zim/soforthilfe/faqs/?id=312#a_312"
+      ]
+    },
+    {
+      "id": "Passwort ändern",
+      "urls": [
+        "https://selfcare.uni-due.de/"
+      ]
+    },
+    {
+      "id": "Passwort vergessen",
+      "urls": [
+        "https://www.uni-due.de/zim/hilfecenter/e-point.php"
+      ]
+    },
+    {
+      "id": "Änderung von Adresse und Telefonnummer",
+      "urls": [
+        "https://campus.uni-due.de/cm",
+        "https://campus.uni-due.de/lsf"
+      ]
+    },
+    {
+      "id": "Unikennung fehlt wegen Problemen mit dem Studierendenausweis",
+      "urls": [
+        "http://www.uni-due.de/zim/soforthilfe/e-point/"
+      ]
+    },
+    {
+      "id": "Unikennung fehlt nach Immatrikulation",
+      "urls": [
+        "https://campus.uni-due.de/cm",
+        "https://benutzerverwaltung.uni-due.de/portal/portal.html"
+      ]
+    },
+    {
+      "id": "E-Mails werden nicht verschickt",
+      "urls": [
+        "http://www.uni-due.de/zim/soforthilfe/hotline/",
+        "http://www.uni-due.de/zim/services/e-mail/spam.shtml"
+      ]
+    },
+    {
+      "id": "Verschicken von E-Mails aus dem Uni-Netz über GMX Mail nicht möglich",
+      "urls": [
+        "http://www.uni-due.de/zim/services/online/portfreischaltung.php"
+      ]
+    },
+    {
+      "id": "E-Mails verschicken über WLAN Router funktioniert nicht",
+      "urls": [
+        "https://www.uni-due.de/zim/soforthilfe/faqs/?id=518#a_518"
+      ]
+    },
+    {
+      "id": "Anmeldung funktioniert nicht",
+      "urls": [
+        "https://selfcare.uni-due.de"
+      ]
+    },
+    {
+      "id": "Passwort funktioniert nicht in Outlook",
+      "urls": [
+        "http://www.uni-due.de/zim/quick/benutzerverwaltung"
+      ]
+    },
+    {
+      "id": "Unikennung ist für E-Mail gesperrt",
+      "urls": [
+        "http://www.uni-due.de/zim/services/e-mail/spam.shtml",
+        "http://www.uni-due.de/zim/services/e-mail/massenmail.shtml"
+      ]
+    },
+    {
+      "id": "Exchange Konfiguration funktioniert auf Android nicht",
+      "urls": [
+        "http://www.uni-due.de/zim/services/groupware/android.php",
+        "https://market.android.co/details?id=com.nitrodesk.touchdownpro",
+        "https://market.android.comdetails?id=com.nitrodesk.droid20.nitroid"
+      ]
+    },
+    {
+      "id": "E-Mails in Outlook nicht sichtbar",
+      "urls": [
+        "http://www.uni-due.de/zim/services/e-mail/ma"
+      ]
+    },
+    {
+      "id": "Bei Apple Mail wird die Unikennung nicht akzeptiert",
+      "urls": [
+        "https://www.uni-due.de/zim/services/groupware/apple-mail.php"
+      ]
+    },
+    {
+      "id": "Abwesenheitsnachricht wird nicht verschickt",
+      "urls": [
+        "http://www.uni-due.de/zim/services/groupware/anleitungen.shtml"
+      ]
+    },
+    {
+      "id": "Anhang mit dem Namen \"winmail.dat\" nicht lesbar",
+      "urls": [
+        "http://www.heise.de/software/download/fentun/49038"
+      ]
+    },
+    {
+      "id": "Office 2013: Outlook-Bug löscht Exchange-Inhalte",
+      "urls": [
+        "http://winfuture.de/news,70965.html"
+      ]
+    },
+    {
+      "id": "Ordner werden nicht angezeigt",
+      "urls": [
+        "https://www.uni-due.de/zim/hilfecenter/faqs.php?id=484#a_484"
+      ]
+    },
+    {
+      "id": "Kalender in Thunderbird funktioniert nicht",
+      "urls": [
+        "http://www.1st-setup.nl/extensions/exchangecalendar-3.2.0-Beta46.xpi)",
+        "http://www.uni-due.de/zim/services/groupware/ex-2010_thunderbird-2.shtml]"
+      ]
+    },
+    {
+      "id": "E-Mails kommen nicht an",
+      "urls": [
+        "https://webmail.uni-duisburg-essen.de/webmail/src/login_sq.php",
+        "http://www.uni-due.de/zim/services/e-mail/konfigurationsanleitungen/roundcube-einstellungen.php",
+        "https://webmail.uni-duisburg-essen.de/webmail/src/login_sq.php"
+      ]
+    },
+    {
+      "id": "E-Mails werden erst sehr spät zugestellt",
+      "urls": [
+        "http://www.uni-due.de/zim/quick/selfcareportal"
+      ]
+    },
+    {
+      "id": "E-Mails an eine Gruppe kommen nur teilweise an",
+      "urls": [
+        "http://imperia.uni-due.de/zim/services/e-mail/mailpolicy.shtml",
+        "http://imperia.uni-due.de/zim/services/e-mail/mailpolicy-selfcareportal.shtml"
+      ]
+    },
+    {
+      "id": "'Server mx-serv..uni-due.de entdeckte einen ausführbaren Anhang ....'",
+      "urls": [
+        "https://www.uni-due.de/apps/rss.php?db=zim&id=2634)"
+      ]
+    },
+    {
+      "id": "E-Mails vom UKE können nicht via OWA/Webmailer gelesen werden",
+      "urls": [
+        "https://www.uni-due.de/zim/services/e-mail/konfigurationsanleitungen/",
+        "https://www.uni-due.de/zim/intern-ma/exchange-postfach.php",
+        "https://www.uni-due.de/zim/services/e-mail/konfigurationsanleitungen/zertifikat-importieren"
+      ]
+    },
+    {
+      "id": "Alte E-Mails nach Umstellung auf Exchange nicht mehr sichtbar",
+      "urls": [
+        "https://webmail.uni-duisburg-essen.de/mailsync/mailsync.shtml",
+        "http://www.uni-due.de/zim/services/groupware/mailmigration-outlook.shtml#imap"
+      ]
+    },
+    {
+      "id": "Nach Umstellung auf Exchange  fehlt Ordnerstruktur",
+      "urls": [
+        "https://webmail.uni-due.de/mailsync/mailsync.shtml"
+      ]
+    },
+    {
+      "id": "Shibboleth Error",
+      "urls": [
+        "https://portal.sap.uni-due.de",
+        "https://idp.uni-duisburg-essen.de/idp/Authn/UserPassword)",
+        "https://portal.sap.uni-due.de",
+        "http://www.uni-due.de/imperia/md/content/zentralverwaltung/intern/waves/ca_portal_browsereinstellungen.pdf"
+      ]
+    },
+    {
+      "id": "Shibboleth Error: Anmeldung fehlgeschlagen",
+      "urls": [
+        "https://benutzerverwaltung.uni-due.de/portal/",
+        "http://www.uni-due.de/zim/soforthilfe/hotline/",
+        "http://www.uni-due.de/zim/soforthilfe/faqs/knowledgebase-public.php?id=312#a_312"
+      ]
+    },
+    {
+      "id": "SAP NetWeaver Seite wird statt Portal angezeigt",
+      "urls": [
+        "http://www.uni-due.de/zim/soforthilfe/faqs/knowledgebase-public.php?id=456#a_456",
+        "http://www.uni-due.de/zim/soforthilfe/faqs/knowledgebase-public.php?id=455#a_455",
+        "http://www.uni-due.de/zim/soforthilfe/hotline/"
+      ]
+    },
+    {
+      "id": "Offiziell unterstützte Browser",
+      "urls": [
+        "https://portal.sap.uni-due.de/",
+        "https://www.uni-due.de/verwaltung/sap_erp/index.php"
+      ]
+    },
+    {
+      "id": "Zugriff auf das Portal von extern",
+      "urls": [
+        "http://www.uni-due.de/zim/services/internetzugang/vpn.shtml"
+      ]
+    },
+    {
+      "id": "Browsereinstellungen für das Portal",
+      "urls": [
+        "https://portal.sap.uni-due.de/"
+      ]
+    },
+    {
+      "id": "Lesezeichen im Portal",
+      "urls": [
+        "https://portal.sap.uni-due.de"
+      ]
+    },
+    {
+      "id": "Java Fehler bei Export von Berichten",
+      "urls": [
+        "http://www.java.com/de/download/installed.jsp"
+      ]
+    },
+    {
+      "id": "'Fehler bei der Verarbeitung'",
+      "urls": [
+        "https://www.uni-due.de/zim/soforthilfe/faqs/knowledgebase-public.php?id=455#a_455"
+      ]
+    },
+    {
+      "id": "Drucken funktioniert nicht",
+      "urls": [
+        "http://www.uni-due.de/imperia/md/content/zentralverwaltung/intern/waves/ca_leitfaden_portalberichte.pdf"
+      ]
+    },
+    {
+      "id": "Export aus dem Portal in Excel-Listen funktioniert nicht",
+      "urls": [
+        "https://pf.sap.uni-due.de"
+      ]
+    },
+    {
+      "id": "Probleme mit Alten Einkaufswagen/ Positionen",
+      "urls": [
+        "https://www.uni-due.de/verwaltung/sap_erp/faq_einkauf.php#faq0323"
+      ]
+    },
+    {
+      "id": "Werte können nicht ausgewählt werden",
+      "urls": [
+        "https://www.uni-due.de/verwaltung/sap_erp/faq_technik.php#faq0736"
+      ]
+    },
+    {
+      "id": "Maskenfolge beim Export der Kontenansicht im Firefox Browser verändert",
+      "urls": [
+        "https://www.uni-due.de/verwaltung/sap_erp/faq_buchungen.php#faq0271"
+      ]
+    },
+    {
+      "id": "Client funktioniert nicht mehr",
+      "urls": [
+        "https://www.sciebo.de/de/download/index.html"
+      ]
+    },
+    {
+      "id": "Fehlermeldung \"conflicting file“",
+      "urls": [
+        "https://doc.owncloud.org/server/9.0/user_manual/files/index.html"
+      ]
+    },
+    {
+      "id": "Meine Daten sind verschwunden",
+      "urls": [
+        "https://www.uni-due.de/zim/sciebo.php"
+      ]
+    },
+    {
+      "id": ". und _ Dateien werden nicht synchronisiert",
+      "urls": [
+        "https://doc.owncloud.org/desktop/1.6/visualtour.html#ignoredfileseditor-label"
+      ]
+    },
+    {
+      "id": "Sicherheitswarnung unter Windows",
+      "urls": [
+        "https://www.sciebo.de/install/sciebo-1.8.4.45-setup.exe",
+        "https://www.uni-due.de/zim/sciebo-ma.php"
+      ]
+    }
+  ],
+  "total_entries_with_urls": 192,
+  "total_urls": 296
+}
