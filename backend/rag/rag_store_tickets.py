@@ -4,9 +4,10 @@ import chromadb
 from sentence_transformers import SentenceTransformer
 
 # --- Setup ---
-ticket_embedder = SentenceTransformer("paraphrase-multilingual-mpnet-base-v2")
+# ticket_embedder = SentenceTransformer("T-Systems-onsite/german-roberta-sentence-transformer-v2")
+ticket_embedder = SentenceTransformer("deutsche-telekom/gbert-large-paraphrase-cosine")
 
-ticket_client   = chromadb.PersistentClient(path="./ticket_db")
+ticket_client = chromadb.PersistentClient(path="./ticket_db")
 
 # Wipe and recreate with cosine metric
 try:
@@ -17,13 +18,15 @@ except Exception as e:
 
 ticket_collection = ticket_client.create_collection(
     "tickets",
-    metadata={"hnsw:space": "cosine"}
+    metadata={
+        "hnsw:space":           "cosine",
+    }
 )
 print("[INFO] Created new tickets collection with cosine metric.")
 
 
 def flatten_ticket(ticket_entry: dict) -> str:
-    """Store only ticket, solution and category — no PII fields"""
+    """Store only ticket summary, solution and category — no PII fields"""
     parts = []
     if ticket_entry.get("ticket"):
         parts.append(f"ticket: {ticket_entry['ticket']}")
@@ -35,7 +38,7 @@ def flatten_ticket(ticket_entry: dict) -> str:
 
 
 def load_and_store_tickets(json_filepath: str):
-    """Loads ticket from a JSON file and stores it in the vector database"""
+    """Loads tickets from a JSON file and stores them in the vector database"""
     with open(json_filepath, "r", encoding="utf-8") as f:
         data = json.load(f)
 
@@ -55,7 +58,10 @@ def load_and_store_tickets(json_filepath: str):
     for idx, ticket_entry in enumerate(tickets, start=1):
         ticket_id   = f"ticket_{idx:03d}"
         ticket_text = flatten_ticket(ticket_entry)
-        embedding   = ticket_embedder.encode(ticket_text).tolist()
+        embedding   = ticket_embedder.encode(
+            ticket_text,
+            normalize_embeddings=True
+        ).tolist()
         ticket_collection.add(
             ids=[ticket_id],
             embeddings=[embedding],
@@ -67,8 +73,5 @@ def load_and_store_tickets(json_filepath: str):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Usage: python store_tickets.py <path_to_tickets.json>")
-        sys.exit(1)
 
-    load_and_store_tickets(sys.argv[1])
+    load_and_store_tickets("./old_tickets.json")
