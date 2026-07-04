@@ -91,7 +91,7 @@ results = retrieve_relevant_entries(query, n_results=5)
 | `query` | `str` | The user's problem description as a plain string |
 | `n_results` | `int` | Max candidates to retrieve from ticket DB (default: 5) |
 
-> Note: FAQ always fetches 10 candidates internally for re-ranking regardless of `n_results`.
+> IMPORTANT: n_results here controls the number of old tickets returned and does not affect the FAQ DB. For the FAQ, we use a flexible logic based on the quality of data we find (see: Tiered selection logic).
 
 ---
 
