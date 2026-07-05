@@ -159,3 +159,6 @@ The test always passes (it is a benchmarking script, not a pass/fail test). Resu
 * Some models (especially Gemma and Llama) require up to 3 conversation turns before offering a solution. Scenarios therefore consist of 3 messages so that conservative models have enough turns to complete the conversation.
 * Rate limits (`429`) occur after many API calls in one session. Wait for the rate limit to reset before re-running the benchmark.
 * The benchmark must be run from the **project root** (not from the `tests/` folder): `PYTHONPATH=. pytest tests/test_llm_benchmark.py -v -s`
+* * In the CI/CD pipeline, view the console output to view the results after the test has finished.
+* If the test hangs for a long time, it is most likely due to server overload on SAIA's side
+* To add more models, add entries into the `MODEL_CONFIGS` dictionary in `test_llm_benchmark.py` in the following format: `"model_name_that_appears_on_console:":"saia_internal_model_name"`, e. g. `"llama-3.1-8b": "meta-llama-3.1-8b-instruct",`.
