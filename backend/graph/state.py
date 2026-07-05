@@ -7,14 +7,14 @@ class ChatbotState(TypedDict):
     """
     Defines the structured data schema the Chatbot is working with
     """
-    # add_messages sorgt dafür, dass neue Chat-Nachrichten immer an die Liste angehängt werden
+   
     messages: Annotated[list, add_messages]
 
     ask_issue_attempts: int
 
-    # Intent des Nutzers: "tutorial" | "problem" | "unclear" | "" (noch nicht klassifiziert)
+    # Intent des Nutzers: "tutorial" | "problem" | "unclear" | "" 
     intent: str
-    # Zaehlt die Tutorial-Runden, analog zu ask_issue_attempts
+ 
     tutorial_attempts: int
 
     # ticket data
@@ -37,5 +37,5 @@ class ChatbotState(TypedDict):
 
     is_complete: bool
 
-    #
+    
     solutions: Annotated[list[dict], operator.add]

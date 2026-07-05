@@ -154,12 +154,12 @@ def classify_intent(state: ChatbotState):
     """Workflow-Node: bewertet bei jeder Nachricht neu, was der Nutzer moechte (Issue #161)."""
     log_node_entry("classify_intent", state)
 
-    # 1) Kontext einsammeln: alle User-Nachrichten + bisheriger Intent
+    # 1) 
     user_messages = [msg.content for msg in state["messages"] if isinstance(msg, HumanMessage)]
     conversation = "\n".join(f"- {m}" for m in user_messages) if user_messages else "(keine)"
     previous_intent = state.get("intent") or "(noch keiner)"
 
-    # 2) Entscheidungskriterien (der Prompt — siehe unten)
+    # 2) Entscheidungskriterien 
     system_prompt = SystemMessage(content=f"""Du bist ein Verteiler im IT-Support des ZIM einer Universitaet.
 Entscheide anhand des GESAMTEN Chatverlaufs, was der Nutzer AKTUELL moechte:
 
@@ -187,7 +187,7 @@ REGELN FUER DEN WECHSEL:
 CHATVERLAUF (User-Nachrichten):
 {conversation}""")
 
-    # 3) Formular ausfuellen lassen + validieren (doppelter Boden)
+    # 3) 
     decision = cast(IntentDecision, intent_llm.invoke([
         system_prompt,
         HumanMessage(content="Bitte klassifiziere die Absicht des Nutzers.")
@@ -196,8 +196,7 @@ CHATVERLAUF (User-Nachrichten):
 
     state_update = {"intent": intent}
 
-    # 4) E-Mail-Mini-Extraktion: im Tutorial-Pfad laeuft der Extractor nie,
-    #    also sammelt dieser Node die Mail ein, falls sie noch fehlt
+    # 4) 
     if not state.get("user_email") and user_messages:
         match = re.search(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}", user_messages[-1])
         if match:
