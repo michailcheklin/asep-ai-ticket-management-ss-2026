@@ -1,6 +1,6 @@
 ﻿import json
 import pytest
-from openai import InternalServerError
+from openai import InternalServerError, RateLimitError
 
 from backend.api.ZIM import chat_endpoint
 from backend.graph.models.ChatRequest import ChatRequest
@@ -32,10 +32,19 @@ async def test_chat_endpoint_connectivity(testcase):
     :param testcase: The prompt to test along with the context packed in a JSON file
     """
 
+    try:
+        test_request_as_chat_request = ChatRequest(**testcase)
+        print(f"Sending following request to the chatbot: \n{json.dumps(testcase)}")
+        response = await chat_endpoint(test_request_as_chat_request)
+        print(f"The chatbot responded with the following response: \n{json.dumps(response)}")
+        assert isinstance(response, dict), "Response should be a dictionary"
+        assert "bot_response" in response, "Response should contain a 'bot_response' key"
+    except RateLimitError:
+        # If rate limit was hit, test passes, but gives a message about that.
+        # Rate limit error means that the server could be reached,
+        # however the request was rejected due to the rate limit
+        # This is different to the HTTP 500 error, which means that the server could not
+        # be reached at all
+        print("The API server could be reached but the rate limit was hit.")
+        assert True
 
-    test_request_as_chat_request = ChatRequest(**testcase)
-    print(f"Sending following request to the chatbot: \n{json.dumps(testcase)}")
-    response = await chat_endpoint(test_request_as_chat_request)
-    print(f"The chatbot responded with the following response: \n{json.dumps(response)}")
-    assert isinstance(response, dict), "Response should be a dictionary"
-    assert "bot_response" in response, "Response should contain a 'bot_response' key"
