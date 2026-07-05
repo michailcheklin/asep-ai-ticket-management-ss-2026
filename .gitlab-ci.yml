@@ -126,6 +126,12 @@ run_deepeval_tests:
   # Merge request pipeline
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      # Making this manual to give the option to run this only once in an MR
+      # or not at all in MRs that do not affect the LLM generation
+      # rather than on every push from the point onwards an MR was created
+      # To give the option, this job shall not block pipelines.
+      when: manual
+      allow_failure: true
   tags:
     - dind
     - ude-sse
