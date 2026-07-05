@@ -129,6 +129,9 @@ run_deepeval_tests:
   tags:
     - dind
     - ude-sse
+  artifacts:
+    paths:
+      - tests/benchmark_results.json
   # Caching the Python dependencies per branch, or otherwise
   # adding dependencies in one branch that cause a conflict
   # would cause conflicts in all other branches
