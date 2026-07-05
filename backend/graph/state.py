@@ -11,6 +11,12 @@ class ChatbotState(TypedDict):
     messages: Annotated[list, add_messages]
 
     ask_issue_attempts: int
+
+    # Intent des Nutzers: "tutorial" | "problem" | "unclear" | "" (noch nicht klassifiziert)
+    intent: str
+    # Zaehlt die Tutorial-Runden, analog zu ask_issue_attempts
+    tutorial_attempts: int
+
     # ticket data
     user_email: str
     matrikelnummer: str

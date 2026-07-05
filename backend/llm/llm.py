@@ -20,7 +20,9 @@ if USE_SAIA:
         model="deepseek-r1-distill-llama-70b",
         api_key=secure_saia_api_key,
         base_url="https://chat-ai.academiccloud.de/v1",
-        temperature=0.2
+        temperature=0.2,
+        timeout=120,
+        max_retries=1,
     )
 else:
     ollama_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
@@ -31,6 +33,6 @@ else:
     )
 
 structured_llm = llm.with_structured_output(ExtractedTicketData)
-
 category_llm = llm.with_structured_output(TicketCategoryDecision)
+
 

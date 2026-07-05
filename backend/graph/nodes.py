@@ -1,3 +1,4 @@
+import re
 from typing import cast
 from pydantic import BaseModel, Field
 
@@ -10,8 +11,11 @@ from .state import ChatbotState
 from backend.rag.retrieve_info import retrieve_relevant_entries
 from ..services.TicketService import TicketService
 from ..llm.llm import llm, structured_llm
+from ..llm.prompts import BOT_PERSONA
 from .node_logging import log_node_entry
 from ..api.zammad import create_ticket_by_user_email, add_tag_to_ticket
+from .models.IntentDecision import IntentDecision
+
 
 ticket_service = TicketService()
 
@@ -29,7 +33,6 @@ class TicketCategoryDecision(BaseModel):
     category: str = Field(
         description=f"Exactly one of: {', '.join(TICKET_CATEGORIES)}"
     )
-
 
 category_llm = llm.with_structured_output(TicketCategoryDecision)
 
@@ -141,6 +144,145 @@ def classify_ticket(state: ChatbotState):
     return {"category": category}
 
 
+
+INTENTS = ["tutorial", "problem", "unclear", "solved"]
+intent_llm = llm.with_structured_output(IntentDecision, method="json_schema")
+
+
+@traceable
+def classify_intent(state: ChatbotState):
+    """Workflow-Node: bewertet bei jeder Nachricht neu, was der Nutzer moechte (Issue #161)."""
+    log_node_entry("classify_intent", state)
+
+    # 1) Kontext einsammeln: alle User-Nachrichten + bisheriger Intent
+    user_messages = [msg.content for msg in state["messages"] if isinstance(msg, HumanMessage)]
+    conversation = "\n".join(f"- {m}" for m in user_messages) if user_messages else "(keine)"
+    previous_intent = state.get("intent") or "(noch keiner)"
+
+    # 2) Entscheidungskriterien (der Prompt — siehe unten)
+    system_prompt = SystemMessage(content=f"""Du bist ein Verteiler im IT-Support des ZIM einer Universitaet.
+Entscheide anhand des GESAMTEN Chatverlaufs, was der Nutzer AKTUELL moechte:
+
+- "tutorial": Der Nutzer moechte wissen, WIE etwas geht, und es selbst tun.
+  Typisch: "Wie richte ich ... ein?", "Wo finde ich ...?", "Anleitung fuer ...".
+- "problem": Etwas funktioniert nicht oder der Nutzer moechte, dass der Support
+  sich kuemmert. Typisch: "... ist kaputt", "... geht nicht", "erstellt mir ein Ticket".
+- "unclear": Die Absicht ist aus den Nachrichten nicht erkennbar (z. B. nur "Hallo").
+- "solved": NUR waehlen, wenn der Bot zuvor eine Anleitung gegeben hat UND der
+  Nutzer jetzt bestaetigt, dass sein Anliegen damit geloest ist.
+  Typisch: "hat geklappt", "funktioniert jetzt", "danke, erledigt".
+
+BISHERIGER INTENT: {previous_intent}
+REGELN FUER DEN WECHSEL:
+- Wechsle nur dann vom bisherigen Intent, wenn der Nutzer das erkennbar signalisiert.
+- Sagt der Nutzer nach einer Anleitung NUR, dass es nicht funktioniert hat
+  (z. B. "hat nicht geklappt", "geht immer noch nicht", "hat leider nicht funktioniert"),
+  bleibt der Intent "tutorial" — der Bot vertieft dann die Anleitung.
+- Waehle "problem" nach einer Anleitung erst, wenn der Nutzer AUSDRUECKLICH moechte,
+  dass der Support uebernimmt (z. B. "erstell mir ein Ticket", "leite es bitte an
+  einen Mitarbeiter weiter", "ich will mit einem Menschen sprechen").
+- Eine reine Zwischenantwort (E-Mail-Adresse, Ja/Nein, Detailangabe) ist KEIN Wechsel.
+- Entscheide nach der Hauptabsicht, nicht nach einzelnen Schluesselwoertern.
+
+CHATVERLAUF (User-Nachrichten):
+{conversation}""")
+
+    # 3) Formular ausfuellen lassen + validieren (doppelter Boden)
+    decision = cast(IntentDecision, intent_llm.invoke([
+        system_prompt,
+        HumanMessage(content="Bitte klassifiziere die Absicht des Nutzers.")
+    ]))
+    intent = decision.intent if decision.intent in INTENTS else "unclear"
+
+    state_update = {"intent": intent}
+
+    # 4) E-Mail-Mini-Extraktion: im Tutorial-Pfad laeuft der Extractor nie,
+    #    also sammelt dieser Node die Mail ein, falls sie noch fehlt
+    if not state.get("user_email") and user_messages:
+        match = re.search(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}", user_messages[-1])
+        if match:
+            state_update["user_email"] = match.group(0)
+
+    return state_update
+
+
+
+@traceable
+def ask_intent(state: ChatbotState):
+    """Fragt nach, ob der Nutzer eine Anleitung moechte oder Support braucht."""
+    log_node_entry("ask_intent", state)
+    system_prompt = SystemMessage(content=(
+          BOT_PERSONA + "\n\n"
+        "Die Absicht des Nutzers ist noch unklar. Frage kurz und freundlich, ob er eine Schritt-fuer-Schritt-"
+        "Anleitung zum Selbermachen moechte oder ob der Support sich um sein Anliegen "
+        "kuemmern soll. Beantworte keine anderen Fragen und wechsle nicht das Thema."
+    ))
+    response = llm.invoke([system_prompt] + state["messages"])
+    return {"messages": [response]}
+
+@traceable
+def give_tutorial(state: ChatbotState):
+    """Erstellt eine Schritt-fuer-Schritt-Anleitung aus der Wissensdatenbank (Issue #161)."""
+    log_node_entry("give_tutorial", state)
+    attempts = state.get("tutorial_attempts", 0)
+
+    user_messages = [msg.content for msg in state["messages"] if isinstance(msg, HumanMessage)]
+    query = " ".join(user_messages[-2:]) if user_messages else ""
+
+    rag_results = retrieve_relevant_entries(query, n_results=2)
+    faq_context = "\n".join(f"- {m['text']}" for m in rag_results.get("faq_matches", []))
+    ticket_context = "\n".join(f"- {m['text']}" for m in rag_results.get("ticket_matches", []))
+
+    
+    system_prompt = SystemMessage(content=BOT_PERSONA + f"""
+
+    Der Nutzer moechte eine Anleitung, um sein Anliegen SELBST zu loesen.
+
+WISSENSDATENBANK (FAQs):
+{faq_context or "(keine Treffer)"}
+
+WISSENSDATENBANK (aehnliche Tickets):
+{ticket_context or "(keine Treffer)"}
+
+BISHERIGE ANLEITUNGSVERSUCHE: {attempts}
+
+REGELN:
+1. Erstelle eine NUMMERIERTE Schritt-fuer-Schritt-Anleitung (1., 2., 3., ...),
+   basierend auf der Wissensdatenbank. Erfinde keine Schritte, die dort keine
+   Grundlage haben. Gib Links an, wenn sie in den Quellen stehen.
+2. Maximal 6 Schritte pro Antwort. Ist die Anleitung laenger, stoppe an einer
+   sinnvollen Stelle und frage, ob es bis hierhin geklappt hat.
+3. Wenn BISHERIGE ANLEITUNGSVERSUCHE groesser als 0 ist: Wiederhole NICHT die
+   komplette Anleitung. Frage stattdessen gezielt, an welchem Schritt es hakt,
+   und vertiefe nur diesen Teil anhand des Chatverlaufs.
+4. Liefert die Wissensdatenbank nichts Passendes, sage das ehrlich und biete an,
+   das Anliegen an einen Mitarbeiter zu uebergeben.
+5. Beende deine Antwort IMMER mit der Frage, ob das Problem damit geloest ist.""")
+
+    response = llm.invoke([system_prompt] + state["messages"])
+
+    return {
+        "messages": [response],
+        "tutorial_attempts": attempts + 1
+    }
+
+@traceable
+def finish_tutorial(state: ChatbotState):
+    """Schliesst den Tutorial-Pfad ab: geschlossenes AI-Solved-Ticket y Verabschiedung."""
+    log_node_entry("finish_tutorial", state)
+    result = ticket_service.create_closed_tutorial_ticket(state)
+
+    system_prompt = SystemMessage(content=(
+        BOT_PERSONA + "\n\n"
+        "Der Nutzer hat gerade bestaetigt, dass deine Anleitung sein Anliegen "
+        "geloest hat. Verabschiede dich kurz, freundlich und natuerlich, mit Bezug "
+        "auf sein konkretes Anliegen. Maximal 2 Saetze. Erwaehne, dass er sich "
+        "jederzeit wieder melden kann."
+    ))
+    response = llm.invoke([system_prompt] + state["messages"])
+
+    return {**result, "messages": [response]}
+
 @traceable
 def extract_information(state: ChatbotState):
     """
@@ -243,12 +385,14 @@ def ask_for_email(state: ChatbotState):
     :return: A dictionary containing the newly extracted fields to update the state.
     """
     log_node_entry("ask_for_email", state)
-    system_prompt = SystemMessage(content=(
-        "Du bist ein IT-Support-Bot. Dir fehlt noch die email des Users. "
-        "Frage kurz und höflich nach der Uni email Adresse. Beantworte keine anderen Fragen "
-        "und wechsle nicht das Thema."
-    ))
 
+
+    system_prompt = SystemMessage(content=(
+            "Du bist ein IT-Support-Bot. Dir fehlt noch die E-Mail-Adresse des Users. "
+            "Frage kurz und höflich nach einer E-Mail-Adresse, unter der er erreichbar ist "
+            "(eine private Adresse ist auch in Ordnung). Beantworte keine anderen Fragen "
+            "und wechsle nicht das Thema."
+    ))
     full_messages = [system_prompt] + state["messages"]
     response = llm.invoke(full_messages)
 
@@ -341,10 +485,11 @@ def ask_for_additional_info(state: ChatbotState):
 
 
     system_prompt = SystemMessage(content=(
-        f"""
+        BOT_PERSONA + f"""
         Du bist ein technischer Dispatcher im IT-Support einer Universität.
         Dein Ziel ist es zu prüfen, ob die vorliegenden Informationen für das genannte Problem ausreichen, 
         um ein vollständiges Ticket zu erstellen.
+ 
 
         AKTUELLES PROBLEM: {problem}
         BEREITS BEKANNTE ZUSATZINFOS: {infos}
@@ -369,9 +514,11 @@ def ask_for_additional_info(state: ChatbotState):
            Offene Fragen dürfen ohne Optionen geschrieben werden:
            "* [Frage]?"
         5. Stelle die Fragen soweit wie möglich immer als Multiple-Choice mit dem gezeigten Format, wo du nur die Felder in [] ändern darsf.
-        6. Begrenze dich auf maximal 5 Optionen, wobei "Andere" IMMER eine Option sein muss.
+        7. Formuliere ALLE Fragen in der Du-Form (z. B. "Wo befandest du dich?",
+           "Hast du eine Fehlermeldung erhalten?") — niemals mit "Sie" oder "Ihnen".
         """
     ))
+  
 
     # Benchmark compatibility:
     # DeepSeek and Apertus accept prompts consisting only of a SystemMessage,
@@ -390,7 +537,7 @@ def ask_for_additional_info(state: ChatbotState):
     if len(infos) >= 1 or decision.needs_additional_info or attempts >= 3:
         return {"needs_additional_info": True}
     else:
-        llm_msg = f"Ich habe für Sie gerade ein Support-Ticket erstellt. Um Sie optimal zu unterstützen, beantworten Sie bitte folgende Fragen:\n{decision.follow_up_question}"
+        llm_msg = f"Ich habe für dich gerade ein Support-Ticket erstellt. Um dich optimal zu unterstützen, beantworte  bitte folgende Fragen:\n{decision.follow_up_question}"
         ticket_id = state.get("ticket_id")
         if llm_msg:
             try:
@@ -477,7 +624,7 @@ def give_solutions(state: ChatbotState):
     message_text = llm.invoke([system_prompt, HumanMessage(content="Bitte fasse die Lösungen für den User zusammen.")])
 
 
-    final_message = AIMessage(content=message_text.content + "\n\nKonnte ich Ihnen dabei helfen, Ihr Problem zu lösen?")
+    final_message = AIMessage(content=message_text.content + "\n\n Konnte ich dir dabei helfen, dein Problem zu lösen?")
 
     ticket_id = state.get("ticket_id")
     try:
