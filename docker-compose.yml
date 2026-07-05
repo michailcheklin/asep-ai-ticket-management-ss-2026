@@ -110,6 +110,7 @@ services:
         for i in $(seq 1 60); do
           if /opt/zammad/bin/rails runner "exit(Setting.get('system_init_done') && Group.find_by(name: ENV.fetch('ZAMMAD_SUPPORT_GROUP')) ? 0 : 1)" >/dev/null 2>&1; then
             /opt/zammad/bin/rails runner /opt/zammad/bootstrap/configure_email.rb
+            /opt/zammad/bin/rails runner /opt/zammad/bootstrap/configure_category_field.rb
             exit 0
           fi
           sleep 5

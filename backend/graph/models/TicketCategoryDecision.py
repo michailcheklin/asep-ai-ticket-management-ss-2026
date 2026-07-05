@@ -1,12 +1,17 @@
-﻿from pydantic import BaseModel, Field
+﻿import json
+from pathlib import Path
 
-TICKET_CATEGORIES = [
-    "Zugang/Login",
-    "Technisches Problem",
-    "Allgemeine Anfrage",
-    "Beschwerde",
-    "Rechnung",
-]
+from pydantic import BaseModel, Field
+
+_CATEGORIES_PATH = (
+    Path(__file__).resolve().parents[3]
+    / "zammad"
+    / "bootstrap"
+    / "ticket_categories.json"
+)
+
+with _CATEGORIES_PATH.open(encoding="utf-8") as categories_file:
+    TICKET_CATEGORIES: list[str] = json.load(categories_file)
 
 
 class TicketCategoryDecision(BaseModel):
