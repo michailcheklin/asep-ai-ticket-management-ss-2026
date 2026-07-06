@@ -8,6 +8,7 @@ from ..graph.state import ChatbotState
 from ..graph.orchestrator import __execute_langchain_workflow, graph
 from ..graph.nodes import _resolve_ticket_category
 from ..services.TicketService import TicketService
+from ..rag import recent_incidents
 
 ticket_service = TicketService()
 
@@ -170,6 +171,32 @@ async def solution_feedback(request: ChatRequest):
         }
 
 
+
+
+@app.post("/webhook/ticket-closed")
+async def ticket_closed(payload: dict):
+    """
+    Von einem Zammad-Trigger/Webhook aufgerufen, wenn ein Ticket geschlossen wird.
+
+    Entfernt den betroffenen Incident aus der 'Recent Incidents'-Collection,
+    damit geschlossene Incidents nicht mehr zur Problem-Eskalation beitragen.
+
+    Erwartet einen Payload, der die Ticket-ID enthält – entweder als
+    {"ticket_id": <id>} oder verschachtelt als {"ticket": {"id": <id>}}.
+    """
+    ticket_id = payload.get("ticket_id")
+    if ticket_id is None and isinstance(payload.get("ticket"), dict):
+        ticket_id = payload["ticket"].get("id")
+
+    if ticket_id is None:
+        return {"ok": False, "error": "no ticket id in payload"}
+
+    try:
+        recent_incidents.mark_incident_closed(int(ticket_id))
+        return {"ok": True, "removed_ticket_id": int(ticket_id)}
+    except Exception as e:
+        print(f"[/webhook/ticket-closed] failed for {ticket_id}: {e}")
+        return {"ok": False, "error": str(e)}
 
 
 def run_local_chat():

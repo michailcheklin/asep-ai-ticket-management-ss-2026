@@ -114,6 +114,82 @@ def add_article_to_ticket(ticket_id: int, body: str, sender: str = "Agent",
     print(f"Article added to ticket {ticket_id}: {response.status_code}")
     return response
 
+def get_ticket_state(ticket_id: int) -> str:
+    """
+    Liest den aktuellen Zammad-Status eines Tickets aus.
+
+    :arg ticket_id: ID des Tickets
+    :return: Statusname (z. B. "new", "open", "closed") oder "" bei Fehler
+    """
+    try:
+        response = requests.get(
+            url=f"{server_address}/api/v1/tickets/{ticket_id}",
+            headers=headers,
+            timeout=GENERAL_TIMEOUT,
+        )
+        if response.status_code != 200:
+            print(f"Could not read ticket {ticket_id}: {response.status_code}")
+            return ""
+        state_id = response.json().get("state_id")
+
+        # state_id -> state name auflösen
+        state_response = requests.get(
+            url=f"{server_address}/api/v1/ticket_states/{state_id}",
+            headers=headers,
+            timeout=GENERAL_TIMEOUT,
+        )
+        if state_response.status_code == 200:
+            return state_response.json().get("name", "")
+        return ""
+    except ConnectionError:
+        print("Connection error: Could not reach Zammad to read ticket state")
+        return ""
+    except MissingSchema:
+        print("Invalid URL for Zammad provided: Could not read ticket state")
+        return ""
+    except Exception as e:
+        print(f"Other error occured while reading ticket state: {e}")
+        return ""
+
+
+def create_system_ticket(
+        title: str,
+        body: str,
+        author_email: str,
+        priority: int = 1,
+        tags: list[str] | None = None,
+        group: str = "Users",
+):
+    """
+    Erstellt ein automatisch generiertes Ticket (z. B. ein Problem-Ticket)
+    über einen festen System-Absender und versieht es optional mit Tags.
+
+    :arg title: Betreff des Tickets
+    :arg body: Text im Ticket
+    :arg author_email: E-Mail-Adresse des System-/Absender-Kontos
+    :arg priority: Priorität (0 = normal, 1 = high/urgent)
+    :arg tags: Optionale Liste von Tags
+    :arg group: Zammad-Gruppe
+    :return: Die neue Ticket-ID oder -1 bei Fehler
+    """
+    ticket_id = create_ticket_by_user_email(
+        email=author_email,
+        title=title,
+        body=body,
+        priority=priority,
+        group=group,
+        article_type="note",
+        internal=True,
+        state="new",
+    )
+
+    if ticket_id and ticket_id != -1 and tags:
+        for tag in tags:
+            add_tag_to_ticket(ticket_id, tag)
+
+    return ticket_id
+
+
 def add_tag_to_ticket(ticket_id: int, tag: str):
     """Fügt einen Tag zu einem Zammad-Ticket hinzu."""
     try:

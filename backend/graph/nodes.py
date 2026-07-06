@@ -9,11 +9,13 @@ from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from .state import ChatbotState
 from backend.rag.retrieve_info import retrieve_relevant_entries
 from ..services.TicketService import TicketService
+from ..services.ProblemService import ProblemService
 from ..llm.llm import llm, structured_llm
 from .node_logging import log_node_entry
 from ..api.zammad import create_ticket_by_user_email, add_tag_to_ticket
 
 ticket_service = TicketService()
+problem_service = ProblemService()
 
 TICKET_CATEGORIES = [
     "Incident",
@@ -139,6 +141,34 @@ def classify_ticket(state: ChatbotState):
         user_messages,
     )
     return {"category": category}
+
+
+@traceable
+def escalate_incidents(state: ChatbotState):
+    """Workflow node: pflege den 'Recent Incidents'-RAG und eskaliere bei Bedarf.
+
+    Läuft nur, wenn die Kategorie 'Incident' ist und bereits ein Ticket existiert.
+    Der Node beeinflusst den User-Chat nicht (fire-and-forget) und gibt daher
+    keine State-Änderung zurück.
+    """
+    if state.get("category") != "Incident":
+        return {}
+
+    ticket_id = state.get("ticket_id")
+    if not ticket_id or ticket_id == -1:
+        return {}
+
+    try:
+        result = problem_service.register_and_check_incident(
+            ticket_id=ticket_id,
+            issue_description=state.get("issue_description", ""),
+            additional_info=list(state.get("additional_info", [])),
+        )
+        print(f"[escalate_incidents] ticket {ticket_id} -> {result}")
+    except Exception as e:
+        print(f"[escalate_incidents] failed for ticket {ticket_id}: {e}")
+
+    return {}
 
 
 @traceable
