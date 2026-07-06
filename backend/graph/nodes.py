@@ -226,6 +226,7 @@ def extract_information(state: ChatbotState):
             priority=extracted_data.priority if extracted_data.priority is not None else state["priority"],
             internal=True,
             state="new",
+            kategorie=state.get("category"),
         )
         state_update["ticket_id"] = result
         add_tag_to_ticket(result, "AI-Created")
