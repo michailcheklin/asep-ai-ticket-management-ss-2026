@@ -37,12 +37,22 @@ from backend.services.ProblemService import ProblemService  # noqa: E402
 
 # --- kleine Test-Helfer -------------------------------------------------------
 def check(label: str, condition: bool, detail: str = "") -> bool:
+    """
+    Schreibt einen Text, ob eine Testbedingung erfüllt wurde oder nicht
+    :param label: Der Name des Tests
+    :param condition: Die zu prüfende Bedingung
+    :param detail: Zusätzliche Informationen
+    :return:
+    """
     status = "PASS" if condition else "FAIL"
     print(f"  [{status}] {label}" + (f": {detail}" if detail else ""))
     return condition
 
 
 def clear_collection() -> None:
+    """
+    Setzt die temporäre Collection zurück
+    """
     col = recent_incidents._collection
     ids = col.get().get("ids", []) or []
     if ids:
@@ -61,6 +71,10 @@ OTHER_TEXT = "Ich möchte eine Matlab-Lizenz für mein Studium beantragen"
 
 
 def test_similarity_and_threshold() -> bool:
+    """
+    Prüft, ob die Ähnlichkeitssuche korrekt den Schwellenwert beachtet
+    :return: Das Testergebnis, ob der Test bestanden wurde, als Boolean
+    """
     print("\n== Test 1: Ähnlichkeitssuche + Schwellenwert ==")
     clear_collection()
     ok = True
@@ -90,6 +104,10 @@ def test_similarity_and_threshold() -> bool:
 
 
 def test_purge_stale() -> bool:
+    """
+    Prüft, ob alte Problems korrekt nicht mehr als "Recent incident" markiert werden
+    :return: Das Testergebnis, ob der Test bestanden wurde, als Boolean
+    """
     print("\n== Test 2: Zeitfenster-Purge (>8h) ==")
     clear_collection()
     ok = True
@@ -110,6 +128,11 @@ def test_purge_stale() -> bool:
 
 
 def test_dedup_existing_problem() -> bool:
+    """
+    Prüfung, ob bereits bestehendes Problem erkannt wird, damit ähnliche Incidents kein zweites
+    thematisch gleiches Problem kreieren
+    :return: Das Testergebnis, ob der Test bestanden wurde, als Boolean
+    """
     print("\n== Test 3: Dedup – bestehendes Problem erkennen ==")
     clear_collection()
     ok = True
@@ -126,6 +149,10 @@ def test_dedup_existing_problem() -> bool:
 
 
 def test_problem_service_escalation() -> bool:
+    """
+    Prüft, ob wenn ein Problem eskaliert werden soll, dies im ZIM so gemacht wird, wie vorgesehen
+    :return: Das Testergebnis, ob der Test bestanden wurde, als Boolean
+    """
     print("\n== Test 4: ProblemService – Eskalation (Zammad/LLM gemockt) ==")
     clear_collection()
     ok = True
@@ -136,13 +163,22 @@ def test_problem_service_escalation() -> bool:
     added_tags: list[tuple] = []
 
     def fake_create_system_ticket(title, body, author_email, priority=1, tags=None, group="Users"):
+        """
+        Mock eines Tickets
+        """
         created_tickets.append({"title": title, "priority": priority, "tags": tags})
         return 9999
 
     def fake_add_tag(ticket_id, tag):
+        """
+        Mock des Hinzufügens eines Tags
+        """
         added_tags.append((ticket_id, tag))
 
     def fake_add_article(*args, **kwargs):
+        """
+        Mock des Hinzufügens eines Articles
+        """
         return None
 
     # Direkt in die ProblemService-Namespace gebundenen Namen ersetzen
@@ -176,6 +212,10 @@ def test_problem_service_escalation() -> bool:
 
 
 def test_problem_service_attach_existing() -> bool:
+    """
+    Prüft, ob ein bestehendes Problem erkannt wird und weitere ähnliche Tickets dem Problem zugeordnet werden
+    :return:
+    """
     print("\n== Test 5: ProblemService – bestehendem Problem zuordnen ==")
     clear_collection()
     ok = True
@@ -209,6 +249,10 @@ def test_problem_service_attach_existing() -> bool:
 
 
 def run_all() -> bool:
+    """
+    Startet alle Tests
+    :return: Das Testergebnis, ob alle Test bestanden wurden, als Boolean
+    """
     tests = [
         test_similarity_and_threshold,
         test_purge_stale,
@@ -230,8 +274,10 @@ def run_all() -> bool:
     return all_passed
 
 
-# pytest-Einstiegspunkt
 def test_incident_escalation_suite():
+    """
+    Pytest-Startpunkt
+    """
     assert run_all()
 
 
