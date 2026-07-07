@@ -82,6 +82,7 @@ graph TD
     classify_ticket_node[classify_ticket_node <br> classify_ticket]
     give_solutions_node[give_solutions_node <br> give_solutions]
     finish_node[finish_node <br> finish_ticket]
+    escalate_incidents_node[escalate_incidents_node <br> escalate_incidents]
 
     %% --- ROUTER (CONDITIONAL EDGES) ---
     route_based_on_state{route_based_on_state}
@@ -114,7 +115,8 @@ graph TD
     route_after_evaluator -->|else| End
 
     %% Linearer Pfad
-    classify_ticket_node --> give_solutions_node
+    classify_ticket_node --> escalate_incidents_node
+    escalate_incidents_node --> give_solutions_node
 
     %% Dritter Conditional Router
     give_solutions_node --> route_after_solutions
@@ -134,6 +136,7 @@ graph TD
     style classify_ticket_node fill:#bbdefb,stroke:#1976d2
     style give_solutions_node fill:#bbdefb,stroke:#1976d2
     style finish_node fill:#bbdefb,stroke:#1976d2
+    style escalate_incidents_node fill:#bbdefb,stroke:#1976d2
     
     style ask_email_node fill:#ffecb3,stroke:#ff8f00
     style ask_matrikel_node fill:#ffecb3,stroke:#ff8f00
