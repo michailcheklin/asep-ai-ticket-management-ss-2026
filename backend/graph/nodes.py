@@ -9,7 +9,7 @@ from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from .state import ChatbotState
 from backend.rag.retrieve_info import retrieve_relevant_entries
 from ..services.TicketService import TicketService
-from ..llm.llm import llm, structured_llm
+from ..llm.llm import llm, structured_llm, AGENT_PROMPT
 from .node_logging import log_node_entry
 from ..api.zammad import create_ticket_by_user_email, add_tag_to_ticket
 
@@ -97,8 +97,7 @@ def classify_ticket_category(
     """Classify a ticket using the full conversation context, not just the last message."""
     conversation = "\n".join(f"- {msg}" for msg in user_messages) if user_messages else "(keine)"
     infos = ", ".join(additional_info) if additional_info else "(keine)"
-    prompt = f"""Du bist ein Klassifizierer für IT-Support-Tickets an einer Universität.
-Ordne das Ticket nach ITSM-Ticket-Typ genau einem der folgenden Typen zu:
+    prompt = AGENT_PROMPT + "\n\n" + f"""Ordne das Ticket nach ITSM-Ticket-Typ genau einem der folgenden Typen zu:
 [{", ".join(TICKET_CATEGORIES)}].
 
 KONTEXT:
@@ -155,8 +154,7 @@ def extract_information(state: ChatbotState):
     prior_infos = state.get("additional_info", [])
     conversation_context = "\n".join(f"- {msg}" for msg in user_messages)
 
-    system_prompt = ("""Du bist ein hochpräziser KI-Daten-Extraktor für ein IT-Support-Unternehmen, das exklusiv mit Universitäten zusammenarbeitet.
-        Deine Aufgabe ist es, aus den eingehenden Chat-Nachrichten von Studierenden und Mitarbeitern strukturierte Ticket-Daten zu extrahieren.
+    system_prompt = AGENT_PROMPT + "\n\n" + ("""Deine Aufgabe ist es, als hochpräziser KI-Daten-Extraktor aus den eingehenden Chat-Nachrichten von Studierenden und Mitarbeitern strukturierte Ticket-Daten zu extrahieren.
 
         BEREITS BEKANNTER KONTEXT:
         Problembeschreibung: {prior_issue}
@@ -166,11 +164,11 @@ def extract_information(state: ChatbotState):
 
         EXTRAKTIONS-REGELN:
         1. Basis-Daten (Textfelder): Suche nach der 'email', der 'matrikelnummer' und dem Haupt-'problem' und speichere diese ausschließlich in ihren jeweiligen Textfeldern.
-        2. Das 'problem' darf ausschließlich gesetzt werden, wenn der Nutzer tatsächlich ein konkretes IT-Problem oder eine Supportanfrage beschreibt. Erfinde niemals ein Problem.
+        2. Das 'problem' darf ausschließlich gesetzt werden, wenn der Nutzer tatsächlich ein konkretes IT-Problem oder eine Supportanfrage beschreibt.
         3. Zusatzinformationen (Listen-Feld): Extrahiere alle weiteren technischen oder lokalen Details, die für die Lösung des Problems nützlich sein könnten, und weise sie dem Feld 'additional_info' zu.
         - Beispiele für wertvolle Details: Orte (z.B. 'Gebäude LF', 'Bibliothek'), Geräte/Systeme (z.B. 'MacBook', 'Windows 11'), betroffene Services (z.B. 'eduroam', 'VPN') oder spezifische Fehlercodes.
         - FORMAT: Speichere diese Zusatzinfos als einzelne, kompakte Strings innerhalb der Liste (z.B. ["Gebäude LF", "MacBook", "eduroam"]).
-        4. Strikte Wahrheit: Wenn eine Information fehlt, setze das entsprechende Feld zwingend auf null (bzw. lasse die Liste leer). Erfinde unter keinen Umständen Daten dazu!
+        4. Fehlende Daten: Wenn eine Information fehlt, setze das entsprechende Feld zwingend auf null (bzw. lasse die Liste leer).
     	Bewerte zusätzlich die Priorität des Problems.
         Setze priority auf 1 bei dringenden Problemen wie gesperrtem Account,
         Login nicht möglich, Prüfungs-/Abgabeproblemen oder komplettem Ausfall.
@@ -245,9 +243,8 @@ def ask_for_email(state: ChatbotState):
     """
     log_node_entry("ask_for_email", state)
     system_prompt = SystemMessage(content=(
-        "Du bist ein IT-Support-Bot. Dir fehlt noch die email des Users. "
-        "Frage kurz und höflich nach der Uni email Adresse. Beantworte keine anderen Fragen "
-        "und wechsle nicht das Thema."
+        AGENT_PROMPT + "\n\n" +
+        "Dir fehlt noch die Uni-E-Mail-Adresse des Users. Frage danach."
     ))
 
     full_messages = [system_prompt] + state["messages"]
@@ -264,8 +261,8 @@ def ask_for_matrikelnummer(state: ChatbotState):
     """
     log_node_entry("ask_for_matrikelnummer", state)
     system_prompt = SystemMessage(content=(
-        "Du bist ein IT-Support-Bot. Dir fehlt noch die 7-stellige Matrikelnummer des Users. "
-        "Frage kurz und höflich nach der Matrikelnummer. Beantworte keine anderen Fragen."
+        AGENT_PROMPT + "\n\n" +
+        "Dir fehlt noch die 7-stellige Matrikelnummer des Users. Frage danach."
     ))
 
     full_messages = [system_prompt] + state["messages"]
@@ -283,16 +280,9 @@ def ask_for_issue(state: ChatbotState):
     log_node_entry("ask_for_issue", state)
     attempts = state.get("ask_issue_attempts", 0) + 1
     system_prompt = SystemMessage(content=(
-        "Du bist ein IT-Support-Bot des Zentrums für Information und Medientechnik (ZIM) an einer Universität. "
-        "Du unterstützt ausschließlich bei Problemen mit universitären IT-Diensten "
-        "(z. B. WLAN, VPN, E-Mail, Moodle, Benutzerkonto, Drucker oder bereitgestellter Software). "
-
-        "Falls der Nutzer ein anderes Anliegen beschreibt, das nichts mit den "
-        "IT-Diensten des ZIM zu tun hat, gebe keine fachliche Beratung dazu."
-        
-        "Weise stattdessen freundlich darauf hin, "
-        "dass du nur bei ZIM-bezogenen IT-Anliegen helfen kannst, und bitte den "
-        "Nutzer, sein entsprechendes IT-Problem zu schildern."
+        AGENT_PROMPT + "\n\n" +
+        "Der Nutzer hat noch kein konkretes IT-Anliegen beschrieben. "
+        "Bitte ihn, sein IT-Problem zu schildern."
     ))
 
     full_messages = [system_prompt] + state["messages"]
@@ -342,9 +332,9 @@ def ask_for_additional_info(state: ChatbotState):
 
 
     system_prompt = SystemMessage(content=(
+        AGENT_PROMPT + "\n\n" +
         f"""
-        Du bist ein technischer Dispatcher im IT-Support einer Universität.
-        Dein Ziel ist es zu prüfen, ob die vorliegenden Informationen für das genannte Problem ausreichen, 
+        Dein Ziel ist es zu prüfen, ob die vorliegenden Informationen für das genannte Problem ausreichen,
         um ein vollständiges Ticket zu erstellen.
 
         AKTUELLES PROBLEM: {problem}
@@ -458,8 +448,8 @@ def give_solutions(state: ChatbotState):
     infos = state.get("additional_info", [])
 
     system_prompt = SystemMessage(content=(
+        AGENT_PROMPT + "\n\n" +
         f"""
-            Du bist ein technischer Dispatcher im IT-Support einer Universität.
             Deine Aufgabe ist es, basierend auf dem aktuellen Problem und den bereits bekannten Zusatzinfos
             Lösungen wiederzugeben.
 
