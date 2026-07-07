@@ -3,12 +3,12 @@ import json
 from sentence_transformers import SentenceTransformer
 
 """
-This script writes the old ticket entries from a json file into the rag database.
+This script writes the FAQ entries from a json file into the rag database.
 Usage: python3 rag_store_faq.py
 """
 
 # --- Setup ---
-faq_embedder  = SentenceTransformer("msmarco-distilbert-base-dot-prod-v3")
+faq_embedder = SentenceTransformer("intfloat/multilingual-e5-large")
 
 chroma_client = chromadb.PersistentClient(path="./faq_db")
 
@@ -21,7 +21,9 @@ except Exception as e:
 
 faq_collection = chroma_client.create_collection(
     "faq_entries",
-    metadata={"hnsw:space": "cosine"}
+    metadata={
+        "hnsw:space":           "cosine",
+    }
 )
 print("[INFO] Created new faq_entries collection with cosine metric.")
 
@@ -43,7 +45,10 @@ def flatten_faq_entry(faq_entry: dict) -> str:
 
 
 def store_faq_entry(faq_id: str, faq_text: str):
-    embedding = faq_embedder.encode(faq_text).tolist()
+    embedding = faq_embedder.encode(
+        "passage: " + faq_text,
+        normalize_embeddings=True
+    ).tolist()
     faq_collection.add(
         ids=[faq_id],
         embeddings=[embedding],

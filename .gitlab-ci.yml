@@ -1,40 +1,167 @@
 image: python:3.11
 
 stages:
-  - test_prompt_security
-  - test_chat_endpoint_connectivity
+  - prepare_downloads_for_tests
+  - before_deepeval
+  - deepeval
 
-run_test_prompt_security:
-  stage: test_prompt_security
-  tags:
-    - dind
-    - ude-sse
-  # Use a specific Python image for a predictable runtime
-  image: python:3.11
-  before_script:
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  VENV_DIR: "$CI_PROJECT_DIR/venv"
+  HF_HOME: "$CI_PROJECT_DIR/.cache/huggingface"
+
+download_python_dependencies:
+  stage:
+    prepare_downloads_for_tests
+  script:
     - python --version
     - pip install --upgrade pip
-    # Install backend requirements if the file exists;
+    - python -m venv $VENV_DIR
+    - source $VENV_DIR/bin/activate
     - if [ -f tests/requirements.txt ]; then pip install -r tests/requirements.txt; fi
-  script:
-    - pytest ./tests/test_prompt_security_result.py -v
-
-run_test_chat_endpoint_connectivity:
-  stage: test_chat_endpoint_connectivity
+  cache:
+    - key: ${CI_COMMIT_REF_SLUG}
+      paths:
+        - $PIP_CACHE_DIR
+        - $VENV_DIR/lib/python*/site-packages/
+      policy: push
+  # Redownload for the python dependency cache only if the requirements.txt file was changed
+  rules:
+    - changes:
+        paths:
+          - tests/requirements.txt
   tags:
     - dind
     - ude-sse
-  image: python:3.11
-  before_script:
+
+download_hugging_face_models:
+  stage:
+    prepare_downloads_for_tests
+  script:
+    - python --version
+    - pip install --upgrade pip
+    - python -m venv $VENV_DIR
+    - source $VENV_DIR/bin/activate
+    - if [ -f tests/requirements.txt ]; then pip install -r tests/requirements.txt; fi
+    - python ./backend/prompt_security/prompt_check_model_setup.py
+  cache:
+    - key: ${CI_COMMIT_REF_SLUG}
+      paths:
+        - $PIP_CACHE_DIR
+        - $VENV_DIR/lib/python*/site-packages/
+      policy: pull
+    - key: hf-models
+      paths:
+        - $HF_HOME
+      policy: push
+  # Redownload the Hugging Face models for the prompt security check only if the
+  # prompt check model setup file is changed, e. g. to choose a different model
+  rules:
+    - changes:
+        paths:
+          - backend/prompt_security/prompt_check_model_setup.py
+  tags:
+    - dind
+    - ude-sse
+
+run_test_prompt_security:
+  stage: before_deepeval
+  cache:
+    - key: ${CI_COMMIT_REF_SLUG}
+      paths:
+        - $PIP_CACHE_DIR
+        - $VENV_DIR/lib/python*/site-packages/
+      policy: pull
+    - key: hf-models
+      paths:
+        - $HF_HOME
+      policy: pull
+  tags:
+    - dind
+    - ude-sse
+  script:
+    - export HF_HOME=$HF_HOME
+    - python --version
+    - pip install --upgrade pip
+    - python -m venv $VENV_DIR
+    - source $VENV_DIR/bin/activate
+    - if [ -f tests/requirements.txt ]; then pip install -r tests/requirements.txt; fi
+    - pytest ./tests/test_prompt_security_result.py -v -s
+
+
+run_test_chat_endpoint_connectivity:
+  stage: before_deepeval
+  tags:
+    - dind
+    - ude-sse
+  # Caching the Python dependencies per branch, or otherwise
+  # adding dependencies in one branch that cause a conflict
+  # would cause conflicts in all other branches
+  cache:
+    - key: ${CI_COMMIT_REF_SLUG}
+      paths:
+        - $PIP_CACHE_DIR
+        - $VENV_DIR/lib/python*/site-packages/
+      policy: pull
+    - key: hf-models
+      paths:
+        - .cache/huggingface/
+      policy: pull
+  script:
+    - python --version
+    - pip install --upgrade pip
+    - python -m venv $VENV_DIR
+    - source $VENV_DIR/bin/activate
+    - if [ -f tests/requirements.txt ]; then pip install -r tests/requirements.txt; fi
     - echo "LANGSMITH_TRACING=true" >> .env
     - echo "LANGSMITH_API_KEY=$LANGSMITH_API_KEY" >> .env
     - echo "LANGSMITH_ENDPOINT=https://eu.api.smith.langchain.com" >> .env
     - echo "SAIA_API_KEY=$SAIA_API_KEY" >> .env
     - echo "USE_SAIA_API=true" >> .env
     - echo "ZAMMAD_SERVER_ADDRESS=$ZAMMAD_SERVER_ADDRESS" >> .env
+    - pytest ./tests/test_chat_endpoint_connectivity.py -v -s
+
+run_deepeval_tests:
+  stage: deepeval
+  # Merge request pipeline
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      # Making this manual to give the option to run this only once in an MR
+      # or not at all in MRs that do not affect the LLM generation
+      # rather than on every push from the point onwards an MR was created
+      # To give the option, this job shall not block pipelines.
+      when: manual
+      allow_failure: true
+  tags:
+    - dind
+    - ude-sse
+  artifacts:
+    paths:
+      - tests/benchmark_results.json
+  # Caching the Python dependencies per branch, or otherwise
+  # adding dependencies in one branch that cause a conflict
+  # would cause conflicts in all other branches
+  cache:
+    - key: ${CI_COMMIT_REF_SLUG}
+      paths:
+        - $PIP_CACHE_DIR
+        - $VENV_DIR/lib/python*/site-packages/
+      policy: pull
+    - key: hf-models
+      paths:
+        - .cache/huggingface/
+      policy: pull
+  script:
     - python --version
     - pip install --upgrade pip
-    # Install backend requirements if the file exists;
+    - python -m venv $VENV_DIR
+    - source $VENV_DIR/bin/activate
     - if [ -f tests/requirements.txt ]; then pip install -r tests/requirements.txt; fi
-  script:
-    - pytest ./tests/test_chat_endpoint_connectivity.py -v
+    - echo "LANGSMITH_TRACING_V2=true" >> .env
+    - echo "LANGSMITH_API_KEY=$LANGSMITH_API_KEY" >> .env
+    - echo "LANGSMITH_ENDPOINT=https://eu.api.smith.langchain.com" >> .env
+    - echo "LANGCHAIN_PROJECT=ai-ticket-benchmark" >> .env
+    - echo "SAIA_API_KEY=$SAIA_API_KEY" >> .env
+    - echo "USE_SAIA_API=true" >> .env
+    - echo "ZAMMAD_SERVER_ADDRESS=$ZAMMAD_SERVER_ADDRESS" >> .env
+    - PYTHONPATH=. pytest tests/test_llm_benchmark.py -v -s
