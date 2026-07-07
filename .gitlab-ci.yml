@@ -64,6 +64,31 @@ download_hugging_face_models:
     - dind
     - ude-sse
 
+run_test_ticket_escalation:
+  stage: before_deepeval
+  cache:
+    - key: ${CI_COMMIT_REF_SLUG}
+      paths:
+        - $PIP_CACHE_DIR
+        - $VENV_DIR/lib/python*/site-packages/
+      policy: pull
+    - key: hf-models
+      paths:
+        - $HF_HOME
+      policy: pull
+
+  tags:
+    - dind
+    - ude-sse
+  script:
+    - export HF_HOME=$HF_HOME
+    - python --version
+    - pip install --upgrade pip
+    - python -m venv $VENV_DIR
+    - source $VENV_DIR/bin/activate
+    - if [ -f tests/requirements.txt ]; then pip install -r tests/requirements.txt; fi
+    - pytest ./backend/tests/test_incident_escalation.py -s -v
+
 run_test_prompt_security:
   stage: before_deepeval
   cache:
