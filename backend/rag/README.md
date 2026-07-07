@@ -14,7 +14,7 @@ We use two separate ChromaDB collections, each with its own embedding model chos
 |---|---|---|
 | FAQ | `faq_db` | `faq_entries` |
 | Tickets | `ticket_db` | `tickets` |
-
+| Recent Incidents | `recent_incidents_db` | `recent_incidents` |
 ---
 
 ## Models & Design Choices
@@ -55,6 +55,9 @@ The bi-encoder alone produces compressed scores (e.g. 0.81–0.83 for all result
 
 ---
 
+### Recent Incidents — `deutsche-telekom/gbert-large-paraphrase-cosine`
+- Same model as the ticket embedder since this database is a subset of the database of all tickets
+
 ## Thresholds & Tiered FAQ Selection
 
 ### FAQ — Tiered selection logic
@@ -77,6 +80,22 @@ TICKET_SIMILARITY_THRESHOLD = 0.35
 Only tickets above this threshold are returned.
 
 ---
+
+### Recent Incidents
+Default similarity threshold is 0.55 against which the similarity check while finding recent incidents matching to the topic of the incoming ticket is filtering. Additionally, it is checked for tickets that are more recent than the recency time threshold (default is 8 hours) and also only similar open tickets are returned.
+
+A problem is only created if a specified amount of similar incident tickets (default is 5) that are
+* Not closed
+* More recent than the recency threshold
+* More similar than the similarity threshold
+could be found in the recent incidents database.
+
+The thresholds can be altered by supplying the following environment variables in the .env file (also cf. the example.env file) before building the project with Docker:
+```
+INCIDENT_ESCALATION_MIN_COUNT=5
+INCIDENT_RECENCY_WINDOW_HOURS=8
+INCIDENT_SIMILARITY_THRESHOLD=0.55
+```
 
 ## Function Call
 
