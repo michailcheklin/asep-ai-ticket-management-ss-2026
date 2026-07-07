@@ -11,6 +11,12 @@ load_dotenv()
 
 
 def _get_int(name: str, default: int) -> int:
+    """
+    Konvertiert eine Umgebungsvariable in eine Zahl als Python-int
+    :param name: Die Umgebungsvariable
+    :param default: Der Default-Wert
+    :return: Die Zahl als int
+    """
     try:
         return int(os.getenv(name, str(default)))
     except (TypeError, ValueError):
@@ -18,6 +24,12 @@ def _get_int(name: str, default: int) -> int:
 
 
 def _get_float(name: str, default: float) -> float:
+    """
+    Konvertiert eine Umgebungsvariable in eine Zahl als Python-float
+    :param name: Die Umgebungsvariable
+    :param default: Der Default-Wert
+    :return: Die Zahl als float
+    """
     try:
         return float(os.getenv(name, str(default)))
     except (TypeError, ValueError):
