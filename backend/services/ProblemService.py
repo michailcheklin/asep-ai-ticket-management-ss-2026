@@ -26,6 +26,12 @@ from ..api.zammad import (
 
 
 def _problem_tag(problem_id: int) -> str:
+    """
+    Wandelt eine Problem ID in den String mit dem Format "problem:<problem_id>" um. Dies ist,
+    um in Zammad einen Tag nutzen zu können, der die Problem-ID enthält
+    :param problem_id: Die Problem-ID
+    :return: Ein mit "problem:" präfixierter String der Problem ID
+    """
     return f"problem:{problem_id}"
 
 
@@ -152,11 +158,23 @@ class ProblemService:
             return "Gehäufte ähnliche Incidents"
 
     def _ticket_link(self, ticket_id: int) -> str:
+        """
+        Bildet den internen Ticket-Link in Zammad anhand der Ticket-ID. Dies ist für die
+        Eintragung der Links in einem Problem-Ticket.
+        :param ticket_id: Die Ticket-ID, aus der der Link erstellt werden soll
+        :return: Der Ticket-Link in Zammad, der zum Ticket mit der angegebenen Ticket-ID führt
+        """
         if ZAMMAD_PUBLIC_URL:
             return f"{ZAMMAD_PUBLIC_URL}/#ticket/zoom/{ticket_id}"
         return f"Ticket #{ticket_id}"
 
     def _build_problem_body(self, incident_ids: list[int], topic: str) -> str:
+        """
+        Bildet den Ticket-Body für das vom System erstellte Problem-Ticket in Zammad
+        :param incident_ids: Die Ticket-IDs der Incidents
+        :param topic: Das Thema des Problems
+        :return:
+        """
         links = "\n".join(f"- {self._ticket_link(tid)}" for tid in incident_ids)
         return (
             "Automatisch erstelltes Problem-Ticket.\n\n"
