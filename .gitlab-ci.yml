@@ -119,6 +119,7 @@ run_test_chat_endpoint_connectivity:
     - echo "SAIA_API_KEY=$SAIA_API_KEY" >> .env
     - echo "USE_SAIA_API=true" >> .env
     - echo "ZAMMAD_SERVER_ADDRESS=$ZAMMAD_SERVER_ADDRESS" >> .env
+    - echo "AGENT=ZIM" >> .env
     - pytest ./tests/test_chat_endpoint_connectivity.py -v -s
 
 run_deepeval_tests:
