@@ -533,7 +533,7 @@ def ask_for_additional_info(state: ChatbotState):
 
 
     # Logic switch if all information needed is collected or not
-    if len(infos) >= 1 or decision.needs_additional_info or attempts >= 3:
+    if len(infos) >= 2 or decision.needs_additional_info or attempts >= 3:
         return {"needs_additional_info": True}
     else:
         llm_msg = f"Ich habe für dich gerade ein Support-Ticket erstellt. Um dich optimal zu unterstützen, beantworte  bitte folgende Fragen:\n{decision.follow_up_question}"
