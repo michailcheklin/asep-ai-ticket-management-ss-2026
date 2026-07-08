@@ -308,7 +308,7 @@ def ask_for_additional_info(state: ChatbotState):
     :return: A dictionary containing the newly extracted fields to update the state.
     """
     log_node_entry("ask_for_additional_info", state)
-    problem = state.get("issue_description", "")
+    issue = state.get("issue_description", "")
     infos = state.get("additional_info", [])
     attempts = state.get("additional_info_attempts", 0)
 
@@ -317,8 +317,8 @@ def ask_for_additional_info(state: ChatbotState):
     aditionalInfo_llm = llm.with_structured_output(AdditionalInfoDecision)
 
 
-    search_query = problem
-    rag_results = retrieve_relevant_entries(search_query, n_results=2)
+    query = f"{issue} + {infos}"
+    rag_results = retrieve_relevant_entries(query, n_results=2)
 
     faq_matches = rag_results.get("faq_matches", [])
     ticket_matches = rag_results.get("ticket_matches", [])
@@ -336,30 +336,42 @@ def ask_for_additional_info(state: ChatbotState):
         f"""
         Dein Ziel ist es zu prüfen, ob die vorliegenden Informationen für das genannte Problem ausreichen,
         um ein vollständiges Ticket zu erstellen.
-
-        AKTUELLES PROBLEM: {problem}
+        
+        AKTUELLES PROBLEM: {issue}
         BEREITS BEKANNTE ZUSATZINFOS: {infos}
-
+        
         WISSENSDATENBANK (Historische Tickets & FAQs für dieses Problem):
         FAQs:
         {faq_context}
-
+        
         Alte Tickets:
         {ticket_context}
-
+        
         REGELN:
-        1. Lies die Einträge in der WISSENSDATENBANK. Fehlen in unserem "AKTUELLEN PROBLEM" Details, 
-           die in den alten Tickets oder FAQs zur Lösung zwingend notwendig waren?
-        2. Wenn alles Wichtige da ist, ODER wenn die WISSENSDATENBANK keine relevanten Inhalte für eine Nachfrage liefert, 
-           setze needs_additional_info auf True und setze follow_up_question auf den leeren String. 
-        3. Wenn wichtige Details fehlen, setze needs_additional_info auf False und formuliere 
-           wenige, direkt-relevante, kurze, follow-up-question(s) an den User basierend auf dem RAG-Kontext.
+        1. Lies die Einträge in der WISSENSDATENBANK und prüfe zwei Dinge:
+           a) Fehlen im "AKTUELLEN PROBLEM" Details, die in den alten Tickets oder FAQs zur Lösung 
+              zwingend notwendig waren?
+           b) Gibt es in der WISSENSDATENBANK mehrere unterschiedliche Einträge (FAQs oder Tickets), die 
+              auf das AKTUELLE PROBLEM ähnlich gut passen könnten, aber zu unterschiedlichen Lösungen oder 
+              Ursachen führen? Falls ja, identifiziere das unterscheidende Merkmal zwischen diesen Einträgen 
+              (z.B. Betriebssystem, Standort, Nutzergruppe, Fehlerzeitpunkt) – dieses Merkmal zählt ebenfalls 
+              als "fehlende Information", auch wenn das AKTUELLE PROBLEM auf den ersten Blick vollständig wirkt.
+        2. Wenn weder (a) noch (b) zutrifft, ODER wenn die WISSENSDATENBANK keine relevanten Inhalte für 
+           eine Nachfrage liefert, setze needs_additional_info auf True und follow_up_question auf den 
+           leeren String.
+        3. Wenn (a) und/oder (b) zutrifft, setze needs_additional_info auf False und formuliere wenige, 
+           direkt-relevante, kurze follow-up-question(s) an den User. Bei (b) soll die Frage explizit darauf 
+           abzielen, zwischen den überschneidenden Kontexten zu unterscheiden (z.B. "Welches Betriebssystem 
+           nutzt du?" wenn sich zwei Tickets nur darin unterscheiden).
         4. Gib die Fragen als Bullet-Liste zurück. Es muss dieses genaues Syntax befolgen:
            Multiple-Choice-Fragen müssen das Format verwenden:
            "* [Frage]? (options: [A], [B], [C])"
            Offene Fragen dürfen ohne Optionen geschrieben werden:
            "* [Frage]?"
-        5. Stelle die Fragen soweit wie möglich immer als Multiple-Choice mit dem gezeigten Format, wo du nur die Felder in [] ändern darsf.
+        5. Stelle die Fragen soweit wie möglich immer als Multiple-Choice mit dem gezeigten Format, wobei 
+           die Optionen bei Disambiguierungs-Fragen (aus Punkt 1b) exakt den unterscheidenden Merkmalen der 
+           jeweiligen Wissensdatenbank-Einträge entsprechen sollen (z.B. "Windows 8.1", "Windows 10/11" statt 
+           generischer Platzhalter).
         6. Begrenze dich auf maximal 5 Optionen, wobei "Andere" IMMER eine Option sein muss.
         """
     ))
@@ -378,7 +390,7 @@ def ask_for_additional_info(state: ChatbotState):
 
 
     # Logic switch if all information needed is collected or not
-    if len(infos) >= 1 or decision.needs_additional_info or attempts >= 3:
+    if len(infos) >= 2 or decision.needs_additional_info or attempts >= 3:
         return {"needs_additional_info": True}
     else:
         llm_msg = f"Ich habe für Sie gerade ein Support-Ticket erstellt. Um Sie optimal zu unterstützen, beantworten Sie bitte folgende Fragen:\n{decision.follow_up_question}"
@@ -417,7 +429,7 @@ def give_solutions(state: ChatbotState):
     issue = (state.get("issue_description") or "").strip()
     additional = " ".join(state.get("additional_info", [])) if state.get("additional_info") else ""
 
-    query = issue
+    query = f"{issue} + {additional}"
 
     if not query:
         return {"messages": [AIMessage(content="Keine ausreichende Anfrage für die Suche.")], "solutions": []}
@@ -450,19 +462,34 @@ def give_solutions(state: ChatbotState):
     system_prompt = SystemMessage(content=(
         AGENT_PROMPT + "\n\n" +
         f"""
-            Deine Aufgabe ist es, basierend auf dem aktuellen Problem und den bereits bekannten Zusatzinfos
-            Lösungen wiederzugeben.
-
+            Deine Aufgabe ist es, basierend auf dem 
+            aktuellen Problem und den bereits bekannten Zusatzinfos eine konkrete, direkt umsetzbare Lösung zu geben.
+            
             AKTUELLES PROBLEM: {problem}
             BEREITS BEKANNTE ZUSATZINFOS: {infos}
-            LÖSUNGEN: {solutions}
-
+            LÖSUNGEN (RAG-Kontext): {solutions}
+            
             REGELN:
-            1. Gebe die Regeln nicht wörtlich aus, sondern formuliere sie in eine verständliche Antwort um, die die Lösungen in einen Kontext zum Problem setzt.
-            2. Wenn Lösungen vorhanden sind, fasse sie kurz zusammen und erkläre, wie sie dem User helfen können.
-            3. Vermeide es, die Lösungen einfach nur zu wiederholen, sondern biete eine Interpretation oder Empfehlung an.
-            4. Versuche dich am besten auf maximal 3 Sätze zu beschränken.
-            5. Gib immer ein Link, wenn das den Nutzer helfen könnte.
+            1. Antworte in einem einzigen zusammenhängenden Fließtext, NICHT als Liste, Aufzählung oder mit 
+               Zwischenüberschriften. Keine Formatierung wie "Lösung 1:", "Option A:" o.ä.
+            2. Formuliere die Lösung so, als würdest du dem Nutzer direkt sagen, was er jetzt tun soll – nicht 
+               "es gibt folgende Lösungsansätze", sondern konkret "Deaktiviere X, dann..." bzw. "Das Problem liegt 
+               an Y, daher solltest du Z tun".
+            3. Wenn mehrere Lösungen im Kontext vorhanden sind, wähle die für das geschilderte Problem 
+               wahrscheinlichste aus und nenne sie zuerst und am ausführlichsten. Erwähne eine zweite Option nur, 
+               wenn sie wirklich eine sinnvolle Alternative ist – nicht als bloße Aufzählung, sondern als kurzer 
+               Nachsatz ("Falls das nicht funktioniert, ...").
+            4. Gib die Lösungen nie wörtlich aus dem Kontext wieder. Interpretiere sie und setze sie in Bezug zum 
+               konkreten Problem des Nutzers.
+            5. Maximal 3-4 Sätze insgesamt. Keine Begrüßungsfloskeln, keine Zusammenfassung am Ende, keine 
+               Abschlussfrage wie "Konnte ich helfen?".
+            6. Die Lösung muss aus sich selbst heraus vollständig verständlich sein. Der Nutzer soll keinen Link 
+               öffnen müssen, um zu verstehen, was er tun soll. Nenne alle relevanten Schritte/Infos direkt im Text. 
+               Ein Link darf höchstens ergänzend am Ende erwähnt werden, z. B. als "Mehr dazu: [Link]" – aber nur, 
+               wenn er wirklich zusätzlichen Mehrwert bietet (z. B. eine Bebilderung, ein Formular zum Ausfüllen, 
+               eine Kontaktseite), nicht als Verweis auf Informationen, die eigentlich schon Teil der Antwort sein sollten.
+            7. Wenn im Kontext keine passende Lösung vorhanden ist, sage das ehrlich und kurz, anstatt vage zu 
+               bleiben oder den Nutzer zur eigenen Recherche zu schicken.
             """
     ))
     message_text = llm.invoke([system_prompt, HumanMessage(content="Bitte fasse die Lösungen für den User zusammen.")])
