@@ -153,9 +153,19 @@ The test always passes (it is a benchmarking script, not a pass/fail test). Resu
 - Weakness: Returns unexpected JSON structures for some extraction steps (`needs_additional_info` field sometimes missing or misformatted), which caused parsing errors. Model quality is noticeably lower than the 70B models.
 
 **Additional notes:**
+* The LLM Model Benchmark is only available if for the feature branch a merge request already exists. Additionally, the benchmark is optional (i.e. it does not contribute to the pass/fail of the entire pipeline) and has to be activated manually. For more info about manual and optional CI tests, refer to https://docs.gitlab.com/ci/jobs/job_control/#create-a-job-that-must-be-run-manually in the Gitlab documentation.
+This change was done to give the option to do these tests only when our application's LLM generation was changed substantially and there only once, which conserves API credits. To start the test in the CI, do these steps:
+  1. Go to Gitlab
+  2. Click Build > Pipelines
+  3. Find the most recent pipeline that is tagged with "Merge Request" and the corresponding merge request number
+  4. Click on the "Play" button
+
 * All models are accessed via the GWDG/SAIA API (`https://chat-ai.academiccloud.de/v1/`) which is OpenAI-compatible. The `demand` field in the API response indicates current server load (0 = free, higher = busy).
 * The judge model is **Gemma-4-31B** (`gemma-4-31b-it`). It was chosen to avoid server overload — using the same model as both chatbot and judge simultaneously caused `RetryError` for Apertus.
 * DeepSeek's `<think>...</think>` reasoning tags are stripped automatically by the `ThinkStripChatOpenAI` wrapper class before responses are parsed.
 * Some models (especially Gemma and Llama) require up to 3 conversation turns before offering a solution. Scenarios therefore consist of 3 messages so that conservative models have enough turns to complete the conversation.
 * Rate limits (`429`) occur after many API calls in one session. Wait for the rate limit to reset before re-running the benchmark.
 * The benchmark must be run from the **project root** (not from the `tests/` folder): `PYTHONPATH=. pytest tests/test_llm_benchmark.py -v -s`
+* * In the CI/CD pipeline, view the console output to view the results after the test has finished.
+* If the test hangs for a long time, it is most likely due to server overload on SAIA's side
+* To add more models, add entries into the `MODEL_CONFIGS` dictionary in `test_llm_benchmark.py` in the following format: `"model_name_that_appears_on_console:":"saia_internal_model_name"`, e. g. `"llama-3.1-8b": "meta-llama-3.1-8b-instruct",`.

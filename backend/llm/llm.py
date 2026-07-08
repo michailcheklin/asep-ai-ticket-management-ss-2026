@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
 from pydantic import SecretStr
@@ -34,5 +35,15 @@ else:
 
 structured_llm = llm.with_structured_output(ExtractedTicketData)
 category_llm = llm.with_structured_output(TicketCategoryDecision)
+
+AGENT = os.getenv("AGENT", "")
+if not AGENT:
+    raise Exception("AGENT not set. Aborting...")
+
+_agent_path = Path(__file__).parent / "AGENTS" / f"{AGENT}.md"
+if not _agent_path.exists():
+    raise FileNotFoundError(f"Agent-Datei nicht gefunden: {_agent_path}")
+
+AGENT_PROMPT = _agent_path.read_text(encoding="utf-8").strip()
 
 

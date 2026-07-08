@@ -29,11 +29,16 @@ This folder contains the LangGraph workflow used to orchestrate extraction, clar
 - Nodes are small functions or classes that accept a `State` and return an updated `State` (or raise a controlled error). This design improves testability and makes the workflow easy to extend.
 - The orchestrator wires nodes together and manages retry/loop logic (e.g. asking for missing information up to N times).
 
+## Agent behavior across nodes
+- Behavior that should apply regardless of which node is active (bot identity, topical scope, off-topic handling, truthfulness, tone/conciseness) is centralized in `../llm/AGENTS/<name>.md`, selected via the `AGENT` environment variable and loaded once as `AGENT_PROMPT` by `../llm/llm.py` (see `../llm/README.md`).
+- Nodes that build a system prompt import `AGENT_PROMPT` and prepend it (`AGENT_PROMPT + "\n\n" + <node-specific prompt>`). Keep the node-specific prompt limited to what's actually unique to that node's task — don't re-state identity, scope, or tone rules that already live in the agent file.
+
 ## Extending the graph
 1. Add small, focused node functions in `nodes.py` or a new module.
 2. Add any required typed models to `graph/models`.
 3. Update `orchestrator.py` to include the new node in the appropriate place in the workflow.
-4. Write unit tests that validate the node behaviour on edge cases.
+4. If the node builds its own system prompt, prepend `AGENT_PROMPT` per "Agent behavior across nodes" above.
+5. Write unit tests that validate the node behaviour on edge cases.
 
 ## Runtime
 - The API layer (`api/ZIM.py`) calls into `graph.orchestrator` with a `State` constructed from the incoming request. The graph returns the final state which is then serialized and returned to the client.

@@ -6,7 +6,9 @@ from ..api.zammad import (
     add_tag_to_ticket,
     add_article_to_ticket,
     replace_tag_for_ticket,
-    mark_ticket_as_closed
+    mark_ticket_as_closed,
+    update_ticket_kategorie,
+    resolve_zammad_kategorie,
 )
 from ..llm.llm import llm
 
@@ -77,7 +79,8 @@ class TicketService:
                 title=title,
                 body=body,
                 priority=state["priority"],
-                internal=internal
+                internal=internal,
+                kategorie=state.get("category"),
             )
             success = self._success_message(title, state)
             success["ticket_id"] = ticket_id
@@ -100,6 +103,7 @@ class TicketService:
         full_body = f"Das Gespräch mit dem Chatbot wurde abgeschlossen. Folgende Informationen wurden erfasst:\n\n{body}"
         
         try:
+            update_ticket_kategorie(ticket_id, state.get("category"))
             self.append_message_to_ticket(
                 ticket_id=ticket_id,
                 body=full_body,
@@ -132,6 +136,7 @@ class TicketService:
 
         try:
             if ticket_id:
+                update_ticket_kategorie(ticket_id, state.get("category"))
                 self.append_message_to_ticket(
                     ticket_id=ticket_id,
                     body="[ZIM AI-AGENT] Der Nutzer hat das Problem als durch den KI-Chatbot gelöst markiert. Das Ticket wird daher geschlossen.",
@@ -209,7 +214,7 @@ class TicketService:
             f"Matrikelnummer: {state['matrikelnummer']}\n"
             f"E-Mail: {state['user_email']}\n\n"
             f"Priorität: {'urgent' if state.get('priority') == 1 else 'normal'}\n"
-            f"Kategorie: {state.get('category', 'Service Request')}\n"
+            f"Kategorie: {resolve_zammad_kategorie(state.get('category')) or state.get('category', 'Service Request')}\n"
             f"Problem:\n{state['issue_description']}\n\n"
             f"Zusatzinfos:\n{self._format_additional_info(state.get('additional_info', []))}"
             f"{self._chat_history_and_solutions_section(state)}"
@@ -229,7 +234,7 @@ class TicketService:
             f"Matrikelnummer: {state['matrikelnummer']}\n"
             f"E-Mail: {state['user_email']}\n\n"
             f"Priorität: {'urgent' if state.get('priority') == 1 else 'normal'}\n"
-            f"Kategorie: {state.get('category', 'Service Request')}\n"
+            f"Kategorie: {resolve_zammad_kategorie(state.get('category')) or state.get('category', 'Service Request')}\n"
             f"Problem:\n{state['issue_description']}\n\n"
             f"Zusatzinfos:\n{self._format_additional_info(state.get('additional_info', []))}"
             f"\n\nStatus: Durch KI gelöst"
