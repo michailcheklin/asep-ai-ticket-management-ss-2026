@@ -10,8 +10,6 @@ from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from .state import ChatbotState
 from backend.rag.retrieve_info import retrieve_relevant_entries
 from ..services.TicketService import TicketService
-from ..llm.llm import llm, structured_llm
-from ..llm.prompts import BOT_PERSONA
 from ..llm.llm import llm, structured_llm, AGENT_PROMPT
 from .node_logging import log_node_entry
 from ..api.zammad import create_ticket_by_user_email, add_tag_to_ticket
@@ -211,7 +209,7 @@ def ask_intent(state: ChatbotState):
     """Fragt nach, ob der Nutzer eine Anleitung moechte oder Support braucht."""
     log_node_entry("ask_intent", state)
     system_prompt = SystemMessage(content=(
-          BOT_PERSONA + "\n\n"
+          AGENT_PROMPT + "\n\n"
         "Die Absicht des Nutzers ist noch unklar. Frage kurz und freundlich, ob er eine Schritt-fuer-Schritt-"
         "Anleitung zum Selbermachen moechte oder ob der Support sich um sein Anliegen "
         "kuemmern soll. Beantworte keine anderen Fragen und wechsle nicht das Thema."
@@ -233,7 +231,7 @@ def give_tutorial(state: ChatbotState):
     ticket_context = "\n".join(f"- {m['text']}" for m in rag_results.get("ticket_matches", []))
 
 
-    system_prompt = SystemMessage(content=BOT_PERSONA + f"""
+    system_prompt = SystemMessage(content=AGENT_PROMPT + "\n\n" + f"""
 
     Der Nutzer moechte eine Anleitung, um sein Anliegen SELBST zu loesen.
 
@@ -272,7 +270,7 @@ def finish_tutorial(state: ChatbotState):
     result = ticket_service.create_closed_tutorial_ticket(state)
 
     system_prompt = SystemMessage(content=(
-        BOT_PERSONA + "\n\n"
+        AGENT_PROMPT + "\n\n"
         "Der Nutzer hat gerade bestaetigt, dass deine Anleitung sein Anliegen "
         "geloest hat. Verabschiede dich kurz, freundlich und natuerlich, mit Bezug "
         "auf sein konkretes Anliegen. Maximal 2 Saetze. Erwaehne, dass er sich "
