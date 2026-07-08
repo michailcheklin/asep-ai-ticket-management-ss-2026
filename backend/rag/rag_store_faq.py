@@ -28,19 +28,34 @@ faq_collection = chroma_client.create_collection(
 print("[INFO] Created new faq_entries collection with cosine metric.")
 
 
+def flatten_solution(solution: list) -> str:
+    """Convert the new solution schema (list with one faq_content/extracted_urls tuple)
+    into a single string, appending crawled content of any successfully fetched urls."""
+    if not solution:
+        return ""
+
+    tuple_ = solution[0]
+    parts = [tuple_.get("faq_content", "")]
+
+    for url_entry in tuple_.get("extracted_urls", []):
+        if url_entry.get("status") == "success" and url_entry.get("content"):
+            parts.append(f"[{url_entry['url']}]: {url_entry['content']}")
+
+    return "\n".join(part for part in parts if part)
+
+
 def flatten_faq_entry(faq_entry: dict) -> str:
     """Convert a JSON formatted FAQ entry to a single string"""
     parts = []
-    if faq_entry.get("context"):
-        parts.append(f"context: {faq_entry['context']}")
     if faq_entry.get("problem"):
         parts.append(f"problem: {faq_entry['problem']}")
-    if faq_entry.get("solution"):
-        parts.append(f"solution: {faq_entry['solution']}")
-    if faq_entry.get("last_update"):
-        parts.append(f"last_update: {faq_entry['last_update']}")
-    if faq_entry.get("url"):
-        parts.append(f"url: {faq_entry['url']}")
+
+    solution = faq_entry.get("solution")
+    if solution:
+        faq_content = solution[0].get("faq_content")
+        if faq_content:
+            parts.append(f"faq_content: {faq_content}")
+
     return "\n".join(parts)
 
 
@@ -57,7 +72,7 @@ def store_faq_entry(faq_id: str, faq_text: str):
     print(f"  [STORED] {faq_id}")
 
 
-with open("./faq_extracted.json", "r", encoding="utf-8") as f:
+with open("./faq_extracted_with_crawled_content.json", "r", encoding="utf-8") as f:
     faq_data = json.load(f)
 
 faq_entries = faq_data["faq_entries"]
