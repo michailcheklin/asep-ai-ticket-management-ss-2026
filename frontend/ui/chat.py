@@ -3,6 +3,7 @@ import copy
 import re
 
 import streamlit as st
+from streamlit.components.v1 import html
 
 from frontend.clients.base import ChatClient
 
@@ -30,6 +31,7 @@ INITIAL_STATES = {
     "current_question_idx": 0,
     "question_answers": [],    # answers collected so far in the current round
     "_ready_to_send": None,    # combined message text waiting to be dispatched
+    "scroll_target": None,     # anchor id to scroll to after rerun
 }
 
 WAITING_MESSAGE = '*:color[Bitte warten. Antwort wird generiert...]{foreground="#888888"}*'
@@ -55,7 +57,58 @@ def bot_starting_thinking() -> None:
     st.session_state.bot_thinking = True
 
 
-# ── Validation ───────────────────────────────────────────────────────────────
+# ── Validation & scrolling helpers ───────────────────────────────────────────
+
+
+def _scroll_page_to_bottom(anchor_id: str | None = None) -> None:
+    """
+    Scroll the Streamlit page to a specific anchor or to the bottom.
+
+    Important:
+    components.html/html runs inside an iframe, so we must access
+    window.parent.document instead of document.
+    """
+    anchor_id_js = repr(anchor_id) if anchor_id else "null"
+
+    html(
+        f"""
+        <script>
+        const anchorId = {anchor_id_js};
+
+        function scrollNow() {{
+            const parentWindow = window.parent;
+            const parentDoc = parentWindow.document;
+
+            const anchor = anchorId ? parentDoc.getElementById(anchorId) : null;
+
+            if (anchor && typeof anchor.scrollIntoView === "function") {{
+                anchor.scrollIntoView({{
+                    behavior: "smooth",
+                    block: "center"
+                }});
+                parentWindow.scrollBy({{
+                    top: 120,
+                    left: 0,
+                    behavior: "smooth"
+                }});
+                return;
+            }}
+
+            parentWindow.scrollTo({{
+                top: parentDoc.body.scrollHeight,
+                behavior: "smooth"
+            }});
+        }}
+
+        setTimeout(scrollNow, 50);
+        setTimeout(scrollNow, 200);
+        setTimeout(scrollNow, 500);
+        setTimeout(scrollNow, 900);
+        </script>
+        """,
+        height=0,
+    )
+
 
 def are_form_fields_valid() -> bool:
     is_email_valid = bool(
@@ -83,10 +136,13 @@ def parse_questions_from_message(content: str) -> list[dict]:
     ignored so they remain visible in the rendered markdown.
     """
     questions: list[dict] = []
+    bullet_pattern = re.compile(r"^\s*[\*\-]\s+")
+
     for line in content.splitlines():
-        if not re.match(r"^\* ", line):
+        if not bullet_pattern.match(line):
             continue
-        q_text = line[2:].strip()
+
+        q_text = bullet_pattern.sub("", line).strip()
         options_match = re.search(r"\s*\(options:\s*(.+?)\)\s*$", q_text)
         if options_match:
             options = [o.strip().strip("[]") for o in options_match.group(1).split(",")]
@@ -99,7 +155,7 @@ def parse_questions_from_message(content: str) -> list[dict]:
 
 def contains_nested_bullets(content: str) -> bool:
     """Return True when the message contains indented bullet points."""
-    return any(re.match(r"^\s+\* ", line) for line in content.splitlines())
+    return any(re.match(r"^\s+[\*\-]\s+", line) for line in content.splitlines())
 
 
 def format_answers_as_message(questions: list[dict], answers: list[str]) -> str:
@@ -211,6 +267,8 @@ def apply_response_to_session(user_input: str, res_json: dict) -> None:
         st.session_state.pending_questions = questions
         st.session_state.current_question_idx = 0
         st.session_state.question_answers = []
+        # Nach unten zum Fragen-Widget scrollen
+        st.session_state["scroll_target"] = "question_widget_anchor"
 
 
 def process_user_message(client: ChatClient, user_input: str) -> None:
@@ -247,6 +305,7 @@ def process_solution_feedback(
         message["solutions"] = []
         st.session_state.pending_ticket_confirmation = None
         st.session_state.show_ticket_addendum_form = False
+        st.session_state["scroll_target"] = None
         return "Ich habe dein Feedback notiert und ein Support-Ticket erstellt. Ein Agent wird sich bald um dein Anliegen kümmern."
 
     res_json = client.send_feedback(payload)
@@ -258,6 +317,7 @@ def start_ticket_confirmation(message_index: int) -> None:
     """Enter the summary confirmation step after an unhelpful solution."""
     st.session_state.pending_ticket_confirmation = message_index
     st.session_state.show_ticket_addendum_form = False
+    st.session_state["scroll_target"] = "ticket_confirmation_anchor"
 
 
 # ── Rendering ────────────────────────────────────────────────────────────────
@@ -300,6 +360,11 @@ def render_ticket_confirmation_widget(client: ChatClient) -> None:
         st.info(get_issue_summary())
 
         if st.session_state.show_ticket_addendum_form:
+            st.markdown(
+                '<div id="ticket_addendum_anchor"></div>',
+                unsafe_allow_html=True,
+            )
+
             addendum = st.text_area(
                 "Ergänze hier weitere Informationen zu deinem Anliegen:",
                 key="ticket_addendum_input",
@@ -330,7 +395,14 @@ def render_ticket_confirmation_widget(client: ChatClient) -> None:
             with col2:
                 if st.button("Informationen ergänzen", key="ticket_show_addendum", use_container_width=True):
                     st.session_state.show_ticket_addendum_form = True
+                    st.session_state["scroll_target"] = "ticket_addendum_anchor"
                     st.rerun()
+
+        # Anchor am Ende des Widgets: ermöglicht gezieltes Scrollen beim Auftauchen.
+        st.markdown(
+            '<div id="ticket_confirmation_anchor"></div>',
+            unsafe_allow_html=True,
+        )
 
 
 def render_chat_history(client: ChatClient) -> None:
@@ -341,7 +413,11 @@ def render_chat_history(client: ChatClient) -> None:
             # messages that contain simple top-level question bullets and no
             # indented sub-bullets.
             if parsed and not contains_nested_bullets(message["content"]):
-                non_bullet_lines = [l for l in message["content"].split("\n") if not l.strip().startswith("* ")]
+                non_bullet_lines = [
+                    line
+                    for line in message["content"].split("\n")
+                    if not re.match(r"^\s*[\*\-]\s+", line)
+                ]
                 display_text = "\n".join(non_bullet_lines + [f"* {q['text']}" for q in parsed])
             else:
                 display_text = message["content"]
@@ -374,6 +450,10 @@ def render_question_widget(client: ChatClient) -> None:
     st.progress((idx + 1) / total, text=f"Frage {idx + 1} von {total}")
 
     with st.container(border=True):
+        st.markdown(
+            '<div id="question_widget_anchor"></div>',
+            unsafe_allow_html=True,
+        )
         st.markdown(f"**{question['text']}**")
         answer: str | None = None
 
@@ -453,10 +533,18 @@ def run_app(client: ChatClient, *, mock_mode: bool = False) -> None:
     # Priority 2: confirm issue summary before finalising the support ticket.
     elif st.session_state.pending_ticket_confirmation is not None:
         render_ticket_confirmation_widget(client)
+        scroll_target = st.session_state.get("scroll_target")
+        if scroll_target:
+            _scroll_page_to_bottom(scroll_target)
+            st.session_state["scroll_target"] = None
 
     # Priority 3: guide the user through pending questions one at a time.
     elif st.session_state.pending_questions:
         render_question_widget(client)
+        scroll_target = st.session_state.get("scroll_target")
+        if scroll_target:
+            _scroll_page_to_bottom(scroll_target)
+            st.session_state["scroll_target"] = None
 
     # Priority 4: normal freeform chat input.
     else:
