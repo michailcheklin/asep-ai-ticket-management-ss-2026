@@ -144,6 +144,7 @@ run_test_intent_classification:
     - python -m venv $VENV_DIR
     - source $VENV_DIR/bin/activate
     - if [ -f tests/requirements.txt ]; then pip install -r tests/requirements.txt; fi
+    - echo "AGENT=ZIM" >> .env
     - cd ./backend
     - python -m unittest tests.test_intent_classification
 
