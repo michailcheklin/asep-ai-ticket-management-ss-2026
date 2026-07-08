@@ -190,5 +190,6 @@ run_deepeval_tests:
     - echo "LANGCHAIN_PROJECT=ai-ticket-benchmark" >> .env
     - echo "SAIA_API_KEY=$SAIA_API_KEY" >> .env
     - echo "USE_SAIA_API=true" >> .env
+    - echo "AGENT=ZIM" >> .env
     - echo "ZAMMAD_SERVER_ADDRESS=$ZAMMAD_SERVER_ADDRESS" >> .env
     - PYTHONPATH=. pytest tests/test_llm_benchmark.py -v -s
