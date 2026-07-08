@@ -475,13 +475,13 @@ def give_solutions(state: ChatbotState):
             2. Formuliere die Lösung so, als würdest du dem Nutzer direkt sagen, was er jetzt tun soll – nicht 
                "es gibt folgende Lösungsansätze", sondern konkret "Deaktiviere X, dann..." bzw. "Das Problem liegt 
                an Y, daher solltest du Z tun".
-            3. Wenn mehrere Lösungen im Kontext vorhanden sind, wähle die für das geschilderte Problem 
-               wahrscheinlichste aus und nenne sie zuerst und am ausführlichsten. Erwähne eine zweite Option nur, 
-               wenn sie wirklich eine sinnvolle Alternative ist – nicht als bloße Aufzählung, sondern als kurzer 
+            3. Wenn mehrere Lösungen im Kontext vorhanden sind, wähle die passensten Lösungen. 
+               Wenn du eine weitere Option erwähnst, dann nur,
+               wenn sie eine sinnvolle Alternative ist – nicht als bloße Aufzählung, sondern als kurzer 
                Nachsatz ("Falls das nicht funktioniert, ...").
             4. Gib die Lösungen nie wörtlich aus dem Kontext wieder. Interpretiere sie und setze sie in Bezug zum 
                konkreten Problem des Nutzers.
-            5. Maximal 3-4 Sätze insgesamt. Keine Begrüßungsfloskeln, keine Zusammenfassung am Ende, keine 
+            5. Maximal 3 Sätze pro Lösung insgesamt. Keine Begrüßungsfloskeln, keine Zusammenfassung am Ende, keine 
                Abschlussfrage wie "Konnte ich helfen?".
             6. Die Lösung muss aus sich selbst heraus vollständig verständlich sein. Der Nutzer soll keinen Link 
                öffnen müssen, um zu verstehen, was er tun soll. Nenne alle relevanten Schritte/Infos direkt im Text. 
