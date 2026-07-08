@@ -34,6 +34,9 @@ class ClassifyIntentTests(unittest.TestCase):
 
     @patch("backend.graph.nodes.intent_llm")
     def test_returns_valid_intent_from_llm(self, mock_intent_llm):
+        """
+        Checks if a valid intent is returned by the mock LLM
+        """
         mock_intent_llm.invoke.return_value = intent_decision("tutorial")
 
         result = classify_intent({
@@ -47,6 +50,9 @@ class ClassifyIntentTests(unittest.TestCase):
 
     @patch("backend.graph.nodes.intent_llm")
     def test_falls_back_to_unclear_on_unknown_intent(self, mock_intent_llm):
+        """
+        Checks if the situation of unclear intent is handled correctly
+        """
         # LLM liefert einen Wert ausserhalb des Schemas -> doppelter Boden greift
         mock_intent_llm.invoke.return_value = intent_decision("anleitung")
 
@@ -60,6 +66,9 @@ class ClassifyIntentTests(unittest.TestCase):
 
     @patch("backend.graph.nodes.intent_llm")
     def test_prompt_includes_previous_intent_and_conversation(self, mock_intent_llm):
+        """
+        Check if the prompt saves the previous conversation
+        """
         mock_intent_llm.invoke.return_value = intent_decision("tutorial")
 
         classify_intent({
@@ -74,6 +83,10 @@ class ClassifyIntentTests(unittest.TestCase):
 
     @patch("backend.graph.nodes.intent_llm")
     def test_email_is_extracted_when_missing(self, mock_intent_llm):
+        """
+        Checks if the e-mail address is actually extracted into the correct field,
+        if it is missing.
+        """
         mock_intent_llm.invoke.return_value = intent_decision("tutorial")
 
         result = classify_intent({
@@ -86,6 +99,9 @@ class ClassifyIntentTests(unittest.TestCase):
 
     @patch("backend.graph.nodes.intent_llm")
     def test_existing_email_is_not_overwritten(self, mock_intent_llm):
+        """
+        Check if the e-mail address is kept throughout the whole conversation
+        """
         mock_intent_llm.invoke.return_value = intent_decision("tutorial")
 
         result = classify_intent({
@@ -101,6 +117,9 @@ class IntentConstantsTests(unittest.TestCase):
     """Sanity checks on the intent taxonomy without calling the LLM."""
 
     def test_expected_intents_are_defined(self):
+        """
+        Checks if all tests have passed
+        """
         self.assertEqual(INTENTS, ["tutorial", "problem", "unclear", "solved"])
 
 
