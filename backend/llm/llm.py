@@ -18,7 +18,7 @@ if USE_SAIA:
     # if the application crashes or the 'llm' object is accidentally printed to the terminal
     secure_saia_api_key = SecretStr(raw_key) if raw_key else None
     llm = ChatOpenAI(
-        model="deepseek-r1-distill-llama-70b",
+        model="gpt-oss-120b",
         api_key=secure_saia_api_key,
         base_url="https://chat-ai.academiccloud.de/v1",
         temperature=0.2,
