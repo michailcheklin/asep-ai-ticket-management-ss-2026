@@ -28,22 +28,6 @@ faq_collection = chroma_client.create_collection(
 print("[INFO] Created new faq_entries collection with cosine metric.")
 
 
-def flatten_solution(solution: list) -> str:
-    """Convert the new solution schema (list with one faq_content/extracted_urls tuple)
-    into a single string, appending crawled content of any successfully fetched urls."""
-    if not solution:
-        return ""
-
-    tuple_ = solution[0]
-    parts = [tuple_.get("faq_content", "")]
-
-    for url_entry in tuple_.get("extracted_urls", []):
-        if url_entry.get("status") == "success" and url_entry.get("content"):
-            parts.append(f"[{url_entry['url']}]: {url_entry['content']}")
-
-    return "\n".join(part for part in parts if part)
-
-
 def flatten_faq_entry(faq_entry: dict) -> str:
     """Convert a JSON formatted FAQ entry to a single string"""
     parts = []

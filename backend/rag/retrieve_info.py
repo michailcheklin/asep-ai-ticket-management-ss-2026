@@ -1,4 +1,5 @@
 import chromadb
+import json
 import numpy as np
 from collections import defaultdict
 import os
@@ -35,6 +36,16 @@ ticket_collection = ticket_client.get_or_create_collection(
     "tickets",
     metadata={"hnsw:space": "cosine"}
 )
+
+FAQ_SOURCE_PATH = os.path.join(BASE_DIR, "faq_extracted_with_crawled_content.json")
+
+with open(FAQ_SOURCE_PATH, "r", encoding="utf-8") as f:
+    _faq_source_data = json.load(f)
+
+faq_extracted_urls_by_id = {
+    entry["id"]: entry.get("solution", [{}])[0].get("extracted_urls", [])
+    for entry in _faq_source_data["faq_entries"]
+}
 
 print("[RAG] Ready.\n")
 
@@ -138,6 +149,22 @@ def select_faq_matches(ranked: list) -> list:
     return []
 
 
+def enrich_faq_text(faq_id: str, doc: str) -> str:
+    """
+    Append the content of successfully crawled extracted_urls (looked up by
+    faq_id from the source JSON) to a selected FAQ match's text.
+    """
+    url_parts = [
+        f"[{url_entry['url']}]: {url_entry['content']}"
+        for url_entry in faq_extracted_urls_by_id.get(faq_id, [])
+        if url_entry.get("status") == "success" and url_entry.get("content")
+    ]
+    if not url_parts:
+        return doc
+
+    return "\n".join([doc, "related_urls:", *url_parts])
+
+
 def retrieve_relevant_entries(user_query: str, n_results: int = 5) -> dict:
     """
     Given a user query (new support ticket string), retrieve the most relevant
@@ -195,9 +222,10 @@ def retrieve_relevant_entries(user_query: str, n_results: int = 5) -> dict:
 
     selected = select_faq_matches(ranked)
     faq_matches = [
-        {"id": fid, "text": doc, "similarity": round(float(score), 4)}
+        {"id": fid, "text": enrich_faq_text(fid, doc), "similarity": round(float(score), 4)}
         for fid, doc, score in selected
     ]
+    print(f"[RAG]   FAQ matches: {faq_matches}\n\n")
 
     # ── Ticket retrieval (symmetric) ──────────────────────────────────────────
     print(f"[RAG] Encoding ticket query...")
