@@ -37,16 +37,6 @@ ticket_collection = ticket_client.get_or_create_collection(
     metadata={"hnsw:space": "cosine"}
 )
 
-FAQ_SOURCE_PATH = os.path.join(BASE_DIR, "faq_extracted_with_crawled_content.json")
-
-with open(FAQ_SOURCE_PATH, "r", encoding="utf-8") as f:
-    _faq_source_data = json.load(f)
-
-faq_source_by_id = {
-    entry["id"]: entry
-    for entry in _faq_source_data["faq_entries"]
-}
-
 print("[RAG] Ready.\n")
 
 # --- Thresholds ---
@@ -117,29 +107,46 @@ def extract_category_from_text(text: str) -> str:
             return line.split("category:", 1)[1].strip()
     return "unknown"
 
+def parse_faq_metadata(metadata: dict) -> dict:
+    """
+    Expand a stored FAQ metadata dict back into its full form, deserialising
+    the JSON-encoded extracted_urls field (ChromaDB metadata only supports
+    flat primitives, so extracted_urls was stored as a JSON string).
+    """
+    if not metadata:
+        return {}
+    parsed = dict(metadata)
+    if "extracted_urls" in parsed and isinstance(parsed["extracted_urls"], str):
+        try:
+            parsed["extracted_urls"] = json.loads(parsed["extracted_urls"])
+        except json.JSONDecodeError:
+            parsed["extracted_urls"] = []
+    return parsed
 
 def select_faq_matches(ranked: list) -> list:
     """
     Apply tiered threshold logic to select FAQ matches.
-    ranked: list of (faq_id, doc, raw_score, scaled_score) sorted by scaled_score desc
+    ranked: list of (faq_id, doc, raw_score, scaled_score, metadata) sorted by
+    scaled_score desc. metadata is carried through untouched -- it plays no
+    role in threshold decisions, it just needs to survive to the output.
 
     Tier 1: top 4 above 0.40
     Tier 2: top 2 above 0.20
     Tier 3: top 1 above 0.15
     """
-    tier1 = [(fid, doc, s) for fid, doc, _, s in ranked if s >= FAQ_TIER_1_THRESHOLD]
+    tier1 = [(fid, doc, s, meta) for fid, doc, _, s, meta in ranked if s >= FAQ_TIER_1_THRESHOLD]
     if len(tier1) >= 1:
         selected = tier1[:FAQ_TIER_1_COUNT]
         print(f"[RAG] FAQ tier 1 matched: returning {len(selected)} results above {FAQ_TIER_1_THRESHOLD}")
         return selected
 
-    tier2 = [(fid, doc, s) for fid, doc, _, s in ranked if s >= FAQ_TIER_2_THRESHOLD]
+    tier2 = [(fid, doc, s, meta) for fid, doc, _, s, meta in ranked if s >= FAQ_TIER_2_THRESHOLD]
     if len(tier2) >= 1:
         selected = tier2[:FAQ_TIER_2_COUNT]
         print(f"[RAG] FAQ tier 2 matched: returning {len(selected)} results above {FAQ_TIER_2_THRESHOLD}")
         return selected
 
-    tier3 = [(fid, doc, s) for fid, doc, _, s in ranked if s >= FAQ_TIER_3_THRESHOLD]
+    tier3 = [(fid, doc, s, meta) for fid, doc, _, s, meta in ranked if s >= FAQ_TIER_3_THRESHOLD]
     if len(tier3) >= 1:
         selected = tier3[:FAQ_TIER_3_COUNT]
         print(f"[RAG] FAQ tier 3 matched: returning {len(selected)} results above {FAQ_TIER_3_THRESHOLD}")
@@ -147,57 +154,6 @@ def select_faq_matches(ranked: list) -> list:
 
     print(f"[RAG] FAQ no results above minimum threshold {FAQ_TIER_3_THRESHOLD}")
     return []
-
-
-def build_extracted_url_tuples(faq_id: str) -> list:
-    """
-    Build (url, status, type, content, notes) tuples for a FAQ entry's
-    extracted_urls, looked up by faq_id from the source JSON.
-
-    notes depends on status:
-        - "success": content can be used as context
-        - "error":   link is likely only reachable via the university network/VPN
-        - "none":    precomputed note describing the file type and its purpose
-                     (see backend/crawler/generate_none_url_notes.py), with a
-                     generic fallback if not yet precomputed
-    """
-    entry = faq_source_by_id.get(faq_id, {})
-    solution = entry.get("solution") or [{}]
-    url_entries = solution[0].get("extracted_urls", [])
-
-    result = []
-    for url_entry in url_entries:
-        status = url_entry.get("status")
-        url_type = url_entry.get("type")
-        content = url_entry.get("content")
-
-        if status == "success":
-            notes = "Der Inhalt kann als Kontext für die Antwort verwendet werden."
-        elif status == "error":
-            notes = "Der Link ist vermutlich nur über das Uni-Netz bzw. VPN erreichbar."
-        elif status == "none":
-            notes = url_entry.get("note") or f"Die URL ist eine {url_type or 'unbekannte'}-Datei."
-        else:
-            notes = ""
-
-        result.append((url_entry.get("url"), status, url_type, content, notes))
-
-    return result
-
-
-def build_faq_match(faq_id: str, score: float) -> tuple:
-    """
-    Build a (id, problem, solution, extracted_urls, similarity) tuple for a
-    selected FAQ match, looked up by faq_id from the source JSON.
-    """
-    entry = faq_source_by_id.get(faq_id, {})
-    problem = entry.get("problem", "")
-    solution = entry.get("solution") or [{}]
-    solution_text = solution[0].get("faq_content", "")
-    extracted_urls = build_extracted_url_tuples(faq_id)
-
-    return faq_id, problem, solution_text, extracted_urls, round(float(score), 4)
-
 
 def retrieve_relevant_entries(user_query: str, n_results: int = 5) -> dict:
     """
@@ -212,9 +168,7 @@ def retrieve_relevant_entries(user_query: str, n_results: int = 5) -> dict:
 
     Returns:
         {
-            "faq_matches"    : list of (id, problem, solution, extracted_urls, similarity)
-                               tuples, where extracted_urls is a list of
-                               (url, status, type, content, notes) tuples,
+            "faq_matches"    : list of {"id", "text", "similarity"},
             "ticket_matches" : list of {"id", "text", "similarity", "category"},
             "inferred"       : {"category": str, "confidence": float}
         }
@@ -229,7 +183,8 @@ def retrieve_relevant_entries(user_query: str, n_results: int = 5) -> dict:
 
     faq_results = faq_collection.query(
         query_embeddings=[faq_embedding],
-        n_results=10
+        n_results=10,
+        include=["documents", "distances", "metadatas"]
     )
 
     pre_rerank = {
@@ -243,13 +198,19 @@ def retrieve_relevant_entries(user_query: str, n_results: int = 5) -> dict:
     scaled_scores = scaled_sigmoid(raw_scores)
 
     ranked = sorted(
-        zip(faq_results["ids"][0], faq_results["documents"][0], raw_scores, scaled_scores),
+        zip(
+            faq_results["ids"][0],
+            faq_results["documents"][0],
+            raw_scores,
+            scaled_scores,
+            faq_results["metadatas"][0]
+        ),
         key=lambda x: x[3],
         reverse=True
     )
 
     print("[RAG] FAQ re-ranking results:")
-    for faq_id, doc, raw, scaled in ranked:
+    for faq_id, doc, raw, scaled, meta in ranked:
         pre = pre_rerank[faq_id]
         print(f"[RAG]   [{faq_id}]")
         print(f"[RAG]     before rerank (cosine):  {pre:.4f}")
@@ -257,9 +218,16 @@ def retrieve_relevant_entries(user_query: str, n_results: int = 5) -> dict:
         print(f"[RAG]     after rerank (sigmoid):   {scaled:.4f}")
 
     selected = select_faq_matches(ranked)
-    faq_matches = [build_faq_match(fid, score) for fid, doc, score in selected]
-    print(f"[RAG]   FAQ matches: {faq_matches}\n\n")
-
+    faq_matches = [
+        {
+            "id":         fid,
+            "text":       doc,
+            "similarity": round(float(score), 4),
+            **parse_faq_metadata(meta)
+        }
+        for fid, doc, score, meta in selected
+    ]
+    
     # ── Ticket retrieval (symmetric) ──────────────────────────────────────────
     print(f"[RAG] Encoding ticket query...")
     ticket_embedding = ticket_embedder.encode(
@@ -289,7 +257,7 @@ def retrieve_relevant_entries(user_query: str, n_results: int = 5) -> dict:
                     "category":   extract_category_from_text(ticket_doc)
                 })
 
-    faq_matches    = sorted(faq_matches,    key=lambda x: x[4], reverse=True)
+    faq_matches    = sorted(faq_matches,    key=lambda x: x["similarity"], reverse=True)
     ticket_matches = sorted(ticket_matches, key=lambda x: x["similarity"], reverse=True)
 
     print(f"[RAG] Final: {len(faq_matches)} FAQ matches, {len(ticket_matches)} ticket matches")
