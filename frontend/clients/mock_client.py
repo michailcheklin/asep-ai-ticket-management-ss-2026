@@ -36,6 +36,9 @@ class MockChatClient:
             return {
                 **base,
                 "bot_response": "Ich habe folgende Lösungsvorschläge für dich gefunden:",
+                "full_conversation": (
+                    "Der Nutzer hat ein WLAN-Problem im Gebäude LF mit seinem MacBook."
+                ),
                 "solutions": [
                     {
                         "title": "FAQ: WLAN-Verbindung",

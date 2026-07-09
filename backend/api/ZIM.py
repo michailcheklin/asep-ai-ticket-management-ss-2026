@@ -120,6 +120,9 @@ async def chat_endpoint(request: ChatRequest):
         "additional_info_attempts": request.additional_info_attempts,
         "ask_issue_attempts": request.ask_issue_attempts,
         "ticket_id": request.ticket_id,
+        "full_conversation": request.full_conversation,
+        "intent": request.intent,
+        "tutorial_attempts": request.tutorial_attempts,
     }
     return __execute_langchain_workflow(current_state)
 
@@ -151,6 +154,10 @@ async def solution_feedback(request: ChatRequest):
         "ask_issue_attempts": request.ask_issue_attempts,
         "additional_info_attempts": request.additional_info_attempts,
         "ticket_id": request.ticket_id,
+        "full_conversation": request.full_conversation,
+        "user_addendum": request.user_addendum,
+        "intent": request.intent,
+        "tutorial_attempts": request.tutorial_attempts,
     }
 
     current_state["category"] = _resolve_ticket_category(current_state)

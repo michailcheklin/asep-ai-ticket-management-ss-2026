@@ -48,7 +48,9 @@ class TicketService:
         response = llm.invoke([HumanMessage(content=prompt)])
         title = response.content.strip()
 
-        return f"[{matrikelnummer}] {title}"
+        if matrikelnummer:
+            return f"[{matrikelnummer}] {title}"
+        return title
 
     # -------------------------
     # Public API
@@ -161,6 +163,39 @@ class TicketService:
                 ],
                 "is_complete": True
             }
+        
+    def create_closed_tutorial_ticket(self, state):
+        """
+        Erstellt fuer ein per Anleitung geloestes Anliegen ein Ticket, das sofort
+        geschlossen und mit dem AI-Solved-Tag versehen wird (Issue #161).
+        Dient dem Performance-Tracking des Chatbots in Zammad.
+        """
+        user_messages = [m.content for m in state.get("messages", []) if isinstance(m, HumanMessage)]
+        issue = state.get("issue_description") or (user_messages[0] if user_messages else "Anliegen per Chatbot geloest")
+
+        title = self.generate_title(issue, state.get("matrikelnummer", ""))
+        body = (
+            f"E-Mail: {state.get('user_email', '')}\n"
+            f"Anliegen:\n{issue}\n\n"
+            f"Status: Durch KI-Anleitung geloest (Tutorial-Pfad)\n\n"
+            f"{'=' * 40}\nCHATVERLAUF\n{'=' * 40}\n\n"
+            f"{self._format_chat_history(state)}"
+        )
+
+        try:
+            ticket_id = create_ticket_by_user_email(
+                email=state["user_email"],
+                title=title,
+                body=body,
+                priority=state.get("priority") or 0,
+                internal=True,
+                state="closed",
+            )
+            add_tag_to_ticket(ticket_id, "AI-Solved")
+            return {"ticket_id": ticket_id, "is_complete": True}
+        except Exception as e:
+            print(f"[TicketService ERROR] {e}")
+            return {"is_complete": True}
 
     # -------------------------
     # Body Builders
@@ -212,14 +247,23 @@ class TicketService:
         :param state: The current state of the chatbot
         :return: The formatted chat history and solutions
         """
+        summary = (state.get("full_conversation") or "").strip() or "(keine Zusammenfassung vorhanden)"
+        addendum = (state.get("user_addendum") or "").strip()
+        addendum_section = ""
+        if addendum:
+            addendum_section = (
+                f"\n\n{'=' * 40}\n"
+                f"ERGÄNZUNG DURCH NUTZER\n"
+                f"{'=' * 40}\n\n"
+                f"{addendum}\n"
+            )
         return (
             f"\n\n{'=' * 40}\n"
-            # f"GESPRÄCHSZUSAMMENFASSUNG\n"
-            # f"{'=' * 40}\n\n"
-            # f"{state['full_conversation']}\n\n"
-            # f"{state.get('full_conversation')}\n\n"
-            # f"{state.get('full_conversation', '(keine Zusammenfassung vorhanden)')}\n\n"
-            # f"{'=' * 40}\n"
+            f"GESPRÄCHSZUSAMMENFASSUNG\n"
+            f"{'=' * 40}\n\n"
+            f"{summary}"
+            f"{addendum_section}\n\n"
+            f"{'=' * 40}\n"
             f"VOM BOT ANGEBOTENE LÖSUNGEN\n"
             f"{'=' * 40}\n\n"
             f"{self._format_solutions(state)}"
