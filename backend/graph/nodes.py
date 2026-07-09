@@ -18,6 +18,18 @@ from .models.IntentDecision import IntentDecision
 
 ticket_service = TicketService()
 
+
+def _format_faq_match_for_prompt(match: tuple) -> str:
+    """Rendert ein faq_matches-Tuple (id, problem, solution, extracted_urls, similarity) als Prompt-Text."""
+    _, problem, solution, extracted_urls, _ = match
+    lines = [f"problem: {problem}", f"solution: {solution}"]
+    for url, status, url_type, content, notes in extracted_urls:
+        if status == "success" and content:
+            lines.append(f"[{url}]: {content}")
+        elif notes:
+            lines.append(f"[{url}]: {notes}")
+    return "\n".join(lines)
+
 TICKET_CATEGORIES = [
     "Incident",
     "Service Request",
@@ -227,7 +239,7 @@ def give_tutorial(state: ChatbotState):
     query = " ".join(user_messages[-2:]) if user_messages else ""
 
     rag_results = retrieve_relevant_entries(query, n_results=2)
-    faq_context = "\n".join(f"- {m['text']}" for m in rag_results.get("faq_matches", []))
+    faq_context = "\n".join(f"- {_format_faq_match_for_prompt(m)}" for m in rag_results.get("faq_matches", []))
     ticket_context = "\n".join(f"- {m['text']}" for m in rag_results.get("ticket_matches", []))
 
 
@@ -467,7 +479,7 @@ def ask_for_additional_info(state: ChatbotState):
         print("[DEBUG] RAG lieferte keine Ergebnisse. Überspringe Rückfrage.")
         return {"needs_additional_info": True}
 
-    faq_context = "\n".join([f"- {match['text']}" for match in faq_matches])
+    faq_context = "\n".join([f"- {_format_faq_match_for_prompt(match)}" for match in faq_matches])
     ticket_context = "\n".join([f"- {match['text']} (Kategorie: {match['category']})" for match in ticket_matches])
 
 
@@ -503,15 +515,12 @@ def ask_for_additional_info(state: ChatbotState):
            direkt-relevante, kurze follow-up-question(s) an den User. Bei (b) soll die Frage explizit darauf 
            abzielen, zwischen den überschneidenden Kontexten zu unterscheiden (z.B. "Welches Betriebssystem 
            nutzt du?" wenn sich zwei Tickets nur darin unterscheiden).
-        4. Gib die Fragen als Bullet-Liste zurück. Es muss dieses genaues Syntax befolgen:
+        4. Gib die Fragen als Bullet-Liste zurück. Es muss diese genaue Syntax befolgen:
            Multiple-Choice-Fragen müssen das Format verwenden:
            "* [Frage]? (options: [A], [B], [C])"
            Offene Fragen dürfen ohne Optionen geschrieben werden:
            "* [Frage]?"
-        5. Stelle die Fragen soweit wie möglich immer als Multiple-Choice mit dem gezeigten Format, wobei 
-           die Optionen bei Disambiguierungs-Fragen (aus Punkt 1b) exakt den unterscheidenden Merkmalen der 
-           jeweiligen Wissensdatenbank-Einträge entsprechen sollen (z.B. "Windows 8.1", "Windows 10/11" statt 
-           generischer Platzhalter).
+        5. Stelle die Fragen soweit wie möglich immer als Multiple-Choice mit dem gezeigten Format.
         6. Begrenze dich auf maximal 5 Optionen, wobei "Andere" IMMER eine Option sein muss.
         """
     ))
@@ -590,11 +599,13 @@ def give_solutions(state: ChatbotState):
     # Build up to 2 solutions (FAQ first)
     solutions = []
     for m in faq_matches[:2]:
-        solutions.append({"title": f"FAQ: {m.get('id')}", "description": m.get("text", "")})
+        solutions.append({"title": f"FAQ: {m[0]}", "description": _format_faq_match_for_prompt(m)})
     if len(solutions) < 2:
         for t in ticket_matches[: 2 - len(solutions)]:
             solutions.append(
                 {"title": f"Ähnliches Ticket ({t.get('category', 'unknown')})", "description": t.get("text", "")})
+
+    print(f"[Node: give_solutions] Solutions: {solutions}")
 
     problem = state.get("issue_description", "")
     infos = state.get("additional_info", [])
@@ -610,26 +621,35 @@ def give_solutions(state: ChatbotState):
             LÖSUNGEN (RAG-Kontext): {solutions}
             
             REGELN:
-            1. Antworte in einem einzigen zusammenhängenden Fließtext, NICHT als Liste, Aufzählung oder mit 
-               Zwischenüberschriften. Keine Formatierung wie "Lösung 1:", "Option A:" o.ä.
+            1. Antworte in einem einzigen zusammenhängenden Fließtext, "...NICHT als Liste, Aufzählung oder mit Zwischenüberschriften. 
+               Bei mehreren aufeinanderfolgenden Handlungsschritten nutze stattdessen Ordinalwörter im Fließtext
+               ('Öffne zunächst...', 'Klicke anschließend...', 'Bestätige abschließend...'), 
+               um die Reihenfolge erkennbar zu machen, ohne Listenformat zu verwenden.
             2. Formuliere die Lösung so, als würdest du dem Nutzer direkt sagen, was er jetzt tun soll – nicht 
                "es gibt folgende Lösungsansätze", sondern konkret "Deaktiviere X, dann..." bzw. "Das Problem liegt 
                an Y, daher solltest du Z tun".
             3. Wenn mehrere Lösungen im Kontext vorhanden sind, wähle die passensten Lösungen. 
-               Wenn du eine weitere Option erwähnst, dann nur,
-               wenn sie eine sinnvolle Alternative ist – nicht als bloße Aufzählung, sondern als kurzer 
-               Nachsatz ("Falls das nicht funktioniert, ...").
+               Die Lösungen darfst du nicht vermischen. Behandle sie seperat.
             4. Gib die Lösungen nie wörtlich aus dem Kontext wieder. Interpretiere sie und setze sie in Bezug zum 
                konkreten Problem des Nutzers.
-            5. Maximal 3 Sätze pro Lösung insgesamt. Keine Begrüßungsfloskeln, keine Zusammenfassung am Ende, keine 
-               Abschlussfrage wie "Konnte ich helfen?".
+            5. Maximal 6 Sätze pro Lösung, auf die du eingehst.
+               Bei mehrschrittigen technischen Anleitungen darf die Satzzahl überschritten werden, 
+               wenn sonst notwendige Schritte fehlen würden – Vollständigkeit (Regel 6) hat Vorrang vor Kürze. 
+               Keine Begrüßungsfloskeln, keine Zusammenfassung am Ende, keine Abschlussfrage wie 'Konnte ich helfen?".
             6. Die Lösung muss aus sich selbst heraus vollständig verständlich sein. Der Nutzer soll keinen Link 
-               öffnen müssen, um zu verstehen, was er tun soll. Nenne alle relevanten Schritte/Infos direkt im Text. 
-               Ein Link darf höchstens ergänzend am Ende erwähnt werden, z. B. als "Mehr dazu: [Link]" – aber nur, 
-               wenn er wirklich zusätzlichen Mehrwert bietet (z. B. eine Bebilderung, ein Formular zum Ausfüllen, 
-               eine Kontaktseite), nicht als Verweis auf Informationen, die eigentlich schon Teil der Antwort sein sollten.
+               öffnen müssen, um zu verstehen, was ihn dort erwartet. Nenne alle relevanten Schritte/Infos direkt im Text,
+               fasse dabei den Linkinhalt kurz zusammen statt ihn vollständig wiederzugeben.
+               Füge Links an der Stelle im Text ein, zu der sie inhaltlich gehören.
+               - Liegt zu einem Link Content vor: bau den Inhalt des Kontexts in der Lösung ein, sofern dieser relevant für das "AKTUELLE PROBLEM" ist.
+               - Liegt kein Content vor (nur eine Notiz zum Fehlschlag): beschreibe nur, was sich sicher aus 
+                 problem/solution ableiten lässt, erfinde keine Details, und mache transparent, dass der Inhalt 
+                 nicht automatisch abrufbar war.
+               - Ist der Link selbst der auszuführende Schritt (Formular, Login, Download, Zahlung), bleibt er 
+                 Pflichtklick – erkläre vorher, was dort zu tun ist.
             7. Wenn im Kontext keine passende Lösung vorhanden ist, sage das ehrlich und kurz, anstatt vage zu 
                bleiben oder den Nutzer zur eigenen Recherche zu schicken.
+            8. Enthält eine Lösung irreversible oder folgenreiche Schritte (z. B. Konto löschen, Daten zurücksetzen, Zahlung auslösen),
+            weise im Text kurz und klar darauf hin, bevor du den Schritt nennst.
             """
     ))
     message_text = llm.invoke([system_prompt, HumanMessage(content="Bitte fasse die Lösungen für den User zusammen.")])

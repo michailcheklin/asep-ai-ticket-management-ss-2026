@@ -23,9 +23,10 @@ def print_results(results: dict, query: str):
     print(f"\n  FAQ Matches ({len(results['faq_matches'])} returned):")
     if results["faq_matches"]:
         for i, match in enumerate(results["faq_matches"], start=1):
-            print(f"    [{i}] {match['id']}")
-            print(f"         Similarity : {match['similarity']:.4f}")
-            print(f"         Text       : {match['text'][:150]}...")
+            fid, problem, solution, extracted_urls, similarity = match
+            print(f"    [{i}] {fid}")
+            print(f"         Similarity : {similarity:.4f}")
+            print(f"         Solution   : {solution[:150]}...")
     else:
         print("    None.")
 
@@ -48,7 +49,7 @@ def check(label: str, condition: bool, detail: str):
 
 def best_faq_detail(matches: list) -> str:
     if matches:
-        return f"best={matches[0]['similarity']:.4f} ('{matches[0]['id']}')"
+        return f"best={matches[0][4]:.4f} ('{matches[0][0]}')"
     return "no matches returned"
 
 
@@ -86,7 +87,7 @@ def run_tests() -> bool:
     )
     t1_faq_strong = check(
         f"FAQ-Treffer >= Stufe 1 ({FAQ_TIER_1_THRESHOLD})",
-        any(m["similarity"] >= FAQ_TIER_1_THRESHOLD for m in vpn_results["faq_matches"]),
+        any(m[4] >= FAQ_TIER_1_THRESHOLD for m in vpn_results["faq_matches"]),
         best_faq_detail(vpn_results["faq_matches"])
     )
     t1_ticket = check(
@@ -128,7 +129,7 @@ def run_tests() -> bool:
     )
     t2_faq_strong = check(
         f"FAQ-Treffer >= Stufe 1 ({FAQ_TIER_1_THRESHOLD})",
-        any(m["similarity"] >= FAQ_TIER_1_THRESHOLD for m in wlan_results["faq_matches"]),
+        any(m[4] >= FAQ_TIER_1_THRESHOLD for m in wlan_results["faq_matches"]),
         best_faq_detail(wlan_results["faq_matches"])
     )
     t2_ticket = check(
@@ -170,7 +171,7 @@ def run_tests() -> bool:
     )
     t3_faq_strong = check(
         f"FAQ-Treffer >= Stufe 1 ({FAQ_TIER_1_THRESHOLD})",
-        any(m["similarity"] >= FAQ_TIER_1_THRESHOLD for m in sw_results["faq_matches"]),
+        any(m[4] >= FAQ_TIER_1_THRESHOLD for m in sw_results["faq_matches"]),
         best_faq_detail(sw_results["faq_matches"])
     )
     t3_ticket = check(
@@ -201,7 +202,7 @@ def run_tests() -> bool:
 
     irr_faq_strong = [
         m for m in irr_results["faq_matches"]
-        if m["similarity"] >= FAQ_TIER_1_THRESHOLD
+        if m[4] >= FAQ_TIER_1_THRESHOLD
     ]
     irr_ticket_above = [
         m for m in irr_results["ticket_matches"]
