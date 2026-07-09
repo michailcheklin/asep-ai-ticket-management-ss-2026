@@ -7,16 +7,20 @@ from .state import ChatbotState
 from .nodes import (
     extract_information,
     ask_for_email,
-    ask_for_matrikelnummer,
     ask_for_issue,
     ask_for_additional_info,
     classify_ticket,
     escalate_incidents,
     give_solutions,
     finish_ticket,
+    classify_intent,
+    ask_intent,
+    give_tutorial,
+    finish_tutorial,
 )
 from langsmith import Client
 from langsmith.anonymizer import create_anonymizer
+
 
 # Matches E-mail addresses and censors them in LangSmith's dashboard
 anonymizer = create_anonymizer([
@@ -61,6 +65,9 @@ def __execute_langchain_workflow(state: ChatbotState):
         "solutions": updated_state.get("solutions", []),
         "additional_info_attempts": updated_state.get("additional_info_attempts", 0),
         "ask_issue_attempts": updated_state.get("ask_issue_attempts", 0),
+        "full_conversation": updated_state.get("full_conversation", ""),
+        "intent": updated_state.get("intent", ""),
+        "tutorial_attempts": updated_state.get("tutorial_attempts", 0),
     }
 
 def route_based_on_state(state: ChatbotState):
@@ -70,9 +77,6 @@ def route_based_on_state(state: ChatbotState):
     """
     if not state.get("user_email"):
         return "ask_email_node"
-
-    elif not state.get("matrikelnummer"):
-        return "ask_matrikel_node"
 
     elif not state.get("issue_description"):
         print(f"[DEBUG]: Attempts for ask_for_issue node: {state.get('ask_issue_attempts')}")
@@ -116,6 +120,28 @@ def route_after_solutions(state: ChatbotState):
     else:
         return "finish_node"
 
+def route_after_intent(state: ChatbotState):
+    """E-Mail-Gate fuer beide Pfade, dann Verzweigung nach Intent."""
+    if not state.get("user_email"):
+        return "ask_email_node"
+
+    intent = state.get("intent")
+
+    if intent == "solved" and state.get("tutorial_attempts", 0) > 0:
+        return "finish_tutorial_node"
+
+    if intent == "tutorial":
+        if state.get("tutorial_attempts", 0) >= 2:
+            return "extractor_node"
+        return "give_tutorial_node"
+
+    if intent == "problem":
+        return "extractor_node"
+
+    return "ask_intent_node"
+
+
+
 
 def build_pathmap_from_nodes_list_for_visualisation(nodes_list:list[str]):
     """
@@ -139,26 +165,40 @@ workflow = StateGraph(ChatbotState)
 # Register all workflow nodes.
 workflow.add_node("extractor_node", extract_information)
 workflow.add_node("ask_email_node", ask_for_email)
-workflow.add_node("ask_matrikel_node", ask_for_matrikelnummer)
 workflow.add_node("ask_issue_node", ask_for_issue)
 workflow.add_node("ask_for_additional_info", ask_for_additional_info)
 workflow.add_node("classify_ticket_node", classify_ticket)
 workflow.add_node("escalate_incidents_node", escalate_incidents)
 workflow.add_node("give_solutions_node", give_solutions)
 workflow.add_node("finish_node", finish_ticket)
+workflow.add_node("classify_intent_node", classify_intent)
+workflow.add_node("ask_intent_node", ask_intent)
+workflow.add_node("give_tutorial_node", give_tutorial)
+workflow.add_node("finish_tutorial_node", finish_tutorial)
 
 # Define the workflow entry point.
-workflow.add_edge(START, "extractor_node")
+workflow.add_edge(START, "classify_intent_node")
+
+# Route based on the classified user intent
+workflow.add_conditional_edges(
+    source="classify_intent_node",
+    path=route_after_intent,
+    path_map=build_pathmap_from_nodes_list_for_visualisation(
+        ["ask_email_node", "extractor_node", "ask_intent_node", "give_tutorial_node", "finish_tutorial_node"]
+    )
+)
+
 
 # Route dynamically based on the extracted conversation state.
 workflow.add_conditional_edges(
     source="extractor_node",
     path=route_based_on_state,
     path_map=build_pathmap_from_nodes_list_for_visualisation(
-        ["ask_email_node", "ask_matrikel_node", "ask_issue_node",
+        ["ask_email_node", "ask_issue_node",
          "ask_for_additional_info", "finish_node"]
     )
 )
+
 
 # Route after evaluating the additional information.
 workflow.add_conditional_edges(
@@ -184,9 +224,11 @@ workflow.add_conditional_edges(
 
 # End the workflow after the information collection nodes.
 workflow.add_edge("ask_email_node", END)
-workflow.add_edge("ask_matrikel_node", END)
 workflow.add_edge("ask_issue_node", END)
 workflow.add_edge("finish_node", END)
+workflow.add_edge("ask_intent_node", END)
+workflow.add_edge("give_tutorial_node", END)
+workflow.add_edge("finish_tutorial_node", END)
 
 # Compile the workflow into an executable LangGraph graph.
 graph = workflow.compile()
