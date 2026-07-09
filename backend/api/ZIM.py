@@ -197,6 +197,15 @@ def run_local_chat():
         "matrikelnummer": "",
         "issue_description": "",
         "additional_info": [],
+        "additional_info_attempts": 0,
+        "ask_issue_attempts": 0,
+        "priority": 0,
+        "category": "",
+        "solutions": [],
+        "ticket_id": None,
+        "full_conversation": "",
+        "intent": "",
+        "tutorial_attempts": 0,
         "needs_additional_info": False,
         # Set to True to skip the solution step and directly create
         # a ticket during testing.

@@ -79,7 +79,7 @@ def route_based_on_state(state: ChatbotState):
 
     elif not state.get("issue_description"):
         print(f"[DEBUG]: Attempts for ask_for_issue node: {state.get('ask_issue_attempts')}")
-        if state.get("ask_issue_attempts") >= 3:
+        if state.get("ask_issue_attempts", 0) >= 3:
             return "finish_node"
         else:
             return "ask_issue_node"
