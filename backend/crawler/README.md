@@ -49,6 +49,20 @@ JSON FORMAT
 ```
 
 
+## generate_none_url_notes.py
+
+For every `extracted_urls` entry in `../rag/faq_extracted_with_crawled_content.json` with
+`status == "none"` (URLs pointing to non-HTML files like PDFs, which couldn't be crawled as
+text), this script asks the LLM to write a single German sentence describing the file type
+and its purpose, using the surrounding FAQ entry's `problem`/`faq_content` as context. The
+result is written back into that URL entry as a new `"note"` field, which
+`backend/rag/retrieve_info.py` reads at runtime (no LLM calls happen there).
+
+One-off script, run manually after re-crawling or when new `status == "none"` URLs appear:
+```
+cd backend/crawler && python3 generate_none_url_notes.py
+```
+
 ## crawl_urls_distinction.py
 
 This script reads `faq_solution_urls.json` which contains all urls that were inside the solution field of the FAQ.  
