@@ -42,8 +42,8 @@ FAQ_SOURCE_PATH = os.path.join(BASE_DIR, "faq_extracted_with_crawled_content.jso
 with open(FAQ_SOURCE_PATH, "r", encoding="utf-8") as f:
     _faq_source_data = json.load(f)
 
-faq_extracted_urls_by_id = {
-    entry["id"]: entry.get("solution", [{}])[0].get("extracted_urls", [])
+faq_source_by_id = {
+    entry["id"]: entry
     for entry in _faq_source_data["faq_entries"]
 }
 
@@ -149,20 +149,54 @@ def select_faq_matches(ranked: list) -> list:
     return []
 
 
-def enrich_faq_text(faq_id: str, doc: str) -> str:
+def build_extracted_url_tuples(faq_id: str) -> list:
     """
-    Append the content of successfully crawled extracted_urls (looked up by
-    faq_id from the source JSON) to a selected FAQ match's text.
-    """
-    url_parts = [
-        f"[{url_entry['url']}]: {url_entry['content']}"
-        for url_entry in faq_extracted_urls_by_id.get(faq_id, [])
-        if url_entry.get("status") == "success" and url_entry.get("content")
-    ]
-    if not url_parts:
-        return doc
+    Build (url, status, type, content, notes) tuples for a FAQ entry's
+    extracted_urls, looked up by faq_id from the source JSON.
 
-    return "\n".join([doc, "related_urls:", *url_parts])
+    notes depends on status:
+        - "success": content can be used as context
+        - "error":   link is likely only reachable via the university network/VPN
+        - "none":    precomputed note describing the file type and its purpose
+                     (see backend/crawler/generate_none_url_notes.py), with a
+                     generic fallback if not yet precomputed
+    """
+    entry = faq_source_by_id.get(faq_id, {})
+    solution = entry.get("solution") or [{}]
+    url_entries = solution[0].get("extracted_urls", [])
+
+    result = []
+    for url_entry in url_entries:
+        status = url_entry.get("status")
+        url_type = url_entry.get("type")
+        content = url_entry.get("content")
+
+        if status == "success":
+            notes = "Der Inhalt kann als Kontext für die Antwort verwendet werden."
+        elif status == "error":
+            notes = "Der Link ist vermutlich nur über das Uni-Netz bzw. VPN erreichbar."
+        elif status == "none":
+            notes = url_entry.get("note") or f"Die URL ist eine {url_type or 'unbekannte'}-Datei."
+        else:
+            notes = ""
+
+        result.append((url_entry.get("url"), status, url_type, content, notes))
+
+    return result
+
+
+def build_faq_match(faq_id: str, score: float) -> tuple:
+    """
+    Build a (id, problem, solution, extracted_urls, similarity) tuple for a
+    selected FAQ match, looked up by faq_id from the source JSON.
+    """
+    entry = faq_source_by_id.get(faq_id, {})
+    problem = entry.get("problem", "")
+    solution = entry.get("solution") or [{}]
+    solution_text = solution[0].get("faq_content", "")
+    extracted_urls = build_extracted_url_tuples(faq_id)
+
+    return faq_id, problem, solution_text, extracted_urls, round(float(score), 4)
 
 
 def retrieve_relevant_entries(user_query: str, n_results: int = 5) -> dict:
@@ -178,7 +212,9 @@ def retrieve_relevant_entries(user_query: str, n_results: int = 5) -> dict:
 
     Returns:
         {
-            "faq_matches"    : list of {"id", "text", "similarity"},
+            "faq_matches"    : list of (id, problem, solution, extracted_urls, similarity)
+                               tuples, where extracted_urls is a list of
+                               (url, status, type, content, notes) tuples,
             "ticket_matches" : list of {"id", "text", "similarity", "category"},
             "inferred"       : {"category": str, "confidence": float}
         }
@@ -221,10 +257,7 @@ def retrieve_relevant_entries(user_query: str, n_results: int = 5) -> dict:
         print(f"[RAG]     after rerank (sigmoid):   {scaled:.4f}")
 
     selected = select_faq_matches(ranked)
-    faq_matches = [
-        {"id": fid, "text": enrich_faq_text(fid, doc), "similarity": round(float(score), 4)}
-        for fid, doc, score in selected
-    ]
+    faq_matches = [build_faq_match(fid, score) for fid, doc, score in selected]
     print(f"[RAG]   FAQ matches: {faq_matches}\n\n")
 
     # ── Ticket retrieval (symmetric) ──────────────────────────────────────────
@@ -256,7 +289,7 @@ def retrieve_relevant_entries(user_query: str, n_results: int = 5) -> dict:
                     "category":   extract_category_from_text(ticket_doc)
                 })
 
-    faq_matches    = sorted(faq_matches,    key=lambda x: x["similarity"], reverse=True)
+    faq_matches    = sorted(faq_matches,    key=lambda x: x[4], reverse=True)
     ticket_matches = sorted(ticket_matches, key=lambda x: x["similarity"], reverse=True)
 
     print(f"[RAG] Final: {len(faq_matches)} FAQ matches, {len(ticket_matches)} ticket matches")
