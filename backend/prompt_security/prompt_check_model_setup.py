@@ -1,8 +1,9 @@
-﻿import torch
-import os
+﻿import os
+import torch
 from transformers import pipeline, MarianTokenizer, MarianMTModel
 
-huggingface_model_folder = os.getenv("HF_HOME", "/models")
+
+huggingface_model_folder = os.getenv("HF_HOME", os.path.expanduser("~/.cache/huggingface/hub/"))
 
 ILLEGAL_TOPICS:list[str] = ["terrorism", "crime", "copyright infringement"]
 ILLEGAL_TOPIC_DETECTION_THRESHOLD:float = 0.5
@@ -41,12 +42,26 @@ PROMPT_INJECTION_BLOCK_THRESHOLD:float = 0.7
 device:str = "cuda" if torch.cuda.is_available() else "cpu"
 
 # Themenklassifizierer
-topic_classifier = pipeline("zero-shot-classification", model="MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli")
+topic_classifier = pipeline(
+    task="zero-shot-classification",
+    model="MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli",
+    cache_dir=huggingface_model_folder,
+)
 
 # Übersetzer (Deutsch -> Englisch)
 translator_model_id = "Helsinki-NLP/opus-mt-de-en"
-translator_tokenizer = MarianTokenizer.from_pretrained(translator_model_id)
-translator = MarianMTModel.from_pretrained(translator_model_id).to(device).eval()
+translator_tokenizer = MarianTokenizer.from_pretrained(
+    translator_model_id,
+    cache_dir=huggingface_model_folder,
+)
+translator = MarianMTModel.from_pretrained(
+    translator_model_id,
+    cache_dir=huggingface_model_folder,
+).to(device).eval()
 
 # Prompt Injection-Erkenner
-prompt_injection_detector = pipeline("text-classification", model="deepset/deberta-v3-base-injection")
+prompt_injection_detector = pipeline(
+    task="text-classification",
+    model="deepset/deberta-v3-base-injection",
+    cache_dir=huggingface_model_folder,
+)

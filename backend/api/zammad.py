@@ -3,6 +3,8 @@ import os
 import requests
 from requests.exceptions import ConnectionError, MissingSchema
 
+from ..graph.models.TicketCategoryDecision import TICKET_CATEGORIES
+
 load_dotenv()
 
 # Format der .env-Datei, woraus die Server-Adresse und der Zugangstoken
@@ -30,6 +32,13 @@ priority_number_to_zammad_priority_id_map = {
     1: 3  # high / urgent
 }
 
+def resolve_zammad_kategorie(category: str | None) -> str | None:
+    """Return a category value that is valid for the Zammad select field."""
+    value = (category or "").strip()
+    if value in TICKET_CATEGORIES:
+        return value
+    return None
+
 
 def create_ticket_by_user_email(
         email: str,
@@ -39,8 +48,8 @@ def create_ticket_by_user_email(
         group: str = "Users",
         article_type: str = "web",
         internal: bool = False,
-        state: str = "new"
-
+        state: str = "new",
+        kategorie: str | None = None,
 ):
     """
     Erstellt ein Ticket im Zammad-System über die REST-API,
@@ -56,6 +65,7 @@ def create_ticket_by_user_email(
         s. https://docs.zammad.org/en/latest/api/ticket/articles.html#general-information-about-ticket-articles) (i. d. R. note)
     :arg internal: Standardmäßig False. Falls True, ist das Ticket nur für die Mitarbeitenden des Helpdesks sichtbar
     :arg state: Zammad-Status des Tickets, z.B. "new" oder "closed"
+    :arg kategorie: Wert für das Zammad-Feld "Kategorie" (custom select attribute)
     """
 
     json_body_for_ticket = {
@@ -71,6 +81,10 @@ def create_ticket_by_user_email(
         "priority_id": priority_number_to_zammad_priority_id_map[priority],
         "state": state,
     }
+
+    resolved_kategorie = resolve_zammad_kategorie(kategorie)
+    if resolved_kategorie:
+        json_body_for_ticket["kategorie"] = resolved_kategorie
 
     try:
         server_response = requests.post(url=f"{server_address}/api/v1/tickets",
@@ -91,6 +105,32 @@ def create_ticket_by_user_email(
     except Exception as e:
         print(f"Other error occured: {e}")
         return -1
+
+
+def update_ticket_kategorie(ticket_id: int, kategorie: str | None) -> None:
+    """Set the Zammad custom field 'kategorie' on an existing ticket."""
+    resolved_kategorie = resolve_zammad_kategorie(kategorie)
+    if not resolved_kategorie:
+        return
+
+    try:
+        response = requests.put(
+            url=f"{server_address}/api/v1/tickets/{ticket_id}",
+            json={"kategorie": resolved_kategorie},
+            headers=headers,
+            timeout=GENERAL_TIMEOUT,
+        )
+        print(
+            f"Kategorie '{resolved_kategorie}' set on ticket {ticket_id}: "
+            f"{response.status_code}"
+        )
+    except ConnectionError:
+        print("Connection error: Could not reach Zammad to update ticket kategorie")
+    except MissingSchema:
+        print("Invalid URL for Zammad provided: Could not update ticket kategorie")
+    except Exception as e:
+        print(f"Other error occured during kategorie update: {e}")
+
 
 def add_article_to_ticket(ticket_id: int, body: str, sender: str = "Agent",
                            article_type: str = "note", internal: bool = True):
@@ -157,4 +197,26 @@ def replace_tag_for_ticket(ticket_id: int, old_tag: str, new_tag: str):
         print(f"Invalid URL for Zammad provided: Could not reach Zammad to replace tag on ticket")
     except Exception as e:
         print(f"Other error occured during tag replacement: {e}")
-# create_ticket_by_user_email(email="example@example.com", title="Help request", body="Hello, I need help!",)
+
+def mark_ticket_as_closed(ticket_id:int):
+    """
+    Sends a Zammad API call to close the ticket (state is set to closed) with the provided ticket ID.
+    :param ticket_id: The ticket id of the ticket to close
+    """
+    try:
+        response = requests.put(
+            url=f"{server_address}/api/v1/tickets/{ticket_id}",
+            json={
+                "state":"closed",
+            },
+            headers=headers,
+            timeout=GENERAL_TIMEOUT
+        )
+
+        print(f"Ticket {ticket_id} marked as closed.")
+    except ConnectionError:
+        print(f"Connection error: Could not reach Zammad to add mark ticket as closed")
+    except MissingSchema:
+        print(f"Invalid URL for Zammad provided: Could not reach Zammad to mark ticket as closed")
+    except Exception as e:
+        print(f"Other error occured during marking ticket as closed: {e}")

@@ -237,8 +237,28 @@ def get_issue_summary() -> str:
 
 # ── Core message processing ───────────────────────────────────────────────────
 
+TICKET_INTRO = (
+    "Ich habe für Sie gerade ein Support-Ticket erstellt. "
+    "Um Sie optimal zu unterstützen, beantworten Sie bitte folgende Fragen:"
+)
+
+def strip_redundant_ticket_intro(content: str) -> str:
+    """Remove any duplicated filler text between the fixed ticket-intro
+    sentence and the first bullet-point question that follows it.
+    """
+    idx = content.find(TICKET_INTRO)
+    if idx == -1:
+        return content
+    start = idx + len(TICKET_INTRO)
+    star_idx = content.find("*", start)
+    if star_idx == -1:
+        return content
+    merged = content[:start] + "\n\n" + content[star_idx:]
+
+    return re.sub(r"(?<!\n)\*\s", "\n* ", merged)
+
 def apply_response_to_session(user_input: str, res_json: dict) -> None:
-    answer = res_json["bot_response"]
+    answer = strip_redundant_ticket_intro(res_json["bot_response"])
 
     st.session_state.messages.append({"role": "user", "content": user_input})
     st.session_state.chatbot_history.append({"role": "user", "content": user_input})
