@@ -12,6 +12,9 @@ When the user sends a message, the user's input gets displayed in the chat histo
 
 After the bot has replied, the answer is written into the visible chat history and the updated state that the backend returned is applied to the frontend, so that the next chat message can reuse the new state. Technically all the chat messages are Streamlit containers (`with st.chat_message("assistant"):` and then within the with statement one or more `st.write(...)`, as per https://docs.streamlit.io/develop/api-reference/chat/st.chat_message), so the chat messages can be extended to contain other elements as well.
 
+## Further user workflow
+If a problem has been recognized, and the user gave enough info, then the bot gives solutions and asks if the solutions helped. If yes, the problem gets marked as resolved. If no, then the user gets a summary and may correct if they wish. The addendum gets added to the Zammad ticket.
+
 ## Project structure
 
 | File | Purpose |
