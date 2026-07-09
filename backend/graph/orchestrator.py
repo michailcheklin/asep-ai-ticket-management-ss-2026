@@ -17,7 +17,7 @@ from .nodes import (
     give_tutorial,
     finish_tutorial,
 )
-from langsmith import Client, traceable
+from langsmith import Client
 from langsmith.anonymizer import create_anonymizer
 
 
@@ -64,6 +64,7 @@ def __execute_langchain_workflow(state: ChatbotState):
         "solutions": updated_state.get("solutions", []),
         "additional_info_attempts": updated_state.get("additional_info_attempts", 0),
         "ask_issue_attempts": updated_state.get("ask_issue_attempts", 0),
+        "full_conversation": updated_state.get("full_conversation", ""),
         "intent": updated_state.get("intent", ""),
         "tutorial_attempts": updated_state.get("tutorial_attempts", 0),
     }
@@ -130,7 +131,7 @@ def route_after_intent(state: ChatbotState):
 
     if intent == "tutorial":
         if state.get("tutorial_attempts", 0) >= 2:
-            return "extractor_node"     
+            return "extractor_node"
         return "give_tutorial_node"
 
     if intent == "problem":

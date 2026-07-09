@@ -19,5 +19,7 @@ class ChatRequest(BaseModel):
     additional_info_attempts: int = 0
     ask_issue_attempts: int = 0
     ticket_id: int | None = None
+    full_conversation: str = ""
+    user_addendum: str = ""
     intent: str = ""
     tutorial_attempts: int = 0
