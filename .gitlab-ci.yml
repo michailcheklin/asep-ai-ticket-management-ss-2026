@@ -144,6 +144,7 @@ run_test_ticket_confirmation:
     - python -m venv $VENV_DIR
     - source $VENV_DIR/bin/activate
     - if [ -f tests/requirements.txt ]; then pip install -r tests/requirements.txt; fi
+    - echo "AGENT=ZIM" >> .env
     - python -m backend.tests.test_ticket_confirmation
 
 
