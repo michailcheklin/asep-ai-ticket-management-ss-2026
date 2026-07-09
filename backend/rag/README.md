@@ -100,11 +100,13 @@ results = retrieve_relevant_entries(query, n_results=5)
 ```python
 {
     "faq_matches": [
-        {
-            "id":         str,   # FAQ entry ID
-            "text":       str,   # Full FAQ text as stored
-            "similarity": float  # Sigmoid-scaled cross-encoder score (0–1)
-        },
+        (
+            id,              # str: FAQ entry ID
+            problem,         # str: FAQ problem description
+            solution,        # str: FAQ solution text (solution[0].faq_content)
+            extracted_urls,  # list of (url, status, type, content, notes) tuples, see below
+            similarity,      # float: Sigmoid-scaled cross-encoder score (0–1)
+        ),
         ...
     ],
     "ticket_matches": [
@@ -122,6 +124,14 @@ results = retrieve_relevant_entries(query, n_results=5)
     }
 }
 ```
+
+Each entry in `extracted_urls` is a `(url, status, type, content, notes)` tuple, where `notes` depends on `status`:
+
+| `status` | `notes` |
+|---|---|
+| `"success"` | Fixed hint that `content` can be used as context for the answer. |
+| `"error"` | Fixed hint that the link is likely only reachable via the university network/VPN. |
+| `"none"` | Precomputed one-sentence description of the file type and its purpose (see `backend/crawler/generate_none_url_notes.py`), with a generic type-only fallback if not yet precomputed. |
 
 ---
 
