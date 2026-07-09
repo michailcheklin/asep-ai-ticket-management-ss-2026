@@ -60,6 +60,7 @@ def __execute_langchain_workflow(state: ChatbotState):
         "solutions": updated_state.get("solutions", []),
         "additional_info_attempts": updated_state.get("additional_info_attempts", 0),
         "ask_issue_attempts": updated_state.get("ask_issue_attempts", 0),
+        "full_conversation": updated_state.get("full_conversation", ""),
     }
 
 def route_based_on_state(state: ChatbotState):
