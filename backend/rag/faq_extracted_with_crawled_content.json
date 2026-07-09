@@ -15,7 +15,8 @@
               "content": null,
               "content_length": null,
               "type": ".pdf",
-              "error": null
+              "error": null,
+              "note": "Die URL ist eine .pdf, welche das Antragsformular zur Einrichtung einer Organisationseinheit bereitstellt."
             }
           ]
         }
@@ -1869,7 +1870,8 @@
               "content": null,
               "content_length": null,
               "type": ".pdf",
-              "error": null
+              "error": null,
+              "note": "Die URL ist eine .pdf, welche das Antragsformular für die Freischaltung einer FSV‑GX‑Benutzerkennung bereitstellt."
             }
           ]
         }
@@ -2029,7 +2031,8 @@
               "content": null,
               "content_length": null,
               "type": ".pdf",
-              "error": null
+              "error": null,
+              "note": "Die URL ist eine .pdf, die das Formular „Antrag auf Zugang zum Programm FSV‑GX“ bereitstellt, mit dem Sie Änderungen Ihrer persönlichen Daten melden können."
             }
           ]
         }
@@ -2961,7 +2964,8 @@
               "content": null,
               "content_length": null,
               "type": ".pdf",
-              "error": null
+              "error": null,
+              "note": "Die URL ist eine .pdf, welche das Antragsformular für die Beantragung der BI‑Rolle in HISinOne bereitstellt."
             }
           ]
         }
@@ -3150,7 +3154,8 @@
               "content": null,
               "content_length": null,
               "type": ".pdf",
-              "error": null
+              "error": null,
+              "note": "Die URL ist eine .pdf, welche als Kurzeinführung zur Nutzung von Moodle dient."
             }
           ]
         }
@@ -3309,7 +3314,8 @@
               "content": null,
               "content_length": null,
               "type": ".pdf",
-              "error": null
+              "error": null,
+              "note": "Die URL ist eine .pdf, welche als Kurzeinführung zur Nutzung von Moodle dient."
             }
           ]
         }
@@ -3332,7 +3338,8 @@
               "content": null,
               "content_length": null,
               "type": ".pdf",
-              "error": null
+              "error": null,
+              "note": "Die URL ist eine .pdf, welche als Kurzeinführung zur Nutzung von Moodle dient."
             }
           ]
         }
@@ -3404,7 +3411,8 @@
               "content": null,
               "content_length": null,
               "type": ".pdf",
-              "error": null
+              "error": null,
+              "note": "Die URL ist eine .pdf, welche als Anleitung für Dozent*innen zum Einloggen und Hinzufügen von Studierenden auf dem Moodle‑Prüfungsserver dient."
             }
           ]
         }
@@ -4192,7 +4200,8 @@
               "content": null,
               "content_length": null,
               "type": ".gif",
-              "error": null
+              "error": null,
+              "note": "Die URL ist eine .gif, die als Screenshot den Ort des Karteisymbols im zentralen Arbeitsvorrat veranschaulicht."
             }
           ]
         }
@@ -4263,7 +4272,8 @@
               "content": null,
               "content_length": null,
               "type": ".pcf",
-              "error": null
+              "error": null,
+              "note": "Die URL ist eine .pcf, welche das VPN‑Profil „extern‑nat“ für die Nutzung des VPN‑Tunnels von zu Hause aus bereitstellt."
             }
           ]
         }
@@ -4920,7 +4930,8 @@
               "content": null,
               "content_length": null,
               "type": ".pdf",
-              "error": null
+              "error": null,
+              "note": "Die URL ist eine .pdf, welche das rechtliche Bestätigungsformular für die Beantragung einer Projektbox enthält."
             },
             {
               "url": "http://www.sciebo.de/de/hilfe/funktionen.html#a1_2",
@@ -5221,7 +5232,8 @@
               "content": null,
               "content_length": null,
               "type": ".zip",
-              "error": null
+              "error": null,
+              "note": "Die URL ist eine .zip, die das Registrierungs‑File zum Deaktivieren von „RequireSecureNegotiate“ für Windows 8 bereitstellt."
             }
           ]
         }
@@ -5283,7 +5295,8 @@
               "content": null,
               "content_length": null,
               "type": ".pdf]",
-              "error": null
+              "error": null,
+              "note": "Die URL ist eine .pdf, welche das Formular zur Beantragung der Abschaltung eines Telefon‑Dienstanschlusses bereitstellt."
             },
             {
               "url": "https://www.uni-due.de/imperia/md/content/zim/tk-services/telefon_aenderung_ude.pdf]",
@@ -5292,7 +5305,8 @@
               "content": null,
               "content_length": null,
               "type": ".pdf]",
-              "error": null
+              "error": null,
+              "note": "Die URL ist eine .pdf, die das Formular zur Beantragung einer Änderung eines Telefon‑Dienstanschlusses bereitstellt."
             },
             {
               "url": "https://www.uni-due.de/imperia/md/content/zim/tk-services/telefon_neueinrichtung_ude.pdf]",
@@ -5301,7 +5315,8 @@
               "content": null,
               "content_length": null,
               "type": ".pdf]",
-              "error": null
+              "error": null,
+              "note": "Die URL ist eine .pdf, welche als Antrag für die Neu‑Einrichtung eines Telefonanschlusses dient."
             }
           ]
         }
@@ -5569,7 +5584,8 @@
               "content": null,
               "content_length": null,
               "type": ".pdf",
-              "error": null
+              "error": null,
+              "note": "Die URL ist eine .pdf, welche als Installationsanleitung für die Einrichtung von eduroam an der UDE für FOM‑Studierende dient."
             },
             {
               "url": "https://www.uni-due.de/imperia/md/content/zim/services/wlan/bcw-gruppe_eduroam_wlan_setup.exe",
@@ -5578,7 +5594,8 @@
               "content": null,
               "content_length": null,
               "type": ".exe",
-              "error": null
+              "error": null,
+              "note": "Die URL ist eine .exe, welche als Installationsprogramm zur Einrichtung des eduroam‑WLAN‑Zugangs für FOM‑Studierende dient."
             }
           ]
         }
@@ -6048,7 +6065,8 @@
               "content": null,
               "content_length": null,
               "type": ".pdf",
-              "error": null
+              "error": null,
+              "note": "Die URL ist eine .pdf, die als Onlineformular zur Beantragung einer Unikennung dient."
             },
             {
               "url": "http://www.uni-due.de/zim/quick/selfcareportal",
@@ -7281,7 +7299,8 @@
               "content": null,
               "content_length": null,
               "type": ".pdf",
-              "error": null
+              "error": null,
+              "note": "Die URL ist eine .pdf, welche als Anleitung für die erforderlichen Browser‑ und Cookie‑Einstellungen zum Zugriff auf das SAP‑Portal dient."
             }
           ]
         }
@@ -7598,7 +7617,8 @@
               "content": null,
               "content_length": null,
               "type": ".pdf",
-              "error": null
+              "error": null,
+              "note": "Die URL ist eine .pdf, welche als Leitfaden zum Drucken von Berichten im Portal dient."
             }
           ]
         }
@@ -7857,7 +7877,8 @@
               "content": null,
               "content_length": null,
               "type": ".exe",
-              "error": null
+              "error": null,
+              "note": "Die URL ist eine .exe, die das Sciebo‑Client‑Installationsprogramm bereitstellt."
             },
             {
               "url": "https://www.uni-due.de/zim/sciebo-ma.php",
