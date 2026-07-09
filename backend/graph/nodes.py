@@ -482,6 +482,9 @@ def ask_for_additional_info(state: ChatbotState):
     faq_context = "\n".join([f"- {_format_faq_match_for_prompt(match)}" for match in faq_matches])
     ticket_context = "\n".join([f"- {match['text']} (Kategorie: {match['category']})" for match in ticket_matches])
 
+    print(f"[DEBUG]: faq_matches: {faq_matches}\n\n")
+    print("-"*10 + "\n\n")
+    print(f"[DEBUG]: faq_context: {faq_context}")
 
     system_prompt = SystemMessage(content=(
         AGENT_PROMPT + "\n\n" +
@@ -504,10 +507,8 @@ def ask_for_additional_info(state: ChatbotState):
            a) Fehlen im "AKTUELLEN PROBLEM" Details, die in den alten Tickets oder FAQs zur Lösung 
               zwingend notwendig waren?
            b) Gibt es in der WISSENSDATENBANK mehrere unterschiedliche Einträge (FAQs oder Tickets), die 
-              auf das AKTUELLE PROBLEM ähnlich gut passen könnten, aber zu unterschiedlichen Lösungen oder 
-              Ursachen führen? Falls ja, identifiziere das unterscheidende Merkmal zwischen diesen Einträgen 
-              (z.B. Betriebssystem, Standort, Nutzergruppe, Fehlerzeitpunkt) – dieses Merkmal zählt ebenfalls 
-              als "fehlende Information", auch wenn das AKTUELLE PROBLEM auf den ersten Blick vollständig wirkt.
+              auf das AKTUELLE PROBLEM ähnlich gut passen könnten, dann stelle basierend auf der WISSENDATENBANK Rückfragen,
+              um mithilfe der Antworten die Einträge besser auseinanderzuhalten.
         2. Wenn weder (a) noch (b) zutrifft, ODER wenn die WISSENSDATENBANK keine relevanten Inhalte für 
            eine Nachfrage liefert, setze needs_additional_info auf True und follow_up_question auf den 
            leeren String.
