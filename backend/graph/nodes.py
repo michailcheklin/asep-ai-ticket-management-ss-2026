@@ -144,7 +144,7 @@ def classify_ticket(state: ChatbotState):
 
 
 INTENTS = ["tutorial", "problem", "unclear", "solved"]
-intent_llm = llm.with_structured_output(IntentDecision, method="json_schema")
+intent_llm = llm.with_structured_output(IntentDecision)
 
 
 @traceable
