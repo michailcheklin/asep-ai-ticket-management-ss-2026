@@ -26,6 +26,8 @@ INITIAL_STATES = {
     # ── Ticket confirmation (frontend-only, before finalising support ticket) ──
     "pending_ticket_confirmation": None,  # message index with unhelpful solution feedback
     "show_ticket_addendum_form": False,
+    "intent": "",
+    "tutorial_attempts": 0,
     # ── Q&A widget state (frontend-only, never sent to the backend) ──────────
     "pending_questions": [],   # list of {text: str, options: list[str] | None}
     "current_question_idx": 0,
@@ -195,6 +197,8 @@ def build_chat_payload(user_input: str) -> dict:
         "category": st.session_state.category,
         "additional_info_attempts": st.session_state.additional_info_attempts,
         "ask_issue_attempts": st.session_state.ask_issue_attempts,
+        "intent": st.session_state.intent,
+        "tutorial_attempts": st.session_state.tutorial_attempts,
         "ticket_id": st.session_state.get("ticket_id"),
         "full_conversation": st.session_state.full_conversation,
     }
@@ -278,17 +282,22 @@ def apply_response_to_session(user_input: str, res_json: dict) -> None:
     st.session_state.ask_issue_attempts = res_json.get("ask_issue_attempts", 0)
     st.session_state.category = res_json.get("category", "")
     st.session_state.full_conversation = res_json.get("full_conversation", "")
+    st.session_state.intent = res_json.get("intent", "")
+    st.session_state.tutorial_attempts = res_json.get("tutorial_attempts", 0)
     if "ticket_id" in res_json:
         st.session_state.ticket_id = res_json.get("ticket_id")
 
-    # Detect bullet-point questions → enter guided Q&A mode
-    questions = parse_questions_from_message(answer)
-    if questions:
-        st.session_state.pending_questions = questions
-        st.session_state.current_question_idx = 0
-        st.session_state.question_answers = []
-        # Nach unten zum Fragen-Widget scrollen
-        st.session_state["scroll_target"] = "question_widget_anchor"
+    # Never try to parse the bullet points of tutorials into a Q&A mode
+    # in the first tutorial.
+    if st.session_state.intent != "tutorial":
+        # Detect bullet-point questions → enter guided Q&A mode
+        questions = parse_questions_from_message(answer)
+        if questions:
+            st.session_state.pending_questions = questions
+            st.session_state.current_question_idx = 0
+            st.session_state.question_answers = []
+            # Nach unten zum Fragen-Widget scrollen
+            st.session_state["scroll_target"] = "question_widget_anchor"
 
 
 def process_user_message(client: ChatClient, user_input: str) -> None:
@@ -320,6 +329,7 @@ def process_solution_feedback(
     message = st.session_state.messages[message_index]
     payload = build_feedback_payload(message_index, helpful, user_addendum=user_addendum)
 
+    # If user says "No", just append message to ticket without parsing JSON response
     if not helpful:
         client.send_feedback(payload)
         message["solutions"] = []
@@ -328,6 +338,7 @@ def process_solution_feedback(
         st.session_state["scroll_target"] = None
         return "Ich habe dein Feedback notiert und ein Support-Ticket erstellt. Ein Agent wird sich bald um dein Anliegen kümmern."
 
+    # For "Yes" response, parse the JSON response
     res_json = client.send_feedback(payload)
     message["solutions"] = []
     return res_json.get("bot_response", "")

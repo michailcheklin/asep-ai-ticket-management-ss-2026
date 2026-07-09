@@ -70,18 +70,27 @@ In the image each node is written with its name. The START node is named `__star
 When you do changes on the Langgraph, that add conditional edges with `workflow.add_conditional_edges`, or modify existing conditional edges, you need to explicitely set these arguments to ensure that the image of the graph gets created correctly:
 * `source`= [name of the source node as a string],
 * `path`= [name of the routing function as function reference] - **Do not call this function by adding `"()"` at the end**
-* `path_map = build_pathmap_from_nodes_list_for_visualization(string_array)`, where `string_array` is the list of all node names that occur in the return statements of the function that was provided to the `path` argument. If the END node is returned, add `"__end__"` in this string array to represent the END node.
+* `path_map = build_pathmap_from_nodes_list_for_visualisation(string_array)`, where `string_array` is the list of all node names that occur in the return statements of the function that was provided to the `path` argument. If the END node is returned, add `"__end__"` in this string array to represent the END node.
 
 ```mermaid
+
+## Intent-Klassifikation und zwei Gespraechspfade (Issue #161)
+
 graph TD
     %% --- START & END ---
     Start(((START)))
     End(((END)))
 
+
+     %% --- KLASSIFIKATION & ZWEI PFADE  ---
+    classify_intent_node[classify_intent_node <br> classify_intent]
+    ask_intent_node[ask_intent_node <br> ask_intent]
+    give_tutorial_node[give_tutorial_node <br> give_tutorial]
+    finish_tutorial_node[finish_tutorial_node <br> finish_tutorial]
+
     %% --- ALLE REGISTRIERTEN NODES ---
     extractor_node[extractor_node <br> extract_information]
     ask_email_node[ask_email_node <br> ask_for_email]
-    ask_matrikel_node[ask_matrikel_node <br> ask_for_matrikelnummer]
     ask_issue_node[ask_issue_node <br> ask_for_issue]
     ask_for_additional_info[ask_for_additional_info]
     classify_ticket_node[classify_ticket_node <br> classify_ticket]
@@ -89,6 +98,7 @@ graph TD
     finish_node[finish_node <br> finish_ticket]
 
     %% --- ROUTER (CONDITIONAL EDGES) ---
+    route_after_intent{route_after_intent}
     route_based_on_state{route_based_on_state}
     route_after_evaluator{route_after_evaluator}
     route_after_solutions{route_after_solutions}
@@ -96,51 +106,64 @@ graph TD
     %% --- VERBINDUNGEN NACH CODE-LOGIK ---
     
     %% Entry Point
-    Start --> extractor_node
+    Start --> classify_intent_node
     
     %% Erster Conditional Router
-    extractor_node --> route_based_on_state
+    classify_intent_node --> route_after_intent
     
+    route_after_intent -->|not user_email| ask_email_node
+    route_after_intent -->|intent solved & tutorial_attempts > 0| finish_tutorial_node
+    route_after_intent -->|intent tutorial & tutorial_attempts < 2| give_tutorial_node
+    route_after_intent -->|intent tutorial & tutorial_attempts >= 2| extractor_node
+    route_after_intent -->|intent problem| extractor_node
+    route_after_intent -->|else / unclear| ask_intent_node
+
+
+    %% --- Tutorial-Pfad endet und wartet auf Nutzer ---
+    give_tutorial_node --> End
+    ask_intent_node --> End
+    finish_tutorial_node --> End
+
+    %% --- Ticket-Pfad: Vollstaendigkeit pruefen ---
+    extractor_node --> route_based_on_state
     route_based_on_state -->|not user_email| ask_email_node
-    route_based_on_state -->|not matrikelnummer| ask_matrikel_node
-    route_based_on_state -->|not issue_description & attempts < 3| ask_issue_node
-    route_based_on_state -->|not issue_description & attempts >= 3| finish_node
+    route_based_on_state -->|not issue & attempts < 3| ask_issue_node
+    route_based_on_state -->|not issue & attempts >= 3| finish_node
     route_based_on_state -->|else| ask_for_additional_info
 
-    %% Direkte End-Verbindungen von den Ask-Nodes
     ask_email_node --> End
-    ask_matrikel_node --> End
     ask_issue_node --> End
 
-    %% Zweiter Conditional Router
+    %% --- Zusatzinfos auswerten ---
     ask_for_additional_info --> route_after_evaluator
-    
     route_after_evaluator -->|needs_additional_info == True| classify_ticket_node
     route_after_evaluator -->|else| End
 
-    %% Linearer Pfad
     classify_ticket_node --> give_solutions_node
 
-    %% Dritter Conditional Router
+    %% --- Loesungen anbieten ---
     give_solutions_node --> route_after_solutions
-    
     route_after_solutions -->|solutions & is_complete| finish_node
     route_after_solutions -->|solutions & not is_complete| End
     route_after_solutions -->|not solutions| finish_node
 
-    %% Abschließendes Ticket-Ende
     finish_node --> End
 
-    %% --- OPTIONALES STYLING ---
+    %% --- STYLING ---
     style Start fill:#dcedc8,stroke:#689f38
     style End fill:#ffcdd2,stroke:#c62828
-    
+
+    style classify_intent_node fill:#c8e6c9,stroke:#2e7d32
+    style ask_intent_node fill:#c8e6c9,stroke:#2e7d32
+    style give_tutorial_node fill:#c8e6c9,stroke:#2e7d32
+    style finish_tutorial_node fill:#c8e6c9,stroke:#2e7d32
+
     style extractor_node fill:#bbdefb,stroke:#1976d2
     style classify_ticket_node fill:#bbdefb,stroke:#1976d2
     style give_solutions_node fill:#bbdefb,stroke:#1976d2
     style finish_node fill:#bbdefb,stroke:#1976d2
-    
+
     style ask_email_node fill:#ffecb3,stroke:#ff8f00
-    style ask_matrikel_node fill:#ffecb3,stroke:#ff8f00
     style ask_issue_node fill:#ffecb3,stroke:#ff8f00
     style ask_for_additional_info fill:#ffecb3,stroke:#ff8f00
+```

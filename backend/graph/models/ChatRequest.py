@@ -21,3 +21,5 @@ class ChatRequest(BaseModel):
     ticket_id: int | None = None
     full_conversation: str = ""
     user_addendum: str = ""
+    intent: str = ""
+    tutorial_attempts: int = 0
