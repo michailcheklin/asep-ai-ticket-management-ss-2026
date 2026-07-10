@@ -90,6 +90,7 @@ run_test_ticket_escalation:
     - python -m venv $VENV_DIR
     - source $VENV_DIR/bin/activate
     - if [ -f tests/requirements.txt ]; then pip install -r tests/requirements.txt; fi
+    - echo "AGENT=ZIM" >> .env
     - pytest ./backend/tests/test_incident_escalation.py -s -v
 
 run_test_prompt_security:
