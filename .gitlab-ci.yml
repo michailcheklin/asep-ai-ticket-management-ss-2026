@@ -44,6 +44,7 @@ download_hugging_face_models:
     - source $VENV_DIR/bin/activate
     - if [ -f tests/requirements.txt ]; then pip install -r tests/requirements.txt; fi
     - python ./backend/prompt_security/prompt_check_model_setup.py
+    - PYTHONPATH=. python -c "import backend.rag.retrieve_info"
   cache:
     - key: ${CI_COMMIT_REF_SLUG}
       paths:
@@ -54,12 +55,14 @@ download_hugging_face_models:
       paths:
         - $HF_HOME
       policy: push
-  # Redownload the Hugging Face models for the prompt security check only if the
-  # prompt check model setup file is changed, e. g. to choose a different model
+  # Redownload the Hugging Face models for the prompt security check or the
+  # RAG retrieval models only if their respective setup/module file changed,
+  # e. g. to choose a different model
   rules:
     - changes:
         paths:
           - backend/prompt_security/prompt_check_model_setup.py
+          - backend/rag/retrieve_info.py
   tags:
     - dind
     - ude-sse
@@ -174,6 +177,29 @@ run_test_ticket_confirmation:
     - echo "AGENT=ZIM" >> .env
     - python -m backend.tests.test_ticket_confirmation
 
+run_rag_retrieve:
+  stage: before_deepeval
+  tags:
+    - dind
+    - ude-sse
+  cache:
+    - key: ${CI_COMMIT_REF_SLUG}
+      paths:
+        - $PIP_CACHE_DIR
+        - $VENV_DIR/lib/python*/site-packages/
+      policy: pull
+    - key: hf-models
+      paths:
+        - .cache/huggingface/
+      policy: pull
+  script:
+    - export HF_HOME=$HF_HOME
+    - python --version
+    - pip install --upgrade pip
+    - python -m venv $VENV_DIR
+    - source $VENV_DIR/bin/activate
+    - if [ -f tests/requirements.txt ]; then pip install -r tests/requirements.txt; fi
+    - PYTHONPATH=. pytest tests/test_rag_retrieve.py -v -s
 
 run_deepeval_tests:
   stage: deepeval
