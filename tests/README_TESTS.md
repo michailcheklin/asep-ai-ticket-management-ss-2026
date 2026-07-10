@@ -93,6 +93,31 @@ The test is passed if the chatbot responds successfully with a JSON response wit
 **Additional notes:**
 If this test fails, the chatbot evaluation tests will not be run
 
+### Graph node unit tests
+**What do these tests do:**
+These scripts unit-test individual LangGraph nodes from `backend/graph/nodes.py` in isolation, with all LLM, RAG-retrieval and Zammad calls mocked:
+* `test_intent_classification.py` — `classify_intent`
+* `test_ticket_category.py` — `classify_ticket`, `classify_ticket_category`, `extract_information`, `finish_ticket`, `_resolve_ticket_category`
+* `test_ticket_category_live.py` — `classify_ticket_category` against the real LLM (live counterpart to `test_ticket_category.py`)
+* `test_ask_for_additional_info.py` — `ask_for_additional_info`
+* `test_give_solutions.py` — `give_solutions`
+
+**Why is this test done:**
+To catch regressions in a single node's decision logic (fallback behavior, prompt construction, state updates) without needing a running chatbot, a real LLM, or a real Zammad instance — these tests run fast and deterministically in CI on every push.
+
+**How is the test done:**
+Each test follows the Arrange-Act-Assert pattern: the relevant LLM object, `retrieve_relevant_entries`, and/or `ticket_service.<method>` are mocked via `unittest.mock.patch` on their `backend.graph.nodes` module-level reference (e.g. `@patch("backend.graph.nodes.category_llm")`, `@patch("backend.graph.nodes.llm")`, `@patch("backend.graph.nodes.retrieve_relevant_entries")`), mock return values are set up to a decision object built by a small factory helper (e.g. `category_decision(...)`, `intent_decision(...)`, `additional_info_decision(...)`), the node function is called directly with a hand-built state dict, and the returned state-update dict (and, where relevant, the mocked call arguments) are asserted against the expected outcome. `test_ticket_category.py` and `test_intent_classification.py` also assert on prompt content (`mock_llm.invoke.call_args[0][0][0].content`) to guard against silently broken prompt templates.
+
+Note: `ask_for_additional_info` builds its structured-output LLM inline (`llm.with_structured_output(AdditionalInfoDecision)`) rather than using a module-level singleton like `category_llm`/`intent_llm`/`structured_llm`. Its tests therefore patch `backend.graph.nodes.llm` and configure `mock_llm.with_structured_output.return_value.invoke.return_value` instead of patching a dedicated LLM object directly.
+
+**When is the test passed:**
+All assertions in every test case must pass. `test_ticket_category_live.py`'s classes are skipped unless `RUN_LLM_CATEGORY_TESTS=1` is set — without it, the job still counts as passed, just with those cases reported as skipped.
+
+**Additional notes:**
+* All five files run together in one CI job (`run_test_graph_nodes`) via a single `pytest` invocation, since they all test nodes from the same module and share the same mocking approach — this keeps the pipeline lean instead of one job per node.
+* `test_ticket_category.py`'s `TicketCategoryConstantsTests` and `test_ticket_category_live.py`'s regression/holdout suites load fixtures from `backend/rag/old_tickets.json` and `backend/rag/category_holdout_tests.json` via the shared helper module `category_test_support.py`. Regression/holdout accuracy thresholds are configurable via `CATEGORY_REGRESSION_MIN_ACCURACY` (default 0.90), `CATEGORY_HOLDOUT_MIN_ACCURACY` (default 0.80), and an optional `CATEGORY_REGRESSION_LIMIT` cap.
+* To run the live LLM suite locally: `RUN_LLM_CATEGORY_TESTS=1 pytest tests/test_ticket_category_live.py -v -s` (uses real SAIA/Ollama quota — don't run casually, see the SAIA request cap in the main `CLAUDE.md`).
+
 ### RAG retrieval
 **What does this test do:**
 This script checks whether `retrieve_relevant_entries()` (`backend/rag/retrieve_info.py`) still finds the correct FAQ and past-ticket matches for four fixed IT-support queries — VPN, WLAN/eduroam, Windows license, and one irrelevant control query ("booking a holiday") — evaluated against the same similarity thresholds used in production.
