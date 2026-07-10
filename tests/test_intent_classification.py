@@ -5,18 +5,12 @@ Mocks the LLM by default, mirroring test_ticket_category.py.
 Tests the fallback logic, prompt construction and e-mail extraction of
 classify_intent — not the LLM's actual accuracy.
 
-Run from backend/:
-    python -m unittest tests.test_intent_classification
+Run from the repo root:
+    pytest tests/test_intent_classification.py -v -s
 """
 
-import sys
 import unittest
-from pathlib import Path
 from unittest.mock import patch
-
-REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
 
 from langchain_core.messages import HumanMessage
 
