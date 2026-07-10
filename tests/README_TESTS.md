@@ -51,9 +51,13 @@ If you are during regular development import code from other scripts, you need t
    * On Mac/Linux `pytest ./<name of test file> -s -v`
 4. The `-s -v` flag causes the normal application to print on the terminal
 
-**Exception — LLM benchmark test:** This test must be run from the project root, not from the `tests/` folder, because it imports backend modules that require the project root to be on the Python path:
-   * On Windows `set PYTHONPATH=. && pytest tests/test_llm_benchmark.py -v -s`
-   * On Mac `PYTHONPATH=. pytest tests/test_llm_benchmark.py -v -s`
+**Exception — LLM benchmark test and RAG retrieval test:** These tests must be run from the project root, not from the `tests/` folder, because they import backend modules that require the project root to be on the Python path:
+   * LLM benchmark test:
+     * On Windows `set PYTHONPATH=. && pytest tests/test_llm_benchmark.py -v -s`
+     * On Mac `PYTHONPATH=. pytest tests/test_llm_benchmark.py -v -s`
+   * RAG retrieval test:
+     * On Windows `set PYTHONPATH=. && pytest tests/test_rag_retrieve.py -v -s`
+     * On Mac `PYTHONPATH=. pytest tests/test_rag_retrieve.py -v -s`
 
 ## What is tested
 
@@ -88,6 +92,22 @@ The test is passed if the chatbot responds successfully with a JSON response wit
 
 **Additional notes:**
 If this test fails, the chatbot evaluation tests will not be run
+
+### RAG retrieval
+**What does this test do:**
+This script checks whether `retrieve_relevant_entries()` (`backend/rag/retrieve_info.py`) still finds the correct FAQ and past-ticket matches for four fixed IT-support queries — VPN, WLAN/eduroam, Windows license, and one irrelevant control query ("booking a holiday") — evaluated against the same similarity thresholds used in production.
+
+**Why is this test done:**
+To catch regressions in the RAG retrieval module — e.g. shifted thresholds, a swapped embedding/reranker model, a broken query-encoding step — that would silently degrade solution quality, and to flag when the FAQ/ticket knowledge base has drifted away from covering these core topics.
+
+**How is the test done:**
+All four queries are retrieved once via a shared `pytest` fixture and reused across the individual test functions. For the three queries with known-good matches (VPN, WLAN, Windows license), each test asserts that a FAQ match is returned, that it reaches the tier-1 similarity threshold (`FAQ_TIER_1_THRESHOLD`), and that at least one ticket match is returned (ticket matches are already filtered by `TICKET_SIMILARITY_THRESHOLD` inside `retrieve_relevant_entries()`). For the irrelevant control query, the test asserts the opposite: no FAQ match reaches the tier-1 threshold and no ticket match is returned at all.
+
+**When is the test passed:**
+The test is passed if, for the three relevant queries, a FAQ match reaches `FAQ_TIER_1_THRESHOLD` and at least one ticket match is returned, and if, for the irrelevant query, no FAQ match reaches that threshold and no ticket match is returned.
+
+**Additional notes:**
+The thresholds are imported directly from `backend/rag/retrieve_info.py` instead of being duplicated in the test, so the test always evaluates against the actual production values rather than a possibly stale copy. This test must be run from the project root with `PYTHONPATH=.` set (see exception above), since it imports `backend.rag.retrieve_info` via its full module path.
 
 ### Chatbot conversation quality
 **What does this test do:**
