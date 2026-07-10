@@ -125,7 +125,7 @@ run_test_chat_endpoint_connectivity:
     - echo "AGENT=ZIM" >> .env
     - pytest ./tests/test_chat_endpoint_connectivity.py -v -s
 
-run_test_intent_classification:
+run_test_graph_nodes:
   stage: before_deepeval
   tags:
     - dind
@@ -148,8 +148,7 @@ run_test_intent_classification:
     - source $VENV_DIR/bin/activate
     - if [ -f tests/requirements.txt ]; then pip install -r tests/requirements.txt; fi
     - echo "AGENT=ZIM" >> .env
-    - cd ./backend
-    - python -m unittest tests.test_intent_classification
+    - PYTHONPATH=. pytest tests/test_intent_classification.py tests/test_ticket_category.py tests/test_ticket_category_live.py tests/test_ask_for_additional_info.py tests/test_give_solutions.py -v -s
 
 
 run_test_ticket_confirmation:
