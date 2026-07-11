@@ -20,14 +20,7 @@ import time
 import tempfile
 from pathlib import Path
 
-# --- Isolierte Test-DB + Konfiguration VOR dem Import setzen ------------------
-_TMP_DB = tempfile.mkdtemp(prefix="recent_incidents_test_")
-os.environ["RECENT_INCIDENTS_DB_PATH"] = _TMP_DB
-os.environ["INCIDENT_ESCALATION_MIN_COUNT"] = "5"
-os.environ["INCIDENT_RECENCY_WINDOW_HOURS"] = "8"
-os.environ["INCIDENT_SIMILARITY_THRESHOLD"] = "0.55"
-
-# Projektwurzel importierbar machen (backend als Package).
+# Make the project root importable (backend as a package).
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
@@ -35,6 +28,12 @@ if str(PROJECT_ROOT) not in sys.path:
 from backend.rag import recent_incidents  # noqa: E402
 from backend.services.ProblemService import ProblemService  # noqa: E402
 
+# --- Set up an isolated test database and configuration BEFORE the import ------------------
+_TMP_DB = tempfile.mkdtemp(prefix="recent_incidents_test_")
+os.environ["RECENT_INCIDENTS_DB_PATH"] = _TMP_DB
+os.environ["INCIDENT_ESCALATION_MIN_COUNT"] = "5"
+os.environ["INCIDENT_RECENCY_WINDOW_HOURS"] = "8"
+os.environ["INCIDENT_SIMILARITY_THRESHOLD"] = "0.55"
 
 # --- Test helpers -------------------------------------------------------
 def check(label: str, condition: bool, detail: str = "") -> bool:
