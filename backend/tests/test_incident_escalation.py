@@ -1,16 +1,17 @@
-"""Offline-Tests für die Incident-zu-Problem-Eskalation.
+"""
+Offline tests for incident-to-problem escalation.
 
-Getestet wird ohne echte Zammad- oder LLM-Aufrufe:
-  * die RAG-Logik in ``backend/rag/recent_incidents.py``
-    (Speichern, semantische Suche, Zeitfenster-Purge, Dedup)
-  * die Orchestrierung in ``ProblemService`` (Zammad/LLM sind gemockt)
+Testing is performed without actual Zammad or LLM calls:
+  * the RAG logic in ``backend/rag/recent_incidents.py``
+    (saving, semantic search, time window purge, deduplication)
+  * the orchestration in ``ProblemService`` (Zammad/LLM are mocked)
 
-Die Chroma-Datenbank läuft in einem temporären Verzeichnis, damit die echte
-``recent_incidents_db`` unangetastet bleibt.
+The Chroma database runs in a temporary directory so that the actual
+``recent_incidents_db`` remains untouched.
 
-Ausführen aus ``backend/``:
+Run from ``backend/``:
     python tests/test_incident_escalation.py
-oder via pytest:
+or via pytest:
     pytest tests/test_incident_escalation.py
 """
 import os
@@ -35,14 +36,13 @@ from backend.rag import recent_incidents  # noqa: E402
 from backend.services.ProblemService import ProblemService  # noqa: E402
 
 
-# --- kleine Test-Helfer -------------------------------------------------------
+# --- Test helpers -------------------------------------------------------
 def check(label: str, condition: bool, detail: str = "") -> bool:
     """
-    Schreibt einen Text, ob eine Testbedingung erfüllt wurde oder nicht
-    :param label: Der Name des Tests
-    :param condition: Die zu prüfende Bedingung
-    :param detail: Zusätzliche Informationen
-    :return:
+    Write a message indicating whether a test condition has been met or not
+    :param label: The name of the test
+    :param condition: The condition to be tested
+    :param detail: Additional information
     """
     status = "PASS" if condition else "FAIL"
     print(f"  [{status}] {label}" + (f": {detail}" if detail else ""))
@@ -51,7 +51,7 @@ def check(label: str, condition: bool, detail: str = "") -> bool:
 
 def clear_collection() -> None:
     """
-    Setzt die temporäre Collection zurück
+    Resets the temporary collection
     """
     col = recent_incidents._collection
     ids = col.get().get("ids", []) or []
@@ -59,7 +59,7 @@ def clear_collection() -> None:
         col.delete(ids=ids)
 
 
-# Fünf thematisch (fast) gleiche Incidents + ein andersartiger.
+# Five incidents that are (almost) identical in nature + one that is different.
 WLAN_TEXTS = [
     "eduroam WLAN funktioniert nicht, ich bekomme keine Verbindung im Gebäude",
     "Kein WLAN-Zugang über eduroam, Verbindung schlägt ständig fehl",
@@ -72,18 +72,18 @@ OTHER_TEXT = "Ich möchte eine Matlab-Lizenz für mein Studium beantragen"
 
 def test_similarity_and_threshold() -> bool:
     """
-    Prüft, ob die Ähnlichkeitssuche korrekt den Schwellenwert beachtet
-    :return: Das Testergebnis, ob der Test bestanden wurde, als Boolean
+    Checks whether the similarity search correctly applies the threshold
+    :return: The test result indicating whether the test passed, as a Boolean
     """
     print("\n== Test 1: Ähnlichkeitssuche + Schwellenwert ==")
     clear_collection()
     ok = True
 
-    # 4 bestehende WLAN-Incidents ablegen
+    # Add four recent Wifi incidents
     for i, text in enumerate(WLAN_TEXTS[:4], start=101):
         recent_incidents.add_incident(ticket_id=i, text=text)
 
-    # 5. WLAN-Incident: sollte >=4 ähnliche finden -> Eskalationsschwelle erreicht
+    # 5. Wi-Fi incident: if >=4 similar incidents are found -> escalation threshold reached
     recent_incidents.add_incident(ticket_id=105, text=WLAN_TEXTS[4])
     similar = recent_incidents.find_similar_open_incidents(
         text=WLAN_TEXTS[4], exclude_ticket_id=105
@@ -93,7 +93,7 @@ def test_similarity_and_threshold() -> bool:
     ok &= check("Schwelle (>=5 inkl. neuem) erreicht",
                 len(similar) + 1 >= 5, f"count={len(similar) + 1}")
 
-    # Andersartiger Incident: sollte NICHT eskalieren
+    # Incident with other topic: should NOT be escalated
     recent_incidents.add_incident(ticket_id=200, text=OTHER_TEXT)
     other_similar = recent_incidents.find_similar_open_incidents(
         text=OTHER_TEXT, exclude_ticket_id=200
@@ -105,8 +105,8 @@ def test_similarity_and_threshold() -> bool:
 
 def test_purge_stale() -> bool:
     """
-    Prüft, ob alte Problems korrekt nicht mehr als "Recent incident" markiert werden
-    :return: Das Testergebnis, ob der Test bestanden wurde, als Boolean
+    Checks whether old issues are no longer incorrectly marked as “Recent incident”
+    :return: The test result indicating whether the test passed, as a Boolean
     """
     print("\n== Test 2: Zeitfenster-Purge (>8h) ==")
     clear_collection()
@@ -114,7 +114,7 @@ def test_purge_stale() -> bool:
 
     now = time.time()
     recent_incidents.add_incident(ticket_id=301, text=WLAN_TEXTS[0], created_at=now)
-    # 9 Stunden alt -> außerhalb des 8h-Fensters
+    # 9 hours old -> outside the 8-hour window
     recent_incidents.add_incident(ticket_id=302, text=WLAN_TEXTS[1],
                                   created_at=now - 9 * 3600)
 
@@ -129,9 +129,9 @@ def test_purge_stale() -> bool:
 
 def test_dedup_existing_problem() -> bool:
     """
-    Prüfung, ob bereits bestehendes Problem erkannt wird, damit ähnliche Incidents kein zweites
-    thematisch gleiches Problem kreieren
-    :return: Das Testergebnis, ob der Test bestanden wurde, als Boolean
+    Check whether an existing problem is detected, so that similar incidents do not create a second
+    problem with the same subject matter
+    :return: The test result indicating whether the test passed, as a Boolean
     """
     print("\n== Test 3: Dedup – bestehendes Problem erkennen ==")
     clear_collection()
@@ -139,7 +139,7 @@ def test_dedup_existing_problem() -> bool:
 
     for i, text in enumerate(WLAN_TEXTS[:4], start=401):
         recent_incidents.add_incident(ticket_id=i, text=text)
-    # Einem Incident bereits ein Problem zuordnen
+    # Assign a incident to a problem
     recent_incidents.assign_incident_to_problem(401, problem_id=7777)
 
     similar = recent_incidents.find_similar_open_incidents(text=WLAN_TEXTS[0])
@@ -150,8 +150,8 @@ def test_dedup_existing_problem() -> bool:
 
 def test_problem_service_escalation() -> bool:
     """
-    Prüft, ob wenn ein Problem eskaliert werden soll, dies im ZIM so gemacht wird, wie vorgesehen
-    :return: Das Testergebnis, ob der Test bestanden wurde, als Boolean
+    Checks whether, when a problem needs to be escalated, this is done in ZIM as intended
+    :return: The test result indicating whether the test passed, as a Boolean
     """
     print("\n== Test 4: ProblemService – Eskalation (Zammad/LLM gemockt) ==")
     clear_collection()
@@ -164,24 +164,24 @@ def test_problem_service_escalation() -> bool:
 
     def fake_create_system_ticket(title, body, author_email, priority=1, tags=None, group="Users"):
         """
-        Mock eines Tickets
+        Mock of a ticket
         """
         created_tickets.append({"title": title, "priority": priority, "tags": tags})
         return 9999
 
     def fake_add_tag(ticket_id, tag):
         """
-        Mock des Hinzufügens eines Tags
+        Mock of adding a tag
         """
         added_tags.append((ticket_id, tag))
 
     def fake_add_article(*args, **kwargs):
         """
-        Mock des Hinzufügens eines Articles
+        Mock of adding an article
         """
         return None
 
-    # Direkt in die ProblemService-Namespace gebundenen Namen ersetzen
+    # Replace names directly bound to the ProblemService namespace
     ps_mod.create_system_ticket = fake_create_system_ticket
     ps_mod.add_tag_to_ticket = fake_add_tag
     ps_mod.add_article_to_ticket = fake_add_article
@@ -189,7 +189,7 @@ def test_problem_service_escalation() -> bool:
     service = ProblemService()
     service._derive_topic = lambda similar, text: "WLAN eduroam Ausfall"  # LLM umgehen
 
-    # 4 bestehende + 1 neuer WLAN-Incident
+    # 4 Existing + 1 new Wi-Fi incident
     for i, text in enumerate(WLAN_TEXTS[:4], start=501):
         recent_incidents.add_incident(ticket_id=i, text=text)
 
@@ -213,7 +213,7 @@ def test_problem_service_escalation() -> bool:
 
 def test_problem_service_attach_existing() -> bool:
     """
-    Prüft, ob ein bestehendes Problem erkannt wird und weitere ähnliche Tickets dem Problem zugeordnet werden
+    Checks whether an existing issue has been identified and whether other similar tickets are assigned to that issue
     :return:
     """
     print("\n== Test 5: ProblemService – bestehendem Problem zuordnen ==")
@@ -229,7 +229,7 @@ def test_problem_service_attach_existing() -> bool:
     service = ProblemService()
     service._derive_topic = lambda similar, text: "WLAN eduroam Ausfall"
 
-    # 4 bestehende, davon einer bereits einem Problem (5555) zugeordnet
+    # 4 existing ones, one of which has already been assigned to a problem (5555)
     for i, text in enumerate(WLAN_TEXTS[:4], start=601):
         recent_incidents.add_incident(ticket_id=i, text=text)
     recent_incidents.assign_incident_to_problem(601, problem_id=5555)
@@ -250,8 +250,8 @@ def test_problem_service_attach_existing() -> bool:
 
 def run_all() -> bool:
     """
-    Startet alle Tests
-    :return: Das Testergebnis, ob alle Test bestanden wurden, als Boolean
+    Runs all tests
+    :return: The test result indicating whether all tests passed, as a Boolean
     """
     tests = [
         test_similarity_and_threshold,
@@ -276,7 +276,7 @@ def run_all() -> bool:
 
 def test_incident_escalation_suite():
     """
-    Pytest-Startpunkt
+    Pytest start point
     """
     assert run_all()
 
