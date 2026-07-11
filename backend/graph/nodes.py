@@ -19,15 +19,19 @@ from .models.IntentDecision import IntentDecision
 ticket_service = TicketService()
 
 
-def _format_faq_match_for_prompt(match: tuple) -> str:
-    """Rendert ein faq_matches-Tuple (id, problem, solution, extracted_urls, similarity) als Prompt-Text."""
-    _, problem, solution, extracted_urls, _ = match
-    lines = [f"problem: {problem}", f"solution: {solution}"]
-    for url, status, url_type, content, notes in extracted_urls:
+def _format_faq_match_for_prompt(match: dict) -> str:
+    """Rendert einen faq_matches-Eintrag (dict mit id, text, similarity,
+    optional extracted_urls) als Prompt-Text."""
+    lines = [match.get("text", "")]
+    for url_entry in match.get("extracted_urls", []):
+        url = url_entry.get("url")
+        status = url_entry.get("status")
+        content = url_entry.get("content")
+        error = url_entry.get("error")
         if status == "success" and content:
             lines.append(f"[{url}]: {content}")
-        elif notes:
-            lines.append(f"[{url}]: {notes}")
+        elif error:
+            lines.append(f"[{url}]: {error}")
     return "\n".join(lines)
 
 TICKET_CATEGORIES = [
@@ -600,7 +604,7 @@ def give_solutions(state: ChatbotState):
     # Build up to 2 solutions (FAQ first)
     solutions = []
     for m in faq_matches[:2]:
-        solutions.append({"title": f"FAQ: {m[0]}", "description": _format_faq_match_for_prompt(m)})
+        solutions.append({"title": f"FAQ: {m['id']}", "description": _format_faq_match_for_prompt(m)})
     if len(solutions) < 2:
         for t in ticket_matches[: 2 - len(solutions)]:
             solutions.append(
