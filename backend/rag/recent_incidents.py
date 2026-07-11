@@ -33,8 +33,8 @@ RECENT_INCIDENTS_DB_PATH = os.getenv(
     os.path.join(BASE_DIR, "recent_incidents_db"),
 )
 
-_client = chromadb.PersistentClient(path=RECENT_INCIDENTS_DB_PATH)
-_collection = _client.get_or_create_collection(
+recent_incidents_client = chromadb.PersistentClient(path=RECENT_INCIDENTS_DB_PATH)
+recent_incidents_collection = recent_incidents_client.get_or_create_collection(
     "recent_incidents",
     metadata={"hnsw:space": "cosine"},
 )
@@ -69,10 +69,10 @@ def purge_stale_incidents(now: float | None = None) -> int:
     now = now if now is not None else time.time()
     cutoff = now - _window_seconds()
     try:
-        stale = _collection.get(where={"created_at": {"$lt": cutoff}})
+        stale = recent_incidents_collection.get(where={"created_at": {"$lt": cutoff}})
         stale_ids = stale.get("ids", []) or []
         if stale_ids:
-            _collection.delete(ids=stale_ids)
+            recent_incidents_collection.delete(ids=stale_ids)
         return len(stale_ids)
     except Exception as e:  # pragma: no cover - defensiv gegen Chroma-Fehler
         print(f"[recent_incidents] purge_stale_incidents failed: {e}")
@@ -94,7 +94,7 @@ def add_incident(
     created_at = created_at if created_at is not None else time.time()
     try:
         embedding = ticket_embedder.encode(text).tolist()
-        _collection.upsert(
+        recent_incidents_collection.upsert(
             ids=[str(ticket_id)],
             embeddings=[embedding],
             documents=[text],
@@ -130,7 +130,7 @@ def find_similar_open_incidents(
 
     try:
         embedding = ticket_embedder.encode(text).tolist()
-        results = _collection.query(
+        results = recent_incidents_collection.query(
             query_embeddings=[embedding],
             n_results=n_results,
             where={"$and": [
@@ -188,13 +188,13 @@ def _update_metadata(ticket_id: int, updates: dict) -> None:
     :param updates: The new metadata to apply
     """
     try:
-        existing = _collection.get(ids=[str(ticket_id)])
+        existing = recent_incidents_collection.get(ids=[str(ticket_id)])
         metas = existing.get("metadatas") or []
         if not metas:
             return
         meta = dict(metas[0])
         meta.update(updates)
-        _collection.update(ids=[str(ticket_id)], metadatas=[meta])
+        recent_incidents_collection.update(ids=[str(ticket_id)], metadatas=[meta])
     except Exception as e:  # pragma: no cover
         print(f"[recent_incidents] metadata update failed for {ticket_id}: {e}")
 
@@ -210,6 +210,6 @@ def assign_incident_to_problem(ticket_id: int, problem_id: int, topic: str | Non
 def mark_incident_closed(ticket_id: int) -> None:
     """Removes a closed incident from the collection."""
     try:
-        _collection.delete(ids=[str(ticket_id)])
+        recent_incidents_collection.delete(ids=[str(ticket_id)])
     except Exception as e:  # pragma: no cover
         print(f"[recent_incidents] mark_incident_closed failed for {ticket_id}: {e}")

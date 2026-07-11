@@ -52,7 +52,7 @@ def clear_collection() -> None:
     """
     Resets the temporary collection
     """
-    col = recent_incidents._collection
+    col = recent_incidents.recent_incidents_collection
     ids = col.get().get("ids", []) or []
     if ids:
         col.delete(ids=ids)
@@ -120,7 +120,7 @@ def test_purge_stale() -> bool:
     removed = recent_incidents.purge_stale_incidents(now=now)
     ok &= check("genau 1 veralteter Incident entfernt", removed == 1, f"removed={removed}")
 
-    remaining = recent_incidents._collection.get().get("ids", [])
+    remaining = recent_incidents.recent_incidents_collection.get().get("ids", [])
     ok &= check("aktueller Incident bleibt erhalten", "301" in remaining, f"ids={remaining}")
     ok &= check("veralteter Incident ist weg", "302" not in remaining, f"ids={remaining}")
     return ok
