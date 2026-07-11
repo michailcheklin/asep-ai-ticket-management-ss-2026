@@ -43,6 +43,10 @@ NO_PROBLEM = 0
 
 
 def _window_seconds() -> float:
+    """
+    Converts the recency window from hours into seconds
+    :return:
+    """
     return INCIDENT_RECENCY_WINDOW_HOURS * 3600.0
 
 
@@ -159,8 +163,8 @@ def find_similar_open_incidents(
 
 
 def find_existing_problem_id(similar_incidents: list[dict]) -> int | None:
-    """Prüft, ob einer der ähnlichen Incidents bereits einem Problem zugeordnet ist.
-
+    """
+    Prüft, ob einer der ähnlichen Incidents bereits einem Problem zugeordnet ist.
     :return: die problem_id oder None (Dedup-Schritt gegen doppelte Problem-Tickets).
     """
     for incident in similar_incidents:
@@ -171,6 +175,12 @@ def find_existing_problem_id(similar_incidents: list[dict]) -> int | None:
 
 
 def _update_metadata(ticket_id: int, updates: dict) -> None:
+    """
+    Updates the metadata of the provided ticket ID and only changes those
+    metadata keys that are supplied in the updates dictionary.
+    :param ticket_id: The ID of the ticket to update the metadata for.
+    :param updates: The new metadata to apply
+    """
     try:
         existing = _collection.get(ids=[str(ticket_id)])
         metas = existing.get("metadatas") or []
