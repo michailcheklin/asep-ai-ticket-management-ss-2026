@@ -183,13 +183,13 @@ async def solution_feedback(request: ChatRequest):
 @app.post("/webhook/ticket-closed")
 async def ticket_closed(payload: dict):
     """
-    Von einem Zammad-Trigger/Webhook aufgerufen, wenn ein Ticket geschlossen wird.
+    Called by a Zammad trigger/webhook when a ticket is closed.
 
-    Entfernt den betroffenen Incident aus der 'Recent Incidents'-Collection,
-    damit geschlossene Incidents nicht mehr zur Problem-Eskalation beitragen.
+    Removes the affected incident from the 'Recent Incidents' collection
+    so that closed incidents no longer contribute to problem escalation.
 
-    Erwartet einen Payload, der die Ticket-ID enthält – entweder als
-    {"ticket_id": <id>} oder verschachtelt als {"ticket": {"id": <id>}}.
+    Expects a payload containing the ticket ID — either as
+    {"ticket_id": <id>} or nested as {"ticket": {"id": <id>}}.
     """
     ticket_id = payload.get("ticket_id")
     if ticket_id is None and isinstance(payload.get("ticket"), dict):
@@ -227,6 +227,7 @@ def run_local_chat():
         "needs_additional_info": False,
         # Set to True to skip the solution step and directly create
         # a ticket during testing.
+
         "is_complete": False,
     }
 

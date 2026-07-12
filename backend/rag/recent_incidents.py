@@ -44,10 +44,7 @@ NO_PROBLEM = 0
 
 
 def _window_seconds() -> float:
-    """
-    Converts the recency window that is set via the .env file from hours into seconds
-    :return: The recency window in seconds.
-    """
+    """Converts the recency window from hours into seconds."""
     return INCIDENT_RECENCY_WINDOW_HOURS * 3600.0
 
 
@@ -74,7 +71,7 @@ def purge_stale_incidents(now: float | None = None) -> int:
         if stale_ids:
             recent_incidents_collection.delete(ids=stale_ids)
         return len(stale_ids)
-    except Exception as e:  # pragma: no cover - defensiv gegen Chroma-Fehler
+    except Exception as e:  # pragma: no cover - defensive against Chroma errors
         print(f"[recent_incidents] purge_stale_incidents failed: {e}")
         return 0
 

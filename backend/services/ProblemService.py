@@ -1,13 +1,13 @@
-"""Erkennung und Anlage von Problem-Tickets aus gehäuften, ähnlichen Incidents.
+"""Detection and creation of problem tickets from clustered, similar incidents.
 
-Kernablauf (siehe register_and_check_incident):
-    1. Alte Incidents (> Zeitfenster) aus dem RAG entfernen.
-    2. Neuen Incident speichern.
-    3. Semantisch ähnliche offene Incidents suchen.
-    4. Bei genügend Treffern prüfen, ob bereits ein Problem existiert:
-       - ja  -> neuen Incident diesem Problem zuordnen
-       - nein -> neues Problem-Ticket in Zammad anlegen und alle betroffenen
-                 Incidents verknüpfen.
+Core flow (see register_and_check_incident):
+    1. Remove stale incidents (older than the time window) from the RAG.
+    2. Store the new incident.
+    3. Search for semantically similar open incidents.
+    4. If enough matches are found, check whether a problem already exists:
+       - yes -> assign the new incident to that problem
+       - no  -> create a new problem ticket in Zammad and link all affected
+                incidents.
 """
 from langchain_core.messages import HumanMessage
 
@@ -27,16 +27,14 @@ from ..api.zammad import (
 
 def _problem_tag(problem_id: int) -> str:
     """
-    Wandelt eine Problem ID in den String mit dem Format "problem:<problem_id>" um. Dies ist,
-    um in Zammad einen Tag nutzen zu können, der die Problem-ID enthält
-    :param problem_id: Die Problem-ID
-    :return: Ein mit "problem:" präfixierter String der Problem ID
+    Converts a problem ID into the string format "problem:<problem_id>"
+    for use as a Zammad tag containing the problem ID.
     """
     return f"problem:{problem_id}"
 
 
 class ProblemService:
-    """Kapselt die Incident-zu-Problem-Eskalationslogik."""
+    """Encapsulates the incident-to-problem escalation logic."""
 
     def register_and_check_incident(
         self,
@@ -44,7 +42,7 @@ class ProblemService:
         issue_description: str,
         additional_info: list[str],
     ) -> dict:
-        """Haupteinstieg; wird aufgerufen, wenn ein Ticket als 'Incident' gilt.
+        """Main entry point; called when a ticket is classified as 'Incident'.
 
         :return: {'escalated': bool, 'problem_id': int|None, 'created': bool}
         """
@@ -52,16 +50,16 @@ class ProblemService:
         if not text:
             return {"escalated": False, "problem_id": None, "created": False}
 
-        # 1. + 2.: aufräumen, dann neuen Incident speichern
+        # 1. + 2.: clean up stale entries, then store the new incident
         recent_incidents.purge_stale_incidents()
         recent_incidents.add_incident(ticket_id=ticket_id, text=text)
 
-        # 3.: ähnliche offene Incidents (ohne den gerade eingefügten) suchen
+        # 3.: find similar open incidents (excluding the one just inserted)
         similar = recent_incidents.find_similar_open_incidents(
             text=text, exclude_ticket_id=ticket_id
         )
 
-        # 4.: Schwelle prüfen (neuer Incident zählt mit)
+        # 4.: check threshold (new incident counts toward total)
         if len(similar) + 1 < INCIDENT_ESCALATION_MIN_COUNT:
             return {"escalated": False, "problem_id": None, "created": False}
 
@@ -77,12 +75,12 @@ class ProblemService:
         return {"escalated": True, "problem_id": new_problem_id, "created": True}
 
     # ------------------------------------------------------------------
-    # Interne Helfer
+    # Internal helpers
     # ------------------------------------------------------------------
     def _create_problem(
         self, new_ticket_id: int, similar_incidents: list[dict], new_text: str
     ) -> int | None:
-        """Legt ein neues Problem-Ticket an und verknüpft alle betroffenen Incidents."""
+        """Creates a new problem ticket and links all affected incidents."""
         all_incident_ids = [i["ticket_id"] for i in similar_incidents] + [new_ticket_id]
         topic = self._derive_topic(similar_incidents, new_text)
 
@@ -114,7 +112,7 @@ class ProblemService:
     def _attach_to_problem(
         self, problem_id: int, new_ticket_id: int, similar_incidents: list[dict]
     ) -> None:
-        """Ordnet den neuen Incident einem bestehenden Problem zu."""
+        """Assigns the new incident to an existing problem."""
         topic = next(
             (i.get("topic") for i in similar_incidents if i.get("topic")), None
         )
@@ -139,7 +137,7 @@ class ProblemService:
         )
 
     def _derive_topic(self, similar_incidents: list[dict], new_text: str) -> str:
-        """Bestimmt ein kurzes gemeinsames Thema für den Problem-Titel (per LLM)."""
+        """Derives a short common topic for the problem title (via LLM)."""
         samples = [new_text] + [i.get("text", "") for i in similar_incidents]
         samples = [s for s in samples if s][:6]
         joined = "\n---\n".join(samples)
@@ -159,22 +157,15 @@ class ProblemService:
 
     def _ticket_link(self, ticket_id: int) -> str:
         """
-        Bildet den internen Ticket-Link in Zammad anhand der Ticket-ID. Dies ist für die
-        Eintragung der Links in einem Problem-Ticket.
-        :param ticket_id: Die Ticket-ID, aus der der Link erstellt werden soll
-        :return: Der Ticket-Link in Zammad, der zum Ticket mit der angegebenen Ticket-ID führt
+        Builds the internal Zammad ticket link from a ticket ID,
+        for inclusion in problem ticket bodies.
         """
         if ZAMMAD_PUBLIC_URL:
             return f"{ZAMMAD_PUBLIC_URL}/#ticket/zoom/{ticket_id}"
         return f"Ticket #{ticket_id}"
 
     def _build_problem_body(self, incident_ids: list[int], topic: str) -> str:
-        """
-        Bildet den Ticket-Body für das vom System erstellte Problem-Ticket in Zammad
-        :param incident_ids: Die Ticket-IDs der Incidents
-        :param topic: Das Thema des Problems
-        :return:
-        """
+        """Builds the ticket body for the system-created problem ticket in Zammad."""
         links = "\n".join(f"- {self._ticket_link(tid)}" for tid in incident_ids)
         return (
             "Automatisch erstelltes Problem-Ticket.\n\n"

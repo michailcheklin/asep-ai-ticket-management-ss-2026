@@ -146,11 +146,11 @@ def classify_ticket(state: ChatbotState):
 
 @traceable
 def escalate_incidents(state: ChatbotState):
-    """Workflow node: pflege den 'Recent Incidents'-RAG und eskaliere bei Bedarf.
+    """Workflow node: maintain the 'Recent Incidents' RAG and escalate if needed.
 
-    Läuft nur, wenn die Kategorie 'Incident' ist und bereits ein Ticket existiert.
-    Der Node beeinflusst den User-Chat nicht (fire-and-forget) und gibt daher
-    keine State-Änderung zurück.
+    Only runs when the category is 'Incident' and a ticket already exists.
+    This node does not affect the user chat (fire-and-forget) and therefore
+    returns no state changes.
     """
     if state.get("category") != "Incident":
         return {}
@@ -179,7 +179,7 @@ intent_llm = llm.with_structured_output(IntentDecision)
 
 @traceable
 def classify_intent(state: ChatbotState):
-    """Workflow-Node: bewertet bei jeder Nachricht neu, was der Nutzer moechte (Issue #161)."""
+    """Workflow node: re-evaluates on every message what the user wants (Issue #161)."""
     log_node_entry("classify_intent", state)
 
     # 1)
@@ -187,7 +187,7 @@ def classify_intent(state: ChatbotState):
     conversation = "\n".join(f"- {m}" for m in user_messages) if user_messages else "(keine)"
     previous_intent = state.get("intent") or "(noch keiner)"
 
-    # 2) Entscheidungskriterien
+    # 2) Decision criteria
     system_prompt = SystemMessage(content=f"""Du bist ein Verteiler im IT-Support des ZIM einer Universitaet.
 Entscheide anhand des GESAMTEN Chatverlaufs, was der Nutzer AKTUELL moechte:
 
@@ -236,7 +236,7 @@ CHATVERLAUF (User-Nachrichten):
 
 @traceable
 def ask_intent(state: ChatbotState):
-    """Fragt nach, ob der Nutzer eine Anleitung moechte oder Support braucht."""
+    """Asks whether the user wants a tutorial or needs support."""
     log_node_entry("ask_intent", state)
     system_prompt = SystemMessage(content=(
           AGENT_PROMPT + "\n\n"
@@ -249,7 +249,7 @@ def ask_intent(state: ChatbotState):
 
 @traceable
 def give_tutorial(state: ChatbotState):
-    """Erstellt eine Schritt-fuer-Schritt-Anleitung aus der Wissensdatenbank (Issue #161)."""
+    """Creates a step-by-step tutorial from the knowledge base (Issue #161)."""
     log_node_entry("give_tutorial", state)
     attempts = state.get("tutorial_attempts", 0)
 
@@ -295,7 +295,7 @@ REGELN:
 
 @traceable
 def finish_tutorial(state: ChatbotState):
-    """Schliesst den Tutorial-Pfad ab: geschlossenes AI-Solved-Ticket y Verabschiedung."""
+    """Closes the tutorial path: creates a closed AI-solved ticket and says goodbye."""
     log_node_entry("finish_tutorial", state)
     result = ticket_service.create_closed_tutorial_ticket(state)
 
@@ -350,7 +350,7 @@ def extract_information(state: ChatbotState):
         conversation_context=conversation_context or "keine",
     ))
 
-    # Telling python to treat output from structured llm as ExtractedTicketData instance
+    # Cast structured LLM output to ExtractedTicketData
     extracted_data = cast(ExtractedTicketData, structured_llm.invoke([
         SystemMessage(content=system_prompt),
         last_user_message

@@ -7,17 +7,16 @@ from ..graph.models.TicketCategoryDecision import TICKET_CATEGORIES
 
 load_dotenv()
 
-# Format der .env-Datei, woraus die Server-Adresse und der Zugangstoken
-# gelesen werden ist in example.env beschrieben.
+# The .env file format (server address and access token) is described in example.env.
 server_address = os.getenv("ZAMMAD_INTERNAL_URL")
 admin_access_token = os.getenv("ZAMMAD_API_TOKEN")
 GENERAL_TIMEOUT = 5
 
-# Anmeldung über Token
+# Authentication via token
 headers = {"Authorization": f"Token token={admin_access_token}",
            "Content-Type": "application/json", }
 
-# Anzeigen als welcher Benutzer ich aktuell angemeldet bin
+# Display which user is currently authenticated
 # response = requests.get(
 #    url=f"{server_address}/api/v1/users/me",
 #    headers = headers,
@@ -26,7 +25,7 @@ headers = {"Authorization": f"Token token={admin_access_token}",
 # print(response.status_code)
 # print(response.text)
 
-# Map von unseren Priority-Nummern zu den Zammad-Priority-Nummern
+# Map from our priority numbers to Zammad priority IDs
 priority_number_to_zammad_priority_id_map = {
     0: 2,  # normal / non-urgent
     1: 3  # high / urgent
@@ -52,20 +51,19 @@ def create_ticket_by_user_email(
         kategorie: str | None = None,
 ):
     """
-    Erstellt ein Ticket im Zammad-System über die REST-API,
-    s. https://docs.zammad.org/en/latest/api/ticket/index.html#create
-    mittels der E-Mail-Adresse des Kunden, sowie dem Titel und Inhalt
+    Creates a ticket in the Zammad system via the REST API.
+    See https://docs.zammad.org/en/latest/api/ticket/index.html#create
 
-    :arg email: E-Mail-Adresse des Kunden
-    :arg title: Betreff des Tickets
-    :arg body: Text im Ticket
-    :arg priority: Die Priorität des Tickets, d. h. 0 = normal/non-urgent und 1 = high/urgent
-    :arg group: Gruppe des Kunden (i. d. R. Users)
-    :arg article_type: Typ des Artikels (erste Nachricht im Ticket,
-        s. https://docs.zammad.org/en/latest/api/ticket/articles.html#general-information-about-ticket-articles) (i. d. R. note)
-    :arg internal: Standardmäßig False. Falls True, ist das Ticket nur für die Mitarbeitenden des Helpdesks sichtbar
-    :arg state: Zammad-Status des Tickets, z.B. "new" oder "closed"
-    :arg kategorie: Wert für das Zammad-Feld "Kategorie" (custom select attribute)
+    :arg email: Customer email address
+    :arg title: Ticket subject
+    :arg body: Ticket body text
+    :arg priority: Ticket priority, i.e. 0 = normal/non-urgent and 1 = high/urgent
+    :arg group: Customer group (typically Users)
+    :arg article_type: Article type (first message in the ticket,
+        see https://docs.zammad.org/en/latest/api/ticket/articles.html#general-information-about-ticket-articles) (typically note)
+    :arg internal: Defaults to False. If True, the ticket is only visible to helpdesk staff
+    :arg state: Zammad ticket state, e.g. "new" or "closed"
+    :arg kategorie: Value for the Zammad custom field "Kategorie" (custom select attribute)
     """
 
     json_body_for_ticket = {
@@ -182,10 +180,10 @@ def add_article_to_ticket(ticket_id: int, body: str, sender: str = "Agent",
 
 def get_ticket_state(ticket_id: int) -> str:
     """
-    Liest den aktuellen Zammad-Status eines Tickets aus.
+    Reads the current Zammad state of a ticket.
 
-    :arg ticket_id: ID des Tickets
-    :return: Statusname (z. B. "new", "open", "closed") oder "" bei Fehler
+    :arg ticket_id: Ticket ID
+    :return: State name (e.g. "new", "open", "closed") or "" on error
     """
     try:
         response = requests.get(
@@ -198,7 +196,7 @@ def get_ticket_state(ticket_id: int) -> str:
             return ""
         state_id = response.json().get("state_id")
 
-        # state_id -> state name auflösen
+        # Resolve state_id to state name
         state_response = requests.get(
             url=f"{server_address}/api/v1/ticket_states/{state_id}",
             headers=headers,
@@ -227,16 +225,16 @@ def create_system_ticket(
         group: str = "Users",
 ):
     """
-    Erstellt ein automatisch generiertes Ticket (z. B. ein Problem-Ticket)
-    über einen festen System-Absender und versieht es optional mit Tags.
+    Creates an automatically generated ticket (e.g. a problem ticket)
+    via a fixed system sender and optionally tags it.
 
-    :arg title: Betreff des Tickets
-    :arg body: Text im Ticket
-    :arg author_email: E-Mail-Adresse des System-/Absender-Kontos
-    :arg priority: Priorität (0 = normal, 1 = high/urgent)
-    :arg tags: Optionale Liste von Tags
-    :arg group: Zammad-Gruppe
-    :return: Die neue Ticket-ID oder -1 bei Fehler
+    :arg title: Ticket subject
+    :arg body: Ticket body text
+    :arg author_email: Email address of the system/sender account
+    :arg priority: Priority (0 = normal, 1 = high/urgent)
+    :arg tags: Optional list of tags
+    :arg group: Zammad group
+    :return: The new ticket ID or -1 on error
     """
     ticket_id = create_ticket_by_user_email(
         email=author_email,
@@ -257,7 +255,7 @@ def create_system_ticket(
 
 
 def add_tag_to_ticket(ticket_id: int, tag: str):
-    """Fügt einen Tag zu einem Zammad-Ticket hinzu."""
+    """Adds a tag to a Zammad ticket."""
     try:
         response = requests.post(
             url=f"{server_address}/api/v1/tags/add",
@@ -275,7 +273,7 @@ def add_tag_to_ticket(ticket_id: int, tag: str):
 
 
 def replace_tag_for_ticket(ticket_id: int, old_tag: str, new_tag: str):
-    """Ersetzt einen Tag eines Zammad-Tickets."""
+    """Replaces a tag on a Zammad ticket."""
     try:
 
         response = requests.delete(
