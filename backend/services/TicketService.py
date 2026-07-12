@@ -10,9 +10,11 @@ from ..api.zammad import (
     update_ticket_kategorie,
     update_ticket_title,
     resolve_zammad_kategorie,
+    log_ticket_close_event,
 )
 
 from ..llm.llm import llm
+from ..rag.rag_store_tickets import store_ticket_state_to_rag
 
 
 class TicketService:
@@ -180,6 +182,11 @@ class TicketService:
                     internal=True
                 )
                 replace_tag_for_ticket(ticket_id=ticket_id, old_tag="AI-Created", new_tag="AI-Solved")
+                log_ticket_close_event(
+                    ticket_id=ticket_id,
+                    source="chatbot_api",
+                    metadata={"state": "closed", "title": "AI-resolved ticket"}
+                )
                 mark_ticket_as_closed(ticket_id=ticket_id)
             return {
                 "messages": [

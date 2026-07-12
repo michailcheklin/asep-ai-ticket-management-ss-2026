@@ -1,5 +1,7 @@
 """Backend API for the AI ticket management system with optional Zammad integration."""
 import os
+import re
+import requests
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from ..graph.models.ChatRequest import ChatRequest
@@ -9,6 +11,8 @@ from ..graph.orchestrator import __execute_langchain_workflow, graph
 from ..graph.nodes import _resolve_ticket_category
 from ..services.TicketService import TicketService
 from ..rag import recent_incidents
+from ..api.zammad import log_ticket_close_event, get_ticket_tags, get_ticket_article_bodies
+from ..rag.rag_store_tickets import store_ticket_state_to_rag
 
 ticket_service = TicketService()
 
@@ -25,8 +29,13 @@ app.add_middleware(
 )
 
 # Read Zammad configuration from environment variables
+ZAMMAD_URL = os.getenv("ZAMMAD_INTERNAL_URL", "").strip()
 ZAMMAD_TOKEN = os.getenv("ZAMMAD_API_TOKEN", "").strip()
 
+# Parsing helper variables
+BOT_SUMMARY_MARKER  = "GESPRÄCHSZUSAMMENFASSUNG"
+BOT_SOLUTIONS_MARKER = "VOM BOT ANGEBOTENE LÖSUNGEN"
+BOT_HANDOFF_MARKER   = "Das Gespräch mit dem Chatbot wurde abgeschlossen"
 
 
 def _zammad_headers() -> dict[str, str]:
@@ -126,6 +135,134 @@ async def chat_endpoint(request: ChatRequest):
         "tutorial_attempts": request.tutorial_attempts,
     }
     return __execute_langchain_workflow(current_state)
+
+def get_zammad_ticket_articles(ticket_id: int) -> list[dict]:
+    """Fetch all articles (messages) belonging to a ticket from Zammad."""
+    url = f"{ZAMMAD_URL}/api/v1/ticket_articles/by_ticket/{ticket_id}"
+    headers = {"Authorization": f"Token token={ZAMMAD_TOKEN}"}
+
+    response = requests.get(url, headers=headers)
+    response.raise_for_status()
+    return response.json()
+
+def _strip_html(text: str) -> str:
+    text = re.sub(r"<br\s*/?>", "\n", text)
+    text = re.sub(r"<[^>]+>", "", text)
+    text = text.replace("&nbsp;", " ")
+    text = re.sub(r"\n{2,}", "\n", text).strip()
+    return text
+
+
+def _extract_bot_summary(body: str) -> str | None:
+    """Pull out only the free-text summary between the GESPRÄCHSZUSAMMENFASSUNG
+    heading and the next heading (or end of article), stripping separators."""
+    start = body.find(BOT_SUMMARY_MARKER)
+    if start == -1:
+        return None
+    start += len(BOT_SUMMARY_MARKER)
+    end = body.find(BOT_SOLUTIONS_MARKER, start)
+    if end == -1:
+        end = len(body)
+    summary = body[start:end]
+    summary = re.sub(r"=+", "", summary).strip()
+    return summary or None
+
+def build_ticket_summary_and_conversation(articles: list[dict]) -> str:
+    """
+    Build the final text to store for any ticket:
+
+      1. If a bot handoff article exists, extract ONLY its free-text
+         conversation summary and label it.
+      2. Everything AFTER that handoff article (the real human agent
+         conversation) is kept as-is, labeled with a clear start marker.
+
+    Works generically:
+      - If no bot handoff is found (ticket never used the AI chatbot, or was
+        fully resolved by it with no human follow-up), the whole article
+        list is treated as the conversation and no summary line is added.
+    """
+    handoff_index = None
+    summary_text = None
+
+    for i, article in enumerate(articles):
+        if article.get("sender") != "Agent":
+            continue
+        body = _strip_html(article.get("body", ""))
+        if BOT_HANDOFF_MARKER in body or BOT_SUMMARY_MARKER in body:
+            summary_text = _extract_bot_summary(body)
+            handoff_index = i
+            break
+
+    remaining = articles[handoff_index + 1:] if handoff_index is not None else articles
+
+    conversation_lines = []
+    for article in remaining:
+        sender = article.get("sender", "")
+        if sender not in ("Customer", "Agent"):
+            continue  # skip System notifications
+        role = "User" if sender == "Customer" else "Agent"
+        body = _strip_html(article.get("body", ""))
+        if body:
+            conversation_lines.append(f"{role}: {body}")
+
+    parts = []
+    if summary_text:
+        parts.append(f"Gesprächszusammenfassung mit KI Chatbot:\n\n{summary_text}")
+    if conversation_lines:
+        parts.append("Weitere Konversation mit Support-Mitarbeiter:\n\n" + "\n".join(conversation_lines))
+
+    full_text = "\n\n".join(parts)
+    return summary_text or "", full_text, conversation_lines
+
+
+# Tickets carrying any of these tags will not be used to train/improve the AI chatbot:
+# - "AI-Solved": the bot already resolved this correctly, nothing new to learn.
+# - "No-AI-Training": staff manually flagged this as a special/edge case that
+#   should stay human handled and not influence the chatbot's future behavior.
+EXCLUDE_FROM_TRAINING_TAGS = {"AI-Solved", "No-AI-Training"}
+
+@app.post("/zammad/ticket-closed")
+async def zammad_ticket_closed(payload: dict):
+    """Webhook endpoint for Zammad close notifications."""
+    ticket = payload.get("ticket", {}) if isinstance(payload.get("ticket"), dict) else {}
+    ticket_id = ticket.get("id") or payload.get("id")
+
+    tags = get_ticket_tags(ticket_id) if ticket_id else []
+    matched_tags = EXCLUDE_FROM_TRAINING_TAGS.intersection(tags)
+    if matched_tags:
+        print(f"[RAG] Ticket {ticket_id} excluded from training: {matched_tags}")
+        return {
+            "status": "ignored",
+            "reason": f"excluded_from_training:{','.join(matched_tags)}",
+            "ticket_id": ticket_id,
+        }
+
+    metadata = {
+        "ticket_number": ticket.get("number") or payload.get("number"),
+        "title": ticket.get("title") or payload.get("title"),
+        "state": ticket.get("state", {}).get("name") if isinstance(ticket.get("state"), dict) else payload.get("state"),
+    }
+
+    articles = get_zammad_ticket_articles(ticket_id) if ticket_id else []
+    ticket_summary, full_text, agent_messages = build_ticket_summary_and_conversation(articles)
+
+    rag_state = {
+        "full_conversation": ticket_summary,
+        "ticket_id": ticket_id,
+        "messages": agent_messages,
+    }
+    print(f"\n\nDEBUG: RAG STATE= {rag_state}\n\n")
+
+    if ticket_id:
+        print(f"[RAG] Close webhook received for ticket {ticket_id}")
+        store_ticket_state_to_rag(rag_state, ticket_id=ticket_id)
+
+    log_ticket_close_event(ticket_id=ticket_id, source="manual", metadata=metadata)
+    return {
+        "status": "received",
+        "source": "manual",
+        "ticket_id": ticket_id,
+    }
 
 @app.post("/solution-feedback")
 async def solution_feedback(request: ChatRequest):

@@ -242,21 +242,23 @@ def retrieve_relevant_entries(user_query: str, n_results: int = 5) -> dict:
 
     ticket_matches = []
     if ticket_results["ids"] and ticket_results["ids"][0]:
-        for ticket_id, ticket_doc, ticket_distance in zip(
+        for ticket_id, ticket_doc, ticket_distance, ticket_meta in zip(
             ticket_results["ids"][0],
             ticket_results["documents"][0],
-            ticket_results["distances"][0]
+            ticket_results["distances"][0],
+            ticket_results["metadatas"][0]
         ):
             similarity = 1 - ticket_distance
             print(f"[RAG]   [{ticket_id}] similarity: {similarity:.4f}")
             if similarity >= TICKET_SIMILARITY_THRESHOLD:
+                ticket_meta = ticket_meta or {}
                 ticket_matches.append({
                     "id":         ticket_id,
                     "text":       ticket_doc,
                     "similarity": round(similarity, 4),
-                    "category":   extract_category_from_text(ticket_doc)
+                    "category":   extract_category_from_text(ticket_doc),
+                    "messages":   ticket_meta.get("messages", "")
                 })
-
     faq_matches    = sorted(faq_matches,    key=lambda x: x["similarity"], reverse=True)
     ticket_matches = sorted(ticket_matches, key=lambda x: x["similarity"], reverse=True)
 

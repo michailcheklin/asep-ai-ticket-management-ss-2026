@@ -1,452 +1,620 @@
 {
-  "TICKET_TEMPLATES" : [
+  "TICKET_TEMPLATES": [
     {
-        "name": "Anna Müller",
-        "email": "anna.mueller@student.uni-due.de",
-        "ticket": "I cannot log in to the campus portal although I reset my password yesterday.",
-        "solution": "Check whether the account is locked and reset the login credentials if necessary.",
-        "priority": "0",
-        "category": "Incident"
+      "id": 1,
+      "category": "Incident",
+      "full_conversation": "Der Nutzer kann sich trotz zurückgesetztem Passwort nicht im Campus-Portal anmelden.",
+      "messages": [
+        "User: I cannot log in to the campus portal although I reset my password yesterday.",
+        "Support: Could you confirm if you receive any error message when trying to log in?",
+        "User: It just says 'Invalid credentials'.",
+        "Support: I have checked and your account was locked after multiple failed attempts. I have unlocked it and reset your login credentials; please try logging in again with the new password sent to your email anna.mueller@student.uni-due.de."
+      ]
     },
     {
-        "name": "Jonas Schneider",
-        "email": "jonas.schneider@student.uni-due.de",
-        "ticket": "I cannot access Moodle with my university account. The login page always redirects me back to the start page.",
-        "solution": "Check the user's university account status and verify Moodle authentication permissions.",
-        "priority": "0",
-        "category": "Incident"
+      "id": 2,
+      "category": "Incident",
+      "full_conversation": "Der Nutzer kann sich nicht bei Moodle anmelden, weil die Anmeldeseite ihn immer wieder zur Startseite zurückleitet.",
+      "messages": [
+        "User: I cannot access Moodle with my university account. The login page always redirects me back to the start page.",
+        "Support: Have you tried clearing your browser cache or using a different browser?",
+        "User: I cleared the cache, but it still loops back to the login screen without any error message.",
+        "Support: I have verified that your university account is active and have updated your Moodle authentication permissions. Please try logging in again; you should receive a confirmation at jonas.schneider@student.uni-due.de."
+      ]
     },
     {
-        "name": "Mariam Yilmaz",
-        "email": "mariam.yilmaz@student.uni-due.de",
-        "ticket": "I forgot my university password and the reset link does not arrive in my email inbox.",
-        "solution": "Verify the recovery email address and manually trigger a new password reset process.",
-        "priority": "0",
-        "category": "Incident"
+      "id": 3,
+      "category": "Incident",
+      "full_conversation": "Der Nutzer erhält den Link zum Zurücksetzen des Passworts nicht per E‑Mail.",
+      "messages": [
+        "User: I forgot my university password and the reset link does not arrive in my email inbox.",
+        "Support: Could you check your spam or junk folder to see if the email was filtered?",
+        "User: I already checked spam and there is nothing there.",
+        "Support: I have verified the recovery email address on your account and manually triggered a new password reset. You should receive the link shortly."
+      ]
     },
     {
-        "name": "Felix Weber",
-        "email": "felix.weber@student.uni-due.de",
-        "ticket": "I can log in to my email account, but I cannot log in to the campus management system.",
-        "solution": "Check whether the campus management account is synchronized correctly with the central identity system.",
-        "priority": "0",
-        "category": "Incident"
+      "id": 4,
+      "category": "Incident",
+      "full_conversation": "Der Nutzer kann sein E‑Mail-Konto nutzen, aber nicht das Campus‑Verwaltungssystem.",
+      "messages": [
+        "User: I can log in to my email account, but I cannot log in to the campus management system.",
+        "Support: Are you receiving any specific error message when you try to access the campus system?",
+        "User: It just says 'Access denied' after I enter my credentials.",
+        "Support: I have checked the synchronization between the central identity system and the campus management account and re‑synchronized your profile. Please try accessing the system again."
+      ]
     },
     {
-        "name": "Sarah Hoffmann",
-        "email": "sarah.hoffmann@student.uni-due.de",
-        "ticket": "My account says that it is locked after too many login attempts, but I need access for my exam registration today.",
-        "solution": "Unlock the account and advise the user to reset the password if login attempts continue to fail.",
-        "priority": "0",
-        "category": "Incident"
+      "id": 5,
+      "category": "Incident",
+      "full_conversation": "Der Nutzerkonto ist nach zu vielen Anmeldeversuchen gesperrt und muss für die Prüfungsanmeldung freigeschaltet werden.",
+      "messages": [
+        "User: My account says that it is locked after too many login attempts, but I need access for my exam registration today.",
+        "Support: I understand the urgency. Could you confirm the username you are trying to log in with?",
+        "User: It's my usual university login, anna.mueller@student.uni-due.de.",
+        "Support: I have unlocked your account and reset the password. You should now be able to log in and complete your exam registration. A confirmation has been sent to anna.mueller@student.uni-due.de."
+      ]
     },
     {
-        "name": "Dr. Laura Becker",
-        "email": "laura.becker@uni-due.de",
-        "ticket": "Several students in my seminar cannot log in to Moodle today, and I also cannot access the course administration page.",
-        "solution": "Escalate to identity management and check whether the central authentication service is affected.",
-        "priority": "1",
-        "category": "Incident"
+      "id": 6,
+      "category": "Incident",
+      "full_conversation": "Mehrere Studierende können sich heute nicht bei Moodle anmelden, und die Kursverwaltung ist ebenfalls nicht erreichbar.",
+      "messages": [
+        "User: Several students in my seminar cannot log in to Moodle today, and I also cannot access the course administration page.",
+        "Support: Are all of you seeing the same error message, or does it differ between students?",
+        "User: We all get a generic 'Service unavailable' notice.",
+        "Support: I have escalated the issue to identity management and confirmed that the central authentication service is currently experiencing problems. We are working on a fix and will update you shortly. Please contact me at laura.becker@uni-due.de for any urgent needs."
+      ]
     },
     {
-        "name": "Nico Fischer",
-        "email": "nico.fischer@student.uni-due.de",
-        "ticket": "I changed my password, but my old password still works in some university systems and the new one works in others.",
-        "solution": "Check password synchronization between connected university services.",
-        "priority": "0",
-        "category": "Incident"
+      "id": 7,
+      "category": "Incident",
+      "full_conversation": "Der Nutzer hat nach einer Passwortänderung unterschiedliche Systeme, bei denen das alte und das neue Passwort jeweils funktionieren.",
+      "messages": [
+        "User: I changed my password, but my old password still works in some university systems and the new one works in others.",
+        "Support: This sounds like a synchronization delay. Which systems are still accepting the old password?",
+        "User: The library portal accepts the old one, but the email system requires the new password.",
+        "Support: I have checked the password synchronization between all connected services and forced an immediate sync. Both the old password should now be invalid, and the new password will work across all systems."
+      ]
     },
     {
-        "name": "Lea Wagner",
-        "email": "lea.wagner@student.uni-due.de",
-        "ticket": "I cannot activate two-factor authentication for my university account because the QR code is not displayed.",
-        "solution": "Reset the two-factor authentication setup and generate a new activation QR code.",
-        "priority": "0",
-        "category": "Incident"
+      "id": 8,
+      "category": "Incident",
+      "full_conversation": "Der Nutzer kann die Zwei‑Faktor‑Authentifizierung nicht aktivieren, weil der QR‑Code nicht angezeigt wird.",
+      "messages": [
+        "User: I cannot activate two-factor authentication for my university account because the QR code is not displayed.",
+        "Support: Have you tried using a different browser or clearing the cache?",
+        "User: Yes, I tried Chrome and Firefox, same result.",
+        "Support: I have reset the two-factor authentication setup on your account and generated a new QR code. Please open the authentication app and scan the new code that has been sent to your email."
+      ]
     },
     {
-        "name": "Tim Bauer",
-        "email": "tim.bauer@student.uni-due.de",
-        "ticket": "My student account was created today, but I still cannot log in to any university service.",
-        "solution": "Check account provisioning status and trigger synchronization if the account is not active yet.",
-        "priority": "0",
-        "category": "Incident"
+      "id": 9,
+      "category": "Incident",
+      "full_conversation": "Das heute erstellte Nutzerkonto kann sich noch nicht bei irgendeinem Uni‑Dienst anmelden.",
+      "messages": [
+        "User: My student account was created today, but I still cannot log in to any university service.",
+        "Support: Sometimes provisioning takes a short while. Have you tried logging in after a few minutes?",
+        "User: I waited an hour and still get 'account not found'.",
+        "Support: I have checked the provisioning status and triggered a manual synchronization. Your account should now be active across all services. Please try logging in again."
+      ]
     },
     {
-        "name": "Sophie Klein",
-        "email": "sophie.klein@student.uni-due.de",
-        "ticket": "The login system shows an error message for many students in my course. None of us can access the exam registration portal.",
-        "solution": "Escalate to identity management and check the availability of the central login service.",
-        "priority": "1",
-        "category": "Incident"
+      "id": 10,
+      "category": "Incident",
+      "full_conversation": "Viele Studierende erhalten beim Zugriff auf das Prüfungsanmeldungs‑Portal eine Fehlermeldung.",
+      "messages": [
+        "User: The login system shows an error message for many students in my course. None of us can access the exam registration portal.",
+        "Support: Could you share the exact error text you see?",
+        "User: It says 'Service temporarily unavailable' after we enter our credentials.",
+        "Support: I have escalated the issue to identity management and confirmed that the central login service is currently down. A fix is being deployed; we will notify you as soon as the portal is back online."
+      ]
     },
     {
-        "name": "Jonas Schneider",
-        "email": "jonas.schneider@student.uni-due.de",
-        "ticket": "I cannot connect to the university VPN from home. Forcepoint keeps showing an authentication error. Greetings, Jonas Schneider.",
-        "solution": "Reinstall Forcepoint and re-establish the VPN connection with the correct university credentials.",
-        "priority": "0",
-        "category": "Incident"
+      "id": 11,
+      "category": "Incident",
+      "full_conversation": "Der Nutzer kann von zu Hause keine Verbindung zum Uni‑VPN herstellen, da Forcepoint einen Authentifizierungsfehler anzeigt.",
+      "messages": [
+        "User: I cannot connect to the university VPN from home. Forcepoint keeps showing an authentication error. Greetings, Jonas Schneider.",
+        "Support: Have you recently changed your university password or updated the Forcepoint client?",
+        "User: I changed my password last week and reinstalled the client yesterday.",
+        "Support: I have reinstalled Forcepoint for you and updated the stored credentials. Please try connecting again; you should receive a successful connection. If the problem persists, let me know."
+      ]
     },
     {
-        "name": "Elena Hoffmann",
-        "email": "elena.hoffmann@student.uni-due.de",
-        "ticket": "I cannot connect to eduroam on my laptop, but my phone connects without problems.",
-        "solution": "Remove the old eduroam profile and configure the Wi-Fi connection again.",
-        "priority": "0",
-        "category": "Incident"
+      "id": 12,
+      "category": "Incident",
+      "full_conversation": "Der Nutzer kann mit dem Laptop keine Verbindung zu eduroam herstellen, das Smartphone funktioniert jedoch.",
+      "messages": [
+        "User: I cannot connect to eduroam on my laptop, but my phone connects without problems.",
+        "Support: Can you tell me which operating system and version your laptop is running?",
+        "User: It's Windows 10, fully updated.",
+        "Support: I have removed the old eduroam profile from your laptop and provided a fresh configuration file. Please import the new profile and try connecting again."
+      ]
     },
     {
-        "name": "Dr. Markus Neumann",
-        "email": "markus.neumann@uni-due.de",
-        "ticket": "The projector in room S203 does not show my laptop screen, and I need it for my lecture this afternoon.",
-        "solution": "Check the HDMI connection, input source and restart the projector system.",
-        "priority": "0",
-        "category": "Incident"
+      "id": 13,
+      "category": "Incident",
+      "full_conversation": "Der Projektor im Raum S203 zeigt kein Bild vom Laptop des Dozenten.",
+      "messages": [
+        "User: The projector in room S203 does not show my laptop screen, and I need it for my lecture this afternoon.",
+        "Support: Have you checked that the HDMI cable is firmly connected and that the correct input source is selected on the projector?",
+        "User: Yes, the cable is secure and I set the source to HDMI 1, but still nothing.",
+        "Support: I have inspected the HDMI connection, verified the input source, and restarted the projector system. It should now display your laptop screen. If you still experience issues, please let me know. You can reach me at markus.neumann@uni-due.de."
+      ]
     },
     {
-        "name": "Clara Stein",
-        "email": "clara.stein@student.uni-due.de",
-        "ticket": "The printer in the computer lab does not print my document. The print job stays in the queue.",
-        "solution": "Check printer status, restart the print job and verify the user's print quota.",
-        "priority": "0",
-        "category": "Incident"
+      "id": 14,
+      "category": "Incident",
+      "full_conversation": "Der Druckauftrag bleibt in der Warteschlange und das Labor‑Drucker druckt nicht.",
+      "messages": [
+        "User: The printer in the computer lab does not print my document. The print job stays in the queue.",
+        "Support: Are there any error messages on the printer display or in the print queue?",
+        "User: No error, it just says 'Waiting'.",
+        "Support: I have checked the printer status, cleared the stuck job, and verified your print quota. Please resend the document; it should print now."
+      ]
     },
     {
-        "name": "Omar Haddad",
-        "email": "omar.haddad@student.uni-due.de",
-        "ticket": "I cannot install Citavi with my university license because the activation code is rejected.",
-        "solution": "Verify the university license assignment and provide the correct activation instructions.",
-        "priority": "0",
-        "category": "Incident"
+      "id": 15,
+      "category": "Incident",
+      "full_conversation": "Der Aktivierungscode für Citavi wird trotz gültiger Universitätslizenz abgelehnt.",
+      "messages": [
+        "User: I cannot install Citavi with my university license because the activation code is rejected.",
+        "Support: Could you confirm that you are using the latest version of Citavi and that the code was copied exactly?",
+        "User: Yes, I am on the latest version and copied the code carefully.",
+        "Support: I have verified that your university license is correctly assigned to your account and provided a new activation code. Please use the new code to complete the installation."
+      ]
     },
     {
-        "name": "Prof. Katrin Vogt",
-        "email": "katrin.vogt@uni-due.de",
-        "ticket": "The central VPN gateway seems to be unavailable. Many staff members cannot access internal systems from outside the campus.",
-        "solution": "Escalate to network operations and check the VPN gateway infrastructure.",
-        "priority": "1",
-        "category": "Incident"
+      "id": 16,
+      "category": "Incident",
+      "full_conversation": "Das zentrale VPN‑Gateway ist ausgefallen, sodass viele Mitarbeitende keinen externen Zugriff haben.",
+      "messages": [
+        "User: The central VPN gateway seems to be unavailable. Many staff members cannot access internal systems from outside the campus.",
+        "Support: Are you receiving any specific error messages when attempting to connect?",
+        "User: It just times out after I enter my credentials.",
+        "Support: I have escalated the issue to network operations and they are currently investigating the VPN gateway infrastructure. We will update you as soon as the service is restored."
+      ]
     },
     {
-        "name": "David Schmitz",
-        "email": "david.schmitz@student.uni-due.de",
-        "ticket": "My university laptop is very slow after the last software update and sometimes freezes during online meetings.",
-        "solution": "Check system resources, update drivers and review the last installed software package.",
-        "priority": "0",
-        "category": "Incident"
+      "id": 17,
+      "category": "Incident",
+      "full_conversation": "Der Uni‑Laptop ist nach dem letzten Software‑Update sehr langsam und friert bei Online‑Meetings ein.",
+      "messages": [
+        "User: My university laptop is very slow after the last software update and sometimes freezes during online meetings.",
+        "Support: Have you checked the task manager to see which processes are consuming the most resources?",
+        "User: Yes, the CPU usage spikes to 100% during meetings.",
+        "Support: I have reviewed the system resources, updated the graphics drivers, and removed a recently installed package that caused the slowdown. The laptop should now perform normally."
+      ]
     },
     {
-        "name": "Nina Krause",
-        "email": "nina.krause@student.uni-due.de",
-        "ticket": "I cannot upload a PDF file to Moodle. The upload stops at 90 percent and then fails. My email address is: nina.krause@student.uni-due.de",
-        "solution": "Check the file size, file format and Moodle upload limit for the course.",
-        "priority": "0",
-        "category": "Incident"
+      "id": 18,
+      "category": "Incident",
+      "full_conversation": "Der Upload einer PDF‑Datei zu Moodle bricht bei 90 % ab.",
+      "messages": [
+        "User: I cannot upload a PDF file to Moodle. The upload stops at 90 percent and then fails. My email address is: nina.krause@student.uni-due.de",
+        "Support: Could you tell me the size of the PDF you are trying to upload?",
+        "User: It's about 45 MB.",
+        "Support: I have checked the course's upload limit and increased it for your account. Please try uploading the file again; it should complete successfully."
+      ]
     },
     {
-        "name": "Dr. Thomas Berger",
-        "email": "thomas.berger@uni-due.de",
-        "ticket": "The research data storage is not reachable for my project group. We cannot access important files for our experiment.",
-        "solution": "Escalate to storage administration and check the research storage permissions and availability.",
-        "priority": "1",
-        "category": "Incident"
+      "id": 19,
+      "category": "Incident",
+      "full_conversation": "Die Forschungs‑Datenspeicher‑Umgebung ist für die Projektgruppe nicht erreichbar.",
+      "messages": [
+        "User: The research data storage is not reachable for my project group. We cannot access important files for our experiment.",
+        "Support: Are you receiving any specific error codes when trying to access the storage?",
+        "User: It says 'Permission denied' even though we have been granted access.",
+        "Support: I have escalated the case to storage administration, verified the group permissions, and restored access. Your project should now be able to reach the storage."
+      ]
     },
     {
-        "name": "Laura Schmitt",
-        "email": "laura.schmitt@student.uni-due.de",
-        "ticket": "I cannot open Microsoft Teams with my university account. The browser redirects me to an error page.",
-        "solution": "Check Microsoft 365 license assignment and reset the user's active session.",
-        "priority": "0",
-        "category": "Incident"
+      "id": 20,
+      "category": "Incident",
+      "full_conversation": "Der Nutzer wird beim Öffnen von Microsoft Teams mit seinem Uni‑Konto auf eine Fehlermeldungs‑Seite weitergeleitet.",
+      "messages": [
+        "User: I cannot open Microsoft Teams with my university account. The browser redirects me to an error page.",
+        "Support: Have you tried clearing your browser cookies or using an incognito window?",
+        "User: I tried both, but the same error appears.",
+        "Support: I have checked your Microsoft 365 license assignment and reset your active session. Please try opening Teams again; it should load correctly now."
+      ]
     },
     {
-        "name": "Mariam Yilmaz",
-        "email": "mariam.yilmaz@student.uni-due.de",
-        "ticket": "I was charged the semester fee twice and I need help correcting the payment.",
-        "solution": "Check the payment records and forward the case to the finance department if a duplicate payment exists.",
-        "priority": "0",
-        "category": "Service Request"
+      "id": 21,
+      "category": "Service Request",
+      "full_conversation": "Der Nutzer wurde das Semesterbeitrag zweimal belastet und benötigt eine Korrektur.",
+      "messages": [
+        "User: I was charged the semester fee twice and I need help correcting the payment.",
+        "Support: Could you provide the transaction dates or reference numbers for the two payments?",
+        "User: Both were on 01.04.2024, reference 2024SEM001.",
+        "Support: I have checked the payment records and confirmed the duplicate charge. I will forward the case to the finance department to process a refund. You will receive a confirmation at mariam.yilmaz@student.uni-due.de."
+      ]
     },
     {
-        "name": "Philipp Hartmann",
-        "email": "philipp.hartmann@student.uni-due.de",
-        "ticket": "My payment for the semester fee was successful, but the campus portal still says that the fee is unpaid.",
-        "solution": "Verify the payment reference and synchronize the payment status in the campus management system.",
-        "priority": "0",
-        "category": "Service Request"
+      "id": 22,
+      "category": "Service Request",
+      "full_conversation": "Der Nutzer hat den Semesterbeitrag bezahlt, aber das Campus‑Portal zeigt ihn weiterhin als offen an.",
+      "messages": [
+        "User: My payment for the semester fee was successful, but the campus portal still says that the fee is unpaid.",
+        "Support: Can you share the payment reference number or a receipt?",
+        "User: Yes, the reference is PAY2024-5678.",
+        "Support: I have verified the payment reference and synchronized the status in the campus management system. The portal should now reflect that your fee is paid."
+      ]
     },
     {
-        "name": "Aylin Demir",
-        "email": "aylin.demir@student.uni-due.de",
-        "ticket": "I need an invoice confirmation for the language course fee that I paid last week.",
-        "solution": "Check the payment record and provide a payment confirmation or invoice copy.",
-        "priority": "0",
-        "category": "Service Request"
+      "id": 23,
+      "category": "Service Request",
+      "full_conversation": "Der Nutzer benötigt eine Zahlungsbestätigung für den Sprachkurs.",
+      "messages": [
+        "User: I need an invoice confirmation for the language course fee that I paid last week.",
+        "Support: Could you tell me the date of payment and the amount?",
+        "User: I paid on 03.03.2024, €150.",
+        "Support: I have checked the payment record and attached the invoice confirmation to this message. Let me know if you need anything else."
+      ]
     },
     {
-        "name": "Maximilian Wolf",
-        "email": "maximilian.wolf@student.uni-due.de",
-        "ticket": "I received a reminder for an unpaid fee, but I already transferred the money two weeks ago.",
-        "solution": "Compare the bank transfer details with the student's payment record and update the status if needed.",
-        "priority": "0",
-        "category": "Service Request"
+      "id": 24,
+      "category": "Service Request",
+      "full_conversation": "Der Nutzer hat bereits vor zwei Wochen überwiesen, erhält aber trotzdem eine Mahnung.",
+      "messages": [
+        "User: I received a reminder for an unpaid fee, but I already transferred the money two weeks ago.",
+        "Support: Please provide the bank transfer reference or a screenshot of the transaction.",
+        "User: The reference is TRANS2024-1122, dated 15.02.2024.",
+        "Support: I have compared the bank transfer details with your payment record and updated the status. The reminder should no longer appear."
+      ]
     },
     {
-        "name": "Sabrina Koch",
-        "email": "sabrina.koch@student.uni-due.de",
-        "ticket": "The online payment page shows an error when I try to pay my semester fee by card.",
-        "solution": "Check the payment provider status and advise the user to retry or use another payment method.",
-        "priority": "0",
-        "category": "Service Request"
+      "id": 25,
+      "category": "Service Request",
+      "full_conversation": "Beim Versuch, den Semesterbeitrag per Karte zu bezahlen, erscheint ein Fehler auf der Zahlungsseite.",
+      "messages": [
+        "User: The online payment page shows an error when I try to pay my semester fee by card.",
+        "Support: Are you seeing any specific error code or message?",
+        "User: It says 'Transaction could not be processed'.",
+        "Support: I have checked the payment provider status and there are no known outages. Please try the payment again in a few minutes or use an alternative method such as bank transfer."
+      ]
     },
     {
-        "name": "Daniel Richter",
-        "email": "daniel.richter@student.uni-due.de",
-        "ticket": "Many students in my program cannot pay the semester fee online because the payment system fails after login.",
-        "solution": "Escalate to payment system support and check the availability of the payment service.",
-        "priority": "1",
-        "category": "Service Request"
+      "id": 26,
+      "category": "Service Request",
+      "full_conversation": "Viele Studierende können nach dem Login das Semesterbeitrag‑Zahlungssystem nicht nutzen, da es abstürzt.",
+      "messages": [
+        "User: Many students in my program cannot pay the semester fee online because the payment system fails after login.",
+        "Support: Have you noticed if the failure occurs on a specific browser or device?",
+        "User: It happens on both Chrome and Firefox on Windows PCs.",
+        "Support: I have escalated the issue to payment system support and they are investigating the service availability. We will inform you as soon as the system is stable again."
+      ]
     },
     {
-        "name": "Hannah Meier",
-        "email": "hannah.meier@student.uni-due.de",
-        "ticket": "I need a refund because I accidentally paid the library fee twice.",
-        "solution": "Verify the duplicate payment and initiate the refund process through the finance department.",
-        "priority": "0",
-        "category": "Service Request"
+      "id": 27,
+      "category": "Service Request",
+      "full_conversation": "Der Nutzer hat die Bibliotheksgebühr doppelt bezahlt und verlangt eine Rückerstattung.",
+      "messages": [
+        "User: I need a refund because I accidentally paid the library fee twice.",
+        "Support: Could you provide the dates and amounts of the two payments?",
+        "User: Both on 20.01.2024, €30 each.",
+        "Support: I have verified the duplicate payment and initiated the refund process through the finance department. You will receive the refund within 5‑7 business days."
+      ]
     },
     {
-        "name": "Dr. Erik Lang",
-        "email": "erik.lang@uni-due.de",
-        "ticket": "Our department cannot export invoice reports from the accounting system for one project.",
-        "solution": "Check report permissions and regenerate the export for the affected project account.",
-        "priority": "0",
-        "category": "Service Request"
+      "id": 28,
+      "category": "Service Request",
+      "full_conversation": "Die Abteilung kann keine Rechnungsberichte aus dem Buchhaltungssystem exportieren.",
+      "messages": [
+        "User: Our department cannot export invoice reports from the accounting system for one project.",
+        "Support: Do you receive any error messages when attempting the export?",
+        "User: It says 'Insufficient permissions'.",
+        "Support: I have checked the report permissions for your project account and regenerated the export. You should now be able to download the invoice reports."
+      ]
     },
     {
-        "name": "Julia Neumann",
-        "email": "julia.neumann@student.uni-due.de",
-        "ticket": "The invoice amount for my continuing education course seems incorrect compared to the amount shown during registration.",
-        "solution": "Compare the registration data with the invoice and correct the invoice if necessary.",
-        "priority": "0",
-        "category": "Service Request"
+      "id": 29,
+      "category": "Service Request",
+      "full_conversation": "Der Rechnungsbetrag für den Weiterbildungskurs stimmt nicht mit dem bei der Anmeldung angezeigten Betrag überein.",
+      "messages": [
+        "User: The invoice amount for my continuing education course seems incorrect compared to the amount shown during registration.",
+        "Support: Could you tell me the amount shown on the invoice and the amount you expected?",
+        "User: Invoice says €420, but I was told it would be €380.",
+        "Support: I have compared the registration data with the invoice and corrected the amount to €380. A revised invoice has been sent to you."
+      ]
     },
     {
-        "name": "Christian Becker",
-        "email": "christian.becker@uni-due.de",
-        "ticket": "The central accounting system is not available, and our finance team cannot process invoices today. I am logged in as christian.becker@uni-due.de",
-        "solution": "Escalate to finance IT support and check the accounting system database and application servers.",
-        "priority": "1",
-        "category": "Service Request"
+      "id": 30,
+      "category": "Service Request",
+      "full_conversation": "Das zentrale Buchhaltungssystem ist nicht verfügbar, sodass das Finanzteam keine Rechnungen bearbeiten kann.",
+      "messages": [
+        "User: The central accounting system is not available, and our finance team cannot process invoices today. I am logged in as christian.becker@uni-due.de",
+        "Support: I understand the impact. I have escalated the issue to finance IT support and they are checking the database and application servers.",
+        "User: Thank you, please keep me updated.",
+        "Support: The accounting system has been restored and is now operational. You should be able to process invoices again."
+      ]
     },
     {
-        "name": "Felix Weber",
-        "email": "felix.weber@student.uni-due.de",
-        "ticket": "I would like to know where I can find information about available software licenses for students.",
-        "solution": "Refer the user to the university IT service portal and the software license overview.",
-        "priority": "0",
-        "category": "Service Request"
+      "id": 31,
+      "category": "Service Request",
+      "full_conversation": "Der Nutzer möchte Informationen zu verfügbaren Software‑Lizenzen für Studierende erhalten.",
+      "messages": [
+        "User: I would like to know where I can find information about available software licenses for students.",
+        "Support: Have you checked the university IT service portal? It contains a software license overview.",
+        "User: I haven't found a dedicated page yet.",
+        "Support: I have referred you to the IT service portal's software license section and sent the direct link to your email felix.weber@student.uni-due.de. You should find the complete list there."
+      ]
     },
     {
-        "name": "Leonie Braun",
-        "email": "leonie.braun@student.uni-due.de",
-        "ticket": "I would like to know how I can get temporary Wi-Fi access for a guest researcher visiting our seminar.",
-        "solution": "Provide instructions for requesting a temporary guest Wi-Fi account.",
-        "priority": "0",
-        "category": "Service Request"
+      "id": 32,
+      "category": "Service Request",
+      "full_conversation": "Der Nutzer benötigt temporären WLAN‑Zugang für einen Gast‑Forscher.",
+      "messages": [
+        "User: I would like to know how I can get temporary Wi‑Fi access for a guest researcher visiting our seminar.",
+        "Support: We can create a guest Wi‑Fi account valid for 30 days. Could you provide the guest's full name and affiliation?",
+        "User: Dr. Emily Clark, visiting researcher from University X.",
+        "Support: I have created a temporary guest Wi‑Fi account for Dr. Emily Clark. The credentials have been sent to your university email."
+      ]
     },
     {
-        "name": "Noah Klein",
-        "email": "noah.klein@student.uni-due.de",
-        "ticket": "I want to know where I can download Microsoft Office with my university account.",
-        "solution": "Send the user the official Microsoft 365 download instructions for university accounts.",
-        "priority": "0",
-        "category": "Service Request"
+      "id": 33,
+      "category": "Service Request",
+      "full_conversation": "Der Nutzer möchte wissen, wo er Microsoft Office mit seinem Uni‑Konto herunterladen kann.",
+      "messages": [
+        "User: I want to know where I can download Microsoft Office with my university account.",
+        "Support: You can download it from the official Microsoft 365 portal for university accounts.",
+        "User: Do I need any special code?",
+        "Support: No special code is required. Log in with your university credentials at https://www.microsoft.com/de-de/education/products/office and follow the download instructions."
+      ]
     },
     {
-        "name": "Dr. Petra Schulz",
-        "email": "petra.schulz@uni-due.de",
-        "ticket": "I would like to know how to request a new shared mailbox for our research project.",
-        "solution": "Provide the request process for shared mailboxes and required project information.",
-        "priority": "0",
-        "category": "Service Request"
+      "id": 34,
+      "category": "Service Request",
+      "full_conversation": "Der Nutzer möchte ein gemeinsames Postfach für das Forschungsprojekt einrichten lassen.",
+      "messages": [
+        "User: I would like to know how to request a new shared mailbox for our research project.",
+        "Support: Please provide the project name and the list of users who need access.",
+        "User: Project Alpha, users: alice@example.com, bob@example.com.",
+        "Support: I have provided the request process and forwarded your details to the mailbox administration team. You will receive confirmation shortly."
+      ]
     },
     {
-        "name": "Lukas Meyer",
-        "email": "lukas.meyer@student.uni-due.de",
-        "ticket": "Hello! Lucas here, I need information about how to use the university cloud storage for group assignments.",
-        "solution": "Refer the user to the cloud storage documentation and collaboration guidelines.",
-        "priority": "0",
-        "category": "Service Request"
+      "id": 35,
+      "category": "Service Request",
+      "full_conversation": "Der Nutzer sucht Anleitungen zur Nutzung des Uni‑Cloud‑Speichers für Gruppenarbeiten.",
+      "messages": [
+        "User: Hello! Lucas here, I need information about how to use the university cloud storage for group assignments.",
+        "Support: You can access the cloud storage via the UniDrive portal. Would you like a step‑by‑step guide?",
+        "User: Yes, that would help.",
+        "Support: I have sent you the cloud storage documentation and collaboration guidelines to your university email."
+      ]
     },
     {
-        "name": "Amira Saleh",
-        "email": "amira.saleh@student.uni-due.de",
-        "ticket": "I would like to know whether students can borrow laptops from the university for online exams.",
-        "solution": "Provide information about the university's device lending service and contact point.",
-        "priority": "0",
-        "category": "Service Request"
+      "id": 36,
+      "category": "Service Request",
+      "full_conversation": "Der Nutzer fragt, ob Studierende Laptops für Online‑Prüfungen ausleihen können.",
+      "messages": [
+        "User: I would like to know whether students can borrow laptops from the university for online exams.",
+        "Support: Yes, we have a device lending service. Would you like to know the reservation process?",
+        "User: Please send me the details.",
+        "Support: I have provided information about the device lending service and the contact point for reservations."
+      ]
     },
     {
-        "name": "Jan Hoffmann",
-        "email": "jan.hoffmann@student.uni-due.de",
-        "ticket": "I want to know how long my university email account remains active after graduation.",
-        "solution": "Refer the user to the account lifecycle policy for students and alumni.",
-        "priority": "0",
-        "category": "Service Request"
+      "id": 37,
+      "category": "Service Request",
+      "full_conversation": "Der Nutzer möchte wissen, wie lange sein Uni‑E‑Mail‑Konto nach dem Abschluss aktiv bleibt.",
+      "messages": [
+        "User: I want to know how long my university email account remains active after graduation.",
+        "Support: Alumni accounts remain active for one year after graduation, after which they are deactivated.",
+        "User: Can I extend it if needed?",
+        "Support: Extensions are possible upon request to the alumni office. I have forwarded your inquiry."
+      ]
     },
     {
-        "name": "Sofia Romano",
-        "email": "sofia.romano@student.uni-due.de",
-        "ticket": "I would like to know where I can find instructions for setting up eduroam on my phone.",
-        "solution": "Send the user the eduroam setup guide for mobile devices.",
-        "priority": "0",
-        "category": "Service Request"
+      "id": 38,
+      "category": "Service Request",
+      "full_conversation": "Der Nutzer sucht Anleitungen zum Einrichten von eduroam auf dem Smartphone.",
+      "messages": [
+        "User: I would like to know where I can find instructions for setting up eduroam on my phone.",
+        "Support: We have a step‑by‑step guide for iOS and Android devices.",
+        "User: Please send me the Android guide.",
+        "Support: I have sent the eduroam setup guide for Android to your university email."
+      ]
     },
     {
-        "name": "Dr. Martin Keller",
-        "email": "martin.keller@uni-due.de",
-        "ticket": "I need information about how to request IT support for a new employee in our department.",
-        "solution": "Provide the onboarding IT request process and required employee information.",
-        "priority": "0",
-        "category": "Service Request"
+      "id": 39,
+      "category": "Service Request",
+      "full_conversation": "Der Nutzer benötigt Informationen, wie IT‑Support für einen neuen Mitarbeitenden angefordert wird.",
+      "messages": [
+        "User: I need information about how to request IT support for a new employee in our department.",
+        "Support: Please fill out the onboarding IT request form and include the employee's details.",
+        "User: Where can I find the form?",
+        "Support: I have provided the link to the onboarding IT request process and listed the required information."
+      ]
     },
     {
-        "name": "Yasmin Özdemir",
-        "email": "yasmin.oezdemir@student.uni-due.de",
-        "ticket": "I would like to know which support contact is responsible for problems with the campus app. My email address: yasmin.oezdemir@student.uni-due.de",
-        "solution": "Refer the user to the responsible campus app support contact and FAQ page.",
-        "priority": "0",
-        "category": "Service Request"
+      "id": 40,
+      "category": "Service Request",
+      "full_conversation": "Der Nutzer möchte wissen, welcher Support‑Kontakt für Probleme mit der Campus‑App zuständig ist.",
+      "messages": [
+        "User: I would like to know which support contact is responsible for problems with the campus app. My email address: yasmin.oezdemir@student.uni-due.de",
+        "Support: The Campus App support team can be reached at campusapp-support@uni-due.de.",
+        "User: Thank you, do they have a FAQ?",
+        "Support: Yes, I have sent you the FAQ page and the direct contact email yasmin.oezdemir@student.uni-due.de for any further questions."
+      ]
     },
     {
-        "name": "Sarah Hoffmann",
-        "email": "sarah.hoffmann@student.uni-due.de",
-        "ticket": "I am very unhappy because my support request has not been answered for more than two weeks.",
-        "solution": "Apologize for the delay, check the previous ticket status and escalate the request if necessary.",
-        "priority": "0",
-        "category": "Complaint"
+      "id": 41,
+      "category": "Complaint",
+      "full_conversation": "Der Nutzer ist unzufrieden, weil seine Support‑Anfrage seit über zwei Wochen unbeantwortet ist.",
+      "messages": [
+        "User: I am very unhappy because my support request has not been answered for more than two weeks.",
+        "Support: I apologize for the delay. Could you provide the ticket number or the subject of your original request?",
+        "User: It was about my locked account, ticket #12345.",
+        "Support: I have checked the previous ticket status, escalated it to senior support, and will ensure you receive a response within the next 24 hours."
+      ]
     },
     {
-        "name": "Kevin Wagner",
-        "email": "kevin.wagner@student.uni-due.de",
-        "ticket": "I already contacted support three times about my login problem, but I still have no working solution.",
-        "solution": "Review the previous support history, apologize and escalate the case to second-level support.",
-        "priority": "0",
-        "category": "Complaint"
+      "id": 42,
+      "category": "Complaint",
+      "full_conversation": "Der Nutzer hat bereits dreimal wegen eines Login‑Problems Kontakt aufgenommen, ohne Lösung.",
+      "messages": [
+        "User: I already contacted support three times about my login problem, but I still have no working solution.",
+        "Support: I'm sorry for the repeated inconvenience. Could you confirm the exact error you see when attempting to log in?",
+        "User: It says 'Authentication failed' each time.",
+        "Support: I have reviewed the previous support history, identified a misconfiguration in your account, and escalated the case to second‑level support. They will contact you shortly with a resolution."
+      ]
     },
     {
-        "name": "Nadine Fischer",
-        "email": "nadine.fischer@student.uni-due.de",
-        "ticket": "I am frustrated because the printer in the computer lab has been broken for several days and nobody fixed it.",
-        "solution": "Apologize and forward the issue to the print service team with a request for status feedback.",
-        "priority": "0",
-        "category": "Complaint"
+      "id": 43,
+      "category": "Complaint",
+      "full_conversation": "Der Drucker im Computer‑Labor ist seit mehreren Tagen defekt und wurde noch nicht repariert.",
+      "messages": [
+        "User: I am frustrated because the printer in the computer lab has been broken for several days and nobody fixed it.",
+        "Support: I apologize for the inconvenience. Could you tell me which lab and printer model you are referring to?",
+        "User: Lab 2, HP LaserJet 4200.",
+        "Support: I have forwarded the issue to the print service team with a request for status feedback. They will address the repair as a priority."
+      ]
     },
     {
-        "name": "Dr. Julia Brandt",
-        "email": "julia.brandt@uni-due.de",
-        "ticket": "I am dissatisfied because the media equipment failed again during my lecture and no technician was available.",
-        "solution": "Apologize, document the repeated failure and escalate the room equipment issue to media technology support.",
-        "priority": "0",
-        "category": "Complaint"
+      "id": 44,
+      "category": "Complaint",
+      "full_conversation": "Die Medientechnik im Hörsaal ist während einer Vorlesung ausgefallen und es war kein Techniker verfügbar.",
+      "messages": [
+        "User: I am dissatisfied because the media equipment failed again during my lecture and no technician was available.",
+        "Support: I apologize for the repeated failure. Could you specify which equipment failed?",
+        "User: The projector and sound system stopped working halfway through.",
+        "Support: I have documented the incident and escalated the room equipment issue to media technology support. They will investigate and ensure a technician is on standby for future sessions."
+      ]
     },
     {
-        "name": "Mehmet Arslan",
-        "email": "mehmet.arslan@student.uni-due.de",
-        "ticket": "I was told that my payment issue would be fixed last week, but my account still shows an unpaid semester fee.",
-        "solution": "Review the finance case, apologize for the delay and update the payment status if the payment is confirmed.",
-        "priority": "0",
-        "category": "Complaint"
+      "id": 45,
+      "category": "Complaint",
+      "full_conversation": "Der Nutzer wurde informiert, dass das Zahlungsproblem letzte Woche behoben sei, aber das Konto zeigt weiterhin eine unbezahlte Semestergebühr.",
+      "messages": [
+        "User: I was told that my payment issue would be fixed last week, but my account still shows an unpaid semester fee.",
+        "Support: I apologize for the continued issue. Could you provide the payment reference you used?",
+        "User: The reference is PAY2024-9988.",
+        "Support: I have reviewed the finance case, confirmed the payment, and updated your account status. The unpaid fee notice should now be cleared. If you still see it, please let me know."
+      ]
     },
     {
-        "name": "Greta Lehmann",
-        "email": "greta.lehmann@student.uni-due.de",
-        "ticket": "I am upset because I could not submit my assignment due to a Moodle upload error and I did not receive help in time.",
-        "solution": "Escalate the complaint to e-learning support and provide documentation for the course instructor if needed.",
-        "priority": "0",
-        "category": "Complaint"
+      "id": 46,
+      "category": "Complaint",
+      "full_conversation": "Der Nutzer konnte seine Aufgabe wegen eines Moodle‑Upload‑Fehlers nicht einreichen und erhielt keine rechtzeitige Hilfe.",
+      "messages": [
+        "User: I am upset because I could not submit my assignment due to a Moodle upload error and I did not receive help in time.",
+        "Support: I'm sorry for the trouble. What error message did you see during the upload?",
+        "User: It said 'Upload failed' after reaching 90%.",
+        "Support: I have escalated the complaint to e‑learning support and provided documentation for your course instructor to allow a late submission."
+      ]
     },
     {
-        "name": "Prof. Andreas Weber",
-        "email": "andreas.weber@uni-due.de",
-        "ticket": "Several lecturers complained that the lecture recording system failed repeatedly during important sessions this week. Best, Andreas Weber.",
-        "solution": "Escalate the repeated failures to media technology management and investigate the recording system stability.",
-        "priority": "1",
-        "category": "Complaint"
+      "id": 47,
+      "category": "Complaint",
+      "full_conversation": "Mehrere Dozenten berichten, dass das Vorlesungs‑Aufzeichnungssystem in dieser Woche wiederholt ausgefallen ist.",
+      "messages": [
+        "User: Several lecturers complained that the lecture recording system failed repeatedly during important sessions this week. Best, Andreas Weber.",
+        "Support: I understand how critical recordings are. Could you specify which rooms or sessions were affected?",
+        "User: Rooms A101 and B202 on Monday and Wednesday.",
+        "Support: I have escalated the repeated failures to media technology management and they will investigate the system stability. Updates will be provided to all affected lecturers."
+      ]
     },
     {
-        "name": "Lisa König",
-        "email": "lisa.koenig@student.uni-due.de",
-        "ticket": "I am disappointed because the information on the website was outdated and caused me to miss an important deadline.",
-        "solution": "Apologize, forward the outdated content to the website owner and provide the correct information to the user.",
-        "priority": "0",
-        "category": "Complaint"
+      "id": 48,
+      "category": "Complaint",
+      "full_conversation": "Der Nutzer verpasste eine wichtige Frist, weil die Informationen auf der Website veraltet waren.",
+      "messages": [
+        "User: I am disappointed because the information on the website was outdated and caused me to miss an important deadline.",
+        "Support: I apologize for the inconvenience. Could you tell me which page contained the outdated information?",
+        "User: The scholarship application page.",
+        "Support: I have forwarded the outdated content to the website owner, corrected the deadline information, and sent you the updated details."
+      ]
     },
     {
-        "name": "Tobias Richter",
-        "email": "tobias.richter@student.uni-due.de",
-        "ticket": "I find it unacceptable that the Wi-Fi in the library keeps disconnecting during online exams.",
-        "solution": "Document the complaint and forward the case to network support for analysis of the library Wi-Fi stability.",
-        "priority": "0",
-        "category": "Complaint"
+      "id": 49,
+      "category": "Complaint",
+      "full_conversation": "Der Nutzer erlebt häufige WLAN‑Unterbrechungen in der Bibliothek während Online‑Prüfungen.",
+      "messages": [
+        "User: I find it unacceptable that the Wi‑Fi in the library keeps disconnecting during online exams.",
+        "Support: I understand how disruptive this is. Have you noticed if the disconnects happen at specific times?",
+        "User: Mostly in the evenings, around 8 PM.",
+        "Support: I have documented the complaint and forwarded the case to network support for analysis of the library Wi‑Fi stability."
+      ]
     },
     {
-        "name": "Mona Schmidt",
-        "email": "mona.schmidt@student.uni-due.de",
-        "ticket": "I am angry because my account was locked without clear explanation and I could not access my course material.",
-        "solution": "Review the account lock reason, explain the situation to the user and unlock the account if appropriate.",
-        "priority": "0",
-        "category": "Complaint"
+      "id": 50,
+      "category": "Complaint",
+      "full_conversation": "Der Nutzerkonto wurde ohne klare Erklärung gesperrt, sodass er keinen Zugriff auf Kursmaterial hat.",
+      "messages": [
+        "User: I am angry because my account was locked without clear explanation and I could not access my course material.",
+        "Support: I'm sorry for the inconvenience. Could you provide your username so I can investigate?",
+        "User: It's jan.hoffmann@student.uni-due.de.",
+        "Support: I have reviewed the lock reason, explained that multiple failed login attempts triggered the lock, and have unlocked your account. You should now have full access."
+      ]
     },
     {
-        "name": "Projektgruppe Medien",
-        "email": "projekt.medien@uni-due.de",
-        "ticket": "Bitte ändern Sie die Berechtigung für unsere Projektgruppe, damit zwei neue Mitarbeitende Zugriff auf den gemeinsamen Ordner bekommen.",
-        "solution": "Prüfen Sie die Gruppenberechtigungen und erweitern Sie den Zugriff auf den gemeinsamen Ordner für die neuen Mitarbeitenden.",
-        "priority": "0",
-        "category": "Change"
+      "id": 51,
+      "category": "Change",
+      "full_conversation": "Die Projektgruppe benötigt erweiterte Berechtigungen für den gemeinsamen Ordner, um zwei neue Mitarbeitende einzubinden.",
+      "messages": [
+        "User: Bitte ändern Sie die Berechtigung für unsere Projektgruppe, damit zwei neue Mitarbeitende Zugriff auf den gemeinsamen Ordner bekommen.",
+        "Support: Könnten Sie mir die Namen und E‑Mail‑Adressen der beiden neuen Mitarbeitenden mitteilen?",
+        "User: Lukas Meyer (lukas.meyer@student.uni-due.de) und Sara Klein (sara.klein@student.uni-due.de).",
+        "Support: Ich habe die Gruppenberechtigungen geprüft und den Zugriff für Lukas Meyer und Sara Klein auf den gemeinsamen Ordner erweitert. Sie erhalten jeweils eine Benachrichtigung per E‑Mail."
+      ]
     },
     {
-        "name": "IT Koordination",
-        "email": "it.koordination@uni-due.de",
-        "ticket": "Der VPN-Zugang fällt seit mehreren Wochen jeden Montagmorgen für viele Mitarbeitende aus. Wir möchten die Ursache untersuchen lassen.",
-        "solution": "Analysieren Sie die wiederkehrenden VPN-Ausfälle montags und identifizieren Sie die zugrunde liegende Ursache.",
-        "priority": "1",
-        "category": "Problem"
+      "id": 52,
+      "category": "Problem",
+      "full_conversation": "Der VPN‑Zugang fällt jeden Montagmorgen für viele Mitarbeitende aus und soll untersucht werden.",
+      "messages": [
+        "User: Der VPN-Zugang fällt seit mehreren Wochen jeden Montagmorgen für viele Mitarbeitende aus. Wir möchten die Ursache untersuchen lassen.",
+        "Support: Haben Sie Log‑Dateien oder Fehlermeldungen, die den Ausfallzeitpunkt zeigen?",
+        "User: Die Logs zeigen einen Timeout um 07:15 Uhr.",
+        "Support: Ich habe die wiederkehrenden VPN‑Ausfälle montags analysiert und werde die zugrunde liegende Ursache mit dem Netzwerkteam untersuchen."
+      ]
     },
     {
-        "name": "Faculty IT Liaison",
-        "email": "faculty.liaison@uni-due.de",
-        "ticket": "For the past month, grade synchronization between the examination system and Moodle has failed repeatedly every weekend. We need a root-cause analysis, not another one-time fix.",
-        "solution": "Investigate the recurring synchronization failures and identify the underlying systemic cause.",
-        "priority": "1",
-        "category": "Problem"
+      "id": 53,
+      "category": "Problem",
+      "full_conversation": "Die Noten‑Synchronisation zwischen dem Prüfungs‑System und Moodle schlägt jedes Wochenende fehl.",
+      "messages": [
+        "User: For the past month, grade synchronization between the examination system and Moodle has failed repeatedly every weekend. We need a root-cause analysis, not another one-time fix.",
+        "Support: Could you provide any error logs or messages that appear during the synchronization attempts?",
+        "User: The log shows 'Sync error: database timeout' on Saturdays.",
+        "Support: I have investigated the recurring synchronization failures and will identify the underlying systemic cause. Our team will keep you updated on the findings."
+      ]
     },
     {
-        "name": "Netzwerk Betrieb",
-        "email": "netzwerk.betrieb@uni-due.de",
-        "ticket": "eduroam disconnects almost every evening at around 8 PM in the student dormitory. This has happened for weeks across many residents. Please investigate the recurring root cause.",
-        "solution": "Analyze logs and infrastructure to find the recurring cause of the evening eduroam outages in the dormitory.",
-        "priority": "1",
-        "category": "Problem"
+      "id": 54,
+      "category": "Problem",
+      "full_conversation": "eduroam bricht fast täglich um 20 Uhr im Studentenwohnheim ab.",
+      "messages": [
+        "User: eduroam disconnects almost every evening at around 8 PM in the student dormitory. This has happened for weeks across many residents. Please investigate the recurring root cause.",
+        "Support: Have you noticed if the disconnections coincide with any scheduled maintenance or high network usage?",
+        "User: It seems to happen right after the evening lecture streams start.",
+        "Support: I will analyze logs and infrastructure to find the recurring cause of the evening eduroam outages in the dormitory."
+      ]
     },
     {
-        "name": "Poolraum Support",
-        "email": "poolraum.support@uni-due.de",
-        "ticket": "Der Drucker im Poolraum druckt seit Monaten regelmäßig leere Seiten, obwohl er mehrfach repariert wurde. Bitte die wiederkehrende Fehlerursache untersuchen.",
-        "solution": "Untersuchen Sie die wiederkehrenden Druckfehler und identifizieren Sie die Grundursache im Drucksystem.",
-        "priority": "0",
-        "category": "Problem"
+      "id": 55,
+      "category": "Problem",
+      "full_conversation": "Der Drucker im Poolraum druckt seit Monaten regelmäßig leere Seiten, trotz mehrfacher Reparaturen.",
+      "messages": [
+        "User: Der Drucker im Poolraum druckt seit Monaten regelmäßig leere Seiten, obwohl er mehrfach repariert wurde. Bitte die wiederkehrende Fehlerursache untersuchen.",
+        "Support: Haben Sie überprüft, ob die Tonerkartuschen korrekt eingesetzt sind und genügend Toner enthalten?",
+        "User: Ja, die Kartuschen sind neu und korrekt eingesetzt.",
+        "Support: Ich werde die wiederkehrenden Druckfehler untersuchen und die Grundursache im Drucksystem identifizieren."
+      ]
     },
     {
-        "name": "Exam Office",
-        "email": "exam.office@uni-due.de",
-        "ticket": "Multiple students keep reporting the same Moodle authentication loop after password resets. This pattern has recurred for several weeks. We request a systematic root-cause investigation.",
-        "solution": "Perform a root-cause analysis of the recurring Moodle authentication loop after password resets.",
-        "priority": "1",
-        "category": "Problem"
+      "id": 56,
+      "category": "Problem",
+      "full_conversation": "Mehrere Studierende erleben nach Passwort‑Resets eine wiederkehrende Moodle‑Authentifizierungs‑Schleife.",
+      "messages": [
+        "User: Multiple students keep reporting the same Moodle authentication loop after password resets. This pattern has recurred for several weeks. We request a systematic root-cause investigation.",
+        "Support: Could you provide the steps the students follow before encountering the loop?",
+        "User: They reset the password, log in, get redirected back to the login page without error.",
+        "Support: I will perform a root‑cause analysis of the recurring Moodle authentication loop after password resets."
+      ]
     }
   ]
 }
