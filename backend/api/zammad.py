@@ -131,6 +131,32 @@ def update_ticket_kategorie(ticket_id: int, kategorie: str | None) -> None:
     except Exception as e:
         print(f"Other error occured during kategorie update: {e}")
 
+def update_ticket_title(ticket_id: int, title:str) -> None: 
+    """ Overwrite the title of an existing Zammad ticket identifed by its ticket ID """ 
+   
+    if not title:
+        return
+
+    try:
+        response = requests.put(
+            url=f"{server_address}/api/v1/tickets/{ticket_id}",
+            json={"title": title},
+            headers=headers,
+            timeout=GENERAL_TIMEOUT,
+        )
+        print(
+            f"Title '{title}' set on ticket {ticket_id}: "
+            f"{response.status_code}"
+        )
+    except ConnectionError:
+        print("Connection error: Could not reach Zammad to update ticket title")
+    except MissingSchema:
+        print("Invalid URL for Zammad provided: Could not update ticket title")
+    except Exception as e:
+        print(f"Other error occured during title update: {e}")
+
+
+
 
 def add_article_to_ticket(ticket_id: int, body: str, sender: str = "Agent",
                            article_type: str = "note", internal: bool = True):
