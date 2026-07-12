@@ -14,7 +14,7 @@ We use two separate ChromaDB collections, each with its own embedding model chos
 |---|---|---|
 | FAQ | `faq_db` | `faq_entries` |
 | Tickets | `ticket_db` | `tickets` |
-
+| Recent Incidents | `recent_incidents_db` | `recent_incidents` |
 ---
 
 ## Models & Design Choices
@@ -55,6 +55,9 @@ The bi-encoder alone produces compressed scores (e.g. 0.81–0.83 for all result
 
 ---
 
+### Recent Incidents — `deutsche-telekom/gbert-large-paraphrase-cosine`
+- Same model as the ticket embedder since this database is a subset of the database of all tickets
+
 ## Thresholds & Tiered FAQ Selection
 
 ### FAQ — Tiered selection logic
@@ -78,6 +81,22 @@ Only tickets above this threshold are returned.
 
 ---
 
+### Recent Incidents
+Default similarity threshold is 0.55 against which the similarity check while finding recent incidents matching to the topic of the incoming ticket is filtering. Additionally, it is checked for tickets that are more recent than the recency time threshold (default is 8 hours) and also only similar open tickets are returned.
+
+A problem is only created if a specified amount of similar incident tickets (default is 5) that are
+* Not closed
+* More recent than the recency threshold
+* More similar than the similarity threshold
+could be found in the recent incidents database.
+
+The thresholds can be altered by supplying the following environment variables in the .env file (also cf. the example.env file) before building the project with Docker:
+```
+INCIDENT_ESCALATION_MIN_COUNT=5
+INCIDENT_RECENCY_WINDOW_HOURS=8
+INCIDENT_SIMILARITY_THRESHOLD=0.55
+```
+
 ## Function Call
 
 ```python
@@ -100,11 +119,13 @@ results = retrieve_relevant_entries(query, n_results=5)
 ```python
 {
     "faq_matches": [
-        {
-            "id":         str,   # FAQ entry ID
-            "text":       str,   # Full FAQ text as stored
-            "similarity": float  # Sigmoid-scaled cross-encoder score (0–1)
-        },
+        (
+            id,              # str: FAQ entry ID
+            problem,         # str: FAQ problem description
+            solution,        # str: FAQ solution text (solution[0].faq_content)
+            extracted_urls,  # list of (url, status, type, content, notes) tuples, see below
+            similarity,      # float: Sigmoid-scaled cross-encoder score (0–1)
+        ),
         ...
     ],
     "ticket_matches": [
@@ -122,6 +143,14 @@ results = retrieve_relevant_entries(query, n_results=5)
     }
 }
 ```
+
+Each entry in `extracted_urls` is a `(url, status, type, content, notes)` tuple, where `notes` depends on `status`:
+
+| `status` | `notes` |
+|---|---|
+| `"success"` | Fixed hint that `content` can be used as context for the answer. |
+| `"error"` | Fixed hint that the link is likely only reachable via the university network/VPN. |
+| `"none"` | Precomputed one-sentence description of the file type and its purpose (see `backend/crawler/generate_none_url_notes.py`), with a generic type-only fallback if not yet precomputed. |
 
 ---
 

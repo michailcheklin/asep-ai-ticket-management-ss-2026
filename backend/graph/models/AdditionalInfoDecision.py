@@ -6,7 +6,15 @@ class AdditionalInfoDecision(BaseModel):
     """Schema decision, if additional info is needed for effective problem treatment"""
     needs_additional_info: bool = Field(
         default=False,
-        description="False, wenn die Zusatzinfos ausreichen, um das Problem zu bearbeiten. True, wenn wichtige Details fehlen (z.B. bei 'WLAN kaputt' fehlt das Gebäude)."
+        description=(
+            "True, wenn vor einer Lösung noch zusätzliche Informationen vom Nutzer "
+            "benötigt werden. Dies ist insbesondere der Fall, wenn mehrere "
+            "unterschiedliche Einträge aus der Wissensdatenbank plausibel sind und "
+            "deren Lösungen voneinander abweichen. Die Rückfrage soll genau die "
+            "Information ermitteln, die zwischen diesen Einträgen unterscheidet. "
+            "False nur dann, wenn mit den vorhandenen Informationen eine passende "
+            "Lösung ausgewählt werden kann."
+        )
     )
     follow_up_question: Optional[str] = Field(
         description=(
