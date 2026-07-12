@@ -29,6 +29,14 @@ FAQ_SOURCE_PATH = Path(__file__).resolve().parents[1] / "rag" / "faq_extracted_w
 
 
 def build_prompt(problem: str, faq_content: str, url: str, url_type: str) -> str:
+    """
+    Builds the prompt to send to the LLM that generates an explanation of a non-HTML file
+    :param problem: The problem that the question in the FAQ addresses
+    :param faq_content: The answer of the FAQ
+    :param url: The URL of the non-HTML file
+    :param url_type: The type of the non-HTML file (PDF, EXE, ...)
+    :return: The prompt to send to the LLM for explaining what a non-HTML is for
+    """
     return f"""Du bekommst einen FAQ-Eintrag eines Uni-IT-Supports sowie eine darin verlinkte URL,
 die nicht automatisch als Text gelesen werden konnte (z.B. weil es sich um eine PDF- oder
 andere Nicht-HTML-Datei handelt).
@@ -46,12 +54,26 @@ Gib NUR den einen Satz zurück, ohne Anführungszeichen, ohne Erklärung, ohne A
 
 
 def generate_note(problem: str, faq_content: str, url: str, url_type: str) -> str:
+    """
+    Sends the prompt built in the method build_prompt to the LLM
+    that generates an explanation of a non-HTML file
+    :param problem: The problem that the question in the FAQ addresses
+    :param faq_content: The answer of the FAQ
+    :param url: The URL of the non-HTML file
+    :param url_type: The type of the non-HTML file (PDF, EXE, ...)
+    :return: The explanation of the non-HTML file that the LLM generated
+    """
     prompt = build_prompt(problem, faq_content, url, url_type)
     response = llm.invoke([SystemMessage(content=prompt)])
     return response.content.strip()
 
 
 def main():
+    """
+    Generates explanations for each non-HTML file supplied in the file the
+    variable FAQ_SOURCE_PATH points to. This script runs only from the console
+    or from an IDE, not inside Docker.
+    """
     with open(FAQ_SOURCE_PATH, "r", encoding="utf-8") as f:
         faq_data = json.load(f)
 

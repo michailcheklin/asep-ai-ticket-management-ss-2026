@@ -17,6 +17,20 @@ URL_PATTERN = re.compile(
 
 
 def build_url_lookup(distinction_data):
+    """
+    Builds the lookup for each URL to unify all URLs that were crawled,
+    no matter if there was an HTML file, another file or an error,
+    by putting the data into a unified format:
+    "url": "https://example.com/file.pdf"
+    "domain": "example.com"
+    "status": "none"
+    "content": None,
+    "content_length": None,
+    "type": ".pdf",
+    "error": None
+    :param distinction_data: The input data that is split into 3 categories: HTML, non-HTML, inaccessible
+    :return: The unified data
+    """
     lookup = defaultdict(list)
 
     for record in distinction_data.get('websites', {}).values():
@@ -56,6 +70,16 @@ def build_url_lookup(distinction_data):
 
 
 def build_extracted_urls(entry_id, solution_text, lookup, unmatched_counter):
+    """
+    Finds all URLs in a FAQ entry
+    :param entry_id: The ID of the entry
+    :param solution_text: The text of the FAQ entry's solution
+    :param lookup: The unified crawling data that was built with the method
+    build_url_lookup
+    :param unmatched_counter: Conter to keep track of how often
+    a URL was not matched in the already crawled URLs
+    :return: All extracted URLs
+    """
     urls = URL_PATTERN.findall(solution_text)
     extracted = []
 
@@ -79,6 +103,10 @@ def build_extracted_urls(entry_id, solution_text, lookup, unmatched_counter):
 
 
 def main():
+    """
+    Starts the merging of the crawled content. This code is run only from
+    the console or an IDE, not in Docker.
+    """
     input_filepath = 'faq_extracted.json'
     distinction_filepath = 'faq_crawled_content_distinction.json'
     output_filepath = 'faq_extracted_with_crawled_content.json'
