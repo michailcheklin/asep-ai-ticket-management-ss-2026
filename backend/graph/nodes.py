@@ -246,6 +246,9 @@ def finish_tutorial(state: ChatbotState):
     log_node_entry("finish_tutorial", state)
     result = ticket_service.create_closed_tutorial_ticket(state)
 
+    # set ticket tag to AI-solved
+    finish_ai_solved_ticket(state)
+
     system_prompt = SystemMessage(content=(
         AGENT_PROMPT + "\n\n"
         "Der Nutzer hat gerade bestaetigt, dass deine Anleitung sein Anliegen "
@@ -499,12 +502,10 @@ def ask_for_additional_info(state: ChatbotState):
            Multiple-Choice-Fragen müssen exakt folgendes Format verwenden:
            * [Frage]? (options: [Option A], [Option B], [Option C])
         
-           Offene Fragen:
-           * [Frage]?
+        7. Verwende IMMER Multiple-Choice-Fragen, auch wenn es eine offene Frage ist.
+            Bei offenen Fragen: gib die bestmöglichen Antwortoptionen an.
         
-        7. Verwende Multiple-Choice-Fragen, wann immer sich sinnvolle Antwortoptionen aus der Wissensdatenbank ableiten lassen.
-        
-        8. Verwende höchstens fünf Antwortoptionen. "Andere" muss immer eine Option sein.
+        8. Verwende höchstens fünf Antwortoptionen. Dabei muss "Andere" immer eine Antwortoption sein.
         
         9. Stelle niemals Rückfragen über Informationen, die nicht aus dem aktuellen Problem oder der Wissensdatenbank ableitbar sind.
         
@@ -536,7 +537,7 @@ def ask_for_additional_info(state: ChatbotState):
 
     # Logic switch if all information needed is collected or not
     follow_up_question = (decision.follow_up_question or "").strip()
-    if len(infos) >= 2 and decision.needs_additional_info or attempts >= 3 or not follow_up_question:
+    if len(infos) >= 2 or not decision.needs_additional_info or attempts >= 3 or not follow_up_question:
 
         return {"needs_additional_info": False}
 
