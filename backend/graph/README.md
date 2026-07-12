@@ -73,9 +73,6 @@ When you do changes on the Langgraph, that add conditional edges with `workflow.
 * `path_map = build_pathmap_from_nodes_list_for_visualisation(string_array)`, where `string_array` is the list of all node names that occur in the return statements of the function that was provided to the `path` argument. If the END node is returned, add `"__end__"` in this string array to represent the END node.
 
 ```mermaid
-
-## Intent-Klassifikation und zwei Gespraechspfade (Issue #161)
-
 graph TD
     %% --- START & END ---
     Start(((START)))
@@ -87,6 +84,7 @@ graph TD
     ask_intent_node[ask_intent_node <br> ask_intent]
     give_tutorial_node[give_tutorial_node <br> give_tutorial]
     finish_tutorial_node[finish_tutorial_node <br> finish_tutorial]
+    escalate_incidents_node[escalate_incidents_node <br> escalate issue]
 
     %% --- ALLE REGISTRIERTEN NODES ---
     extractor_node[extractor_node <br> extract_information]
@@ -139,7 +137,8 @@ graph TD
     route_after_evaluator -->|needs_additional_info == True| classify_ticket_node
     route_after_evaluator -->|else| End
 
-    classify_ticket_node --> give_solutions_node
+    classify_ticket_node --> escalate_incidents_node
+    escalate_incidents_node --> give_solutions_node
 
     %% --- Loesungen anbieten ---
     give_solutions_node --> route_after_solutions
@@ -161,6 +160,7 @@ graph TD
     style extractor_node fill:#bbdefb,stroke:#1976d2
     style classify_ticket_node fill:#bbdefb,stroke:#1976d2
     style give_solutions_node fill:#bbdefb,stroke:#1976d2
+    style escalate_incidents_node fill:#bbdefb,stroke:#1976d2
     style finish_node fill:#bbdefb,stroke:#1976d2
 
     style ask_email_node fill:#ffecb3,stroke:#ff8f00

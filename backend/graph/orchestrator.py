@@ -10,6 +10,7 @@ from .nodes import (
     ask_for_issue,
     ask_for_additional_info,
     classify_ticket,
+    escalate_incidents,
     give_solutions,
     finish_ticket,
     classify_intent,
@@ -167,6 +168,7 @@ workflow.add_node("ask_email_node", ask_for_email)
 workflow.add_node("ask_issue_node", ask_for_issue)
 workflow.add_node("ask_for_additional_info", ask_for_additional_info)
 workflow.add_node("classify_ticket_node", classify_ticket)
+workflow.add_node("escalate_incidents_node", escalate_incidents)
 workflow.add_node("give_solutions_node", give_solutions)
 workflow.add_node("finish_node", finish_ticket)
 workflow.add_node("classify_intent_node", classify_intent)
@@ -207,7 +209,8 @@ workflow.add_conditional_edges(
     )
 )
 
-workflow.add_edge("classify_ticket_node", "give_solutions_node")
+workflow.add_edge("classify_ticket_node", "escalate_incidents_node")
+workflow.add_edge("escalate_incidents_node", "give_solutions_node")
 
 # Route after retrieving possible solutions.
 workflow.add_conditional_edges(
