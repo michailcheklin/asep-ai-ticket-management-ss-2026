@@ -43,6 +43,13 @@ class AskForAdditionalInfoTests(unittest.TestCase):
     @patch("backend.graph.nodes.llm")
     @patch("backend.graph.nodes.retrieve_relevant_entries")
     def test_skips_follow_up_when_rag_has_no_matches(self, mock_retrieve, mock_llm):
+        """
+        Tests the behavior of the LLM to make sure that needs_additional_info
+        switches from true to false if no results could be found in both
+        the FAQ and the old ticket RAG database
+        :param mock_retrieve: Mock function for the RAG retrieval
+        :param mock_llm: Mock function for the LLM call
+        """
         # Arrange
         mock_retrieve.return_value = {"faq_matches": [], "ticket_matches": []}
 
@@ -50,7 +57,7 @@ class AskForAdditionalInfoTests(unittest.TestCase):
         result = ask_for_additional_info(base_state())
 
         # Assert
-        self.assertEqual(result, {"needs_additional_info": True})
+        self.assertEqual(result, {"needs_additional_info": False})
         mock_llm.with_structured_output.return_value.invoke.assert_not_called()
 
     @patch("backend.graph.nodes.ticket_service.append_message_to_ticket")
@@ -59,13 +66,21 @@ class AskForAdditionalInfoTests(unittest.TestCase):
     def test_marks_complete_when_two_additional_infos_already_collected(
         self, mock_retrieve, mock_llm, mock_append
     ):
+        """
+        Tests the behavior of the LLM to make sure that needs_additional_info
+        switches from true to false if 2 additional info could be derived from the
+        chat history with the user
+        :param mock_retrieve: Mock function for the RAG retrieval
+        :param mock_llm: Mock function for the LLM call
+        :param mock_append: Mock function for the appending to the simulated ticket
+        """
         # Arrange
         mock_retrieve.return_value = {
             "faq_matches": [{"text": "FAQ Eintrag"}],
             "ticket_matches": [],
         }
         mock_llm.with_structured_output.return_value.invoke.return_value = additional_info_decision(
-            False, "Bist du im Uni-Netzwerk?"
+            True, "Bist du im Uni-Netzwerk?"
         )
         state = base_state(additional_info=["Gebäude SGW", "eduroam"])
 
@@ -73,20 +88,28 @@ class AskForAdditionalInfoTests(unittest.TestCase):
         result = ask_for_additional_info(state)
 
         # Assert
-        self.assertEqual(result, {"needs_additional_info": True})
+        self.assertEqual(result, {"needs_additional_info": False})
         mock_append.assert_not_called()
 
     @patch("backend.graph.nodes.ticket_service.append_message_to_ticket")
     @patch("backend.graph.nodes.llm")
     @patch("backend.graph.nodes.retrieve_relevant_entries")
     def test_marks_complete_after_max_attempts(self, mock_retrieve, mock_llm, mock_append):
+        """
+        Tests the behavior of the LLM to make sure that needs_additional_info
+        switches from true to false if the maximum amount of attempts to get additional information
+        from the user has been reached
+        :param mock_retrieve: Mock function for the RAG retrieval
+        :param mock_llm: Mock function for the LLM call
+        :param mock_append: Mock function for the appending to the simulated ticket
+        """
         # Arrange
         mock_retrieve.return_value = {
             "faq_matches": [{"text": "FAQ Eintrag"}],
             "ticket_matches": [],
         }
         mock_llm.with_structured_output.return_value.invoke.return_value = additional_info_decision(
-            False, "Bist du im Uni-Netzwerk?"
+            True, "Bist du im Uni-Netzwerk?"
         )
         state = base_state(additional_info_attempts=3)
 
@@ -94,7 +117,7 @@ class AskForAdditionalInfoTests(unittest.TestCase):
         result = ask_for_additional_info(state)
 
         # Assert
-        self.assertEqual(result, {"needs_additional_info": True})
+        self.assertEqual(result, {"needs_additional_info": False})
         mock_append.assert_not_called()
 
     @patch("backend.graph.nodes.ticket_service.append_message_to_ticket")
@@ -103,18 +126,25 @@ class AskForAdditionalInfoTests(unittest.TestCase):
     def test_marks_complete_when_llm_decides_no_more_info_needed(
         self, mock_retrieve, mock_llm, mock_append
     ):
+        """
+        Tests the behavior of the LLM to make sure that needs_additional_info
+        switches from true to false if no more info is needed
+        :param mock_retrieve: Mock function for the RAG retrieval
+        :param mock_llm: Mock function for the LLM call
+        :param mock_append: Mock function for the appending to the simulated ticket
+        """
         # Arrange
         mock_retrieve.return_value = {
             "faq_matches": [{"text": "FAQ Eintrag"}],
             "ticket_matches": [],
         }
-        mock_llm.with_structured_output.return_value.invoke.return_value = additional_info_decision(True)
+        mock_llm.with_structured_output.return_value.invoke.return_value = additional_info_decision(False)
 
         # Act
         result = ask_for_additional_info(base_state())
 
         # Assert
-        self.assertEqual(result, {"needs_additional_info": True})
+        self.assertEqual(result, {"needs_additional_info": False})
         mock_append.assert_not_called()
 
     @patch("backend.graph.nodes.ticket_service.append_message_to_ticket")
@@ -129,7 +159,7 @@ class AskForAdditionalInfoTests(unittest.TestCase):
             "ticket_matches": [],
         }
         mock_llm.with_structured_output.return_value.invoke.return_value = additional_info_decision(
-            False, "Bist du im Uni-Netzwerk?"
+            True, "Bist du im Uni-Netzwerk?"
         )
         state = base_state(additional_info=["Gebäude SGW"], additional_info_attempts=1)
 
@@ -137,7 +167,7 @@ class AskForAdditionalInfoTests(unittest.TestCase):
         result = ask_for_additional_info(state)
 
         # Assert
-        self.assertEqual(result["needs_additional_info"], False)
+        self.assertEqual(result["needs_additional_info"], True)
         self.assertEqual(result["additional_info_attempts"], 2)
         self.assertIn("Bist du im Uni-Netzwerk?", result["messages"][0].content)
         mock_append.assert_called_once()

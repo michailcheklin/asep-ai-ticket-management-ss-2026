@@ -86,7 +86,28 @@ def route_based_on_state(state: ChatbotState):
             return "ask_issue_node"
 
     else:
+        return "classify_intent_node"
+
+def route_after_intent(state: ChatbotState):
+    """
+    Determine the next workflow node based on the intent of the user.
+    """
+
+    intent = state.get("intent")
+
+    if intent == "solved" and state.get("tutorial_attempts", 0) > 0:
+        return "classify_ticket_node"
+
+    if intent == "tutorial" and state.get("tutorial_attempts", 0) > 0:
+        if state.get("tutorial_attempts", 0) <= 3:
+            return "give_tutorial_node"
+        else:
+            return "classify_ticket_node"
+
+    if intent == "tutorial" or intent == "problem":
         return "ask_for_additional_info"
+
+    return "ask_intent_node"
 
 def route_after_evaluator(state: ChatbotState):
     """
@@ -96,8 +117,16 @@ def route_after_evaluator(state: ChatbotState):
     solutions. Otherwise, end the current workflow so the user can
     provide additional information.
     """
-    if state.get("needs_additional_info"):
-        return "classify_ticket_node"
+    if not state.get("needs_additional_info"):
+        intent = state.get("intent")
+
+        if intent == "tutorial":
+            if state.get("tutorial_attempts", 0) <= 3:
+                return "give_tutorial_node"
+            else:
+                return "classify_ticket_node"
+        else:
+            return "classify_ticket_node"
     else:
         return END
 
@@ -120,25 +149,15 @@ def route_after_solutions(state: ChatbotState):
     else:
         return "finish_node"
 
-def route_after_intent(state: ChatbotState):
-    """E-Mail-Gate fuer beide Pfade, dann Verzweigung nach Intent."""
-    if not state.get("user_email"):
-        return "ask_email_node"
-
+def route_after_classification(state: ChatbotState):
+    """
+    Routes the user to a full tutorial or a quick solution and ticket creation
+    """
     intent = state.get("intent")
-
-    if intent == "solved" and state.get("tutorial_attempts", 0) > 0:
+    if intent == "solved" or state.get("tutorial_attempts", 0) > 3:
         return "finish_tutorial_node"
-
-    if intent == "tutorial":
-        if state.get("tutorial_attempts", 0) >= 2:
-            return "extractor_node"
-        return "give_tutorial_node"
-
-    if intent == "problem":
-        return "extractor_node"
-
-    return "ask_intent_node"
+    else:
+        return "escalate_incidents_node"
 
 
 
@@ -177,14 +196,14 @@ workflow.add_node("give_tutorial_node", give_tutorial)
 workflow.add_node("finish_tutorial_node", finish_tutorial)
 
 # Define the workflow entry point.
-workflow.add_edge(START, "classify_intent_node")
+workflow.add_edge(START, "extractor_node")
 
 # Route based on the classified user intent
 workflow.add_conditional_edges(
     source="classify_intent_node",
     path=route_after_intent,
     path_map=build_pathmap_from_nodes_list_for_visualisation(
-        ["ask_email_node", "extractor_node", "ask_intent_node", "give_tutorial_node", "finish_tutorial_node"]
+        ["classify_ticket_node", "ask_for_additional_info", "ask_intent_node", "give_tutorial_node"]
     )
 )
 
@@ -194,8 +213,7 @@ workflow.add_conditional_edges(
     source="extractor_node",
     path=route_based_on_state,
     path_map=build_pathmap_from_nodes_list_for_visualisation(
-        ["ask_email_node", "ask_issue_node",
-         "ask_for_additional_info", "finish_node"]
+        ["ask_email_node", "ask_issue_node", "finish_node", "classify_intent_node"]
     )
 )
 
@@ -205,11 +223,18 @@ workflow.add_conditional_edges(
     source="ask_for_additional_info",
     path=route_after_evaluator,
     path_map=build_pathmap_from_nodes_list_for_visualisation(
-        ["classify_ticket_node", "__end__"]
+        ["classify_ticket_node", "give_tutorial_node", "__end__"]
     )
 )
 
-workflow.add_edge("classify_ticket_node", "escalate_incidents_node")
+workflow.add_conditional_edges(
+    source="classify_ticket_node",
+    path=route_after_classification,
+    path_map=build_pathmap_from_nodes_list_for_visualisation(
+        ["escalate_incidents_node", "finish_tutorial_node"]
+    )
+)
+
 workflow.add_edge("escalate_incidents_node", "give_solutions_node")
 
 # Route after retrieving possible solutions.

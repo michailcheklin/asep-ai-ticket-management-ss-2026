@@ -169,7 +169,8 @@ CHATVERLAUF (User-Nachrichten):
 
     state_update = {"intent": intent}
 
-    # 4)
+    # 4) Try to extract an e-mail address from the user messages according to the
+    # e-mail format acc. to the RFC 5321
     if not state.get("user_email") and user_messages:
         match = re.search(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}", user_messages[-1])
         if match:
@@ -198,8 +199,9 @@ def give_tutorial(state: ChatbotState):
     log_node_entry("give_tutorial", state)
     attempts = state.get("tutorial_attempts", 0)
 
-    user_messages = [msg.content for msg in state["messages"] if isinstance(msg, HumanMessage)]
-    query = " ".join(user_messages[-2:]) if user_messages else ""
+    issue = state.get("issue_description", "")
+    additional_info = " ".join(state.get("additional_info", []))
+    query = f"{issue} {additional_info}".strip()
 
     rag_results = retrieve_relevant_entries(query, n_results=2)
     faq_context = "\n".join(f"- {_format_faq_match_for_prompt(m)}" for m in rag_results.get("faq_matches", []))
@@ -243,6 +245,9 @@ def finish_tutorial(state: ChatbotState):
     """Closes the tutorial path: creates a closed AI-solved ticket and says goodbye."""
     log_node_entry("finish_tutorial", state)
     result = ticket_service.create_closed_tutorial_ticket(state)
+
+    # set ticket tag to AI-solved
+    finish_ai_solved_ticket(state)
 
     system_prompt = SystemMessage(content=(
         AGENT_PROMPT + "\n\n"
@@ -447,7 +452,7 @@ def ask_for_additional_info(state: ChatbotState):
 
     if not faq_matches and not ticket_matches:
         print("[DEBUG] RAG lieferte keine Ergebnisse. Überspringe Rückfrage.")
-        return {"needs_additional_info": True}
+        return {"needs_additional_info": False}
 
     faq_context = "\n".join([f"- {_format_faq_match_for_prompt(match)}" for match in faq_matches])
     ticket_context = "\n".join([f"- {match['text']} (Kategorie: {match['category']})" for match in ticket_matches])
@@ -487,9 +492,9 @@ def ask_for_additional_info(state: ChatbotState):
          Wenn eine Antwort die spätere Lösung nicht verändern würde, stelle keine Rückfrage.
          Frage nicht nach einzelnen Schritten, Aktionen oder Details, die erst Teil der späteren Lösung sind.
         
-        4. Wenn weder (a) noch (b) zutrifft oder die Wissensdatenbank keine sinnvollen Rückfragen ermöglicht, setze needs_additional_info auf True und follow_up_question auf einen leeren String.
+        4. Wenn weder (a) noch (b) zutrifft oder die Wissensdatenbank keine sinnvollen Rückfragen ermöglicht, setze needs_additional_info auf False und follow_up_question auf einen leeren String.
         
-        5. Wenn (a) und/oder (b) zutrifft, setze needs_additional_info auf False und 
+        5. Wenn (a) und/oder (b) zutrifft, setze needs_additional_info auf True und 
            formuliere möglichst wenige, kurze und präzise Rückfragen.
         
         6. Gib alle Fragen als Bullet-Liste zurück.
@@ -497,12 +502,10 @@ def ask_for_additional_info(state: ChatbotState):
            Multiple-Choice-Fragen müssen exakt folgendes Format verwenden:
            * [Frage]? (options: [Option A], [Option B], [Option C])
         
-           Offene Fragen:
-           * [Frage]?
+        7. Verwende IMMER Multiple-Choice-Fragen, auch wenn es eine offene Frage ist.
+            Bei offenen Fragen: gib die bestmöglichen Antwortoptionen an.
         
-        7. Verwende Multiple-Choice-Fragen, wann immer sich sinnvolle Antwortoptionen aus der Wissensdatenbank ableiten lassen.
-        
-        8. Verwende höchstens fünf Antwortoptionen. "Andere" muss immer eine Option sein.
+        8. Verwende höchstens fünf Antwortoptionen. Dabei muss "Andere" immer eine Antwortoption sein.
         
         9. Stelle niemals Rückfragen über Informationen, die nicht aus dem aktuellen Problem oder der Wissensdatenbank ableitbar sind.
         
@@ -534,8 +537,9 @@ def ask_for_additional_info(state: ChatbotState):
 
     # Logic switch if all information needed is collected or not
     follow_up_question = (decision.follow_up_question or "").strip()
-    if len(infos) >= 1 and decision.needs_additional_info or attempts >= 3 or not follow_up_question:
-        return {"needs_additional_info": True}
+    if len(infos) >= 2 or not decision.needs_additional_info or attempts >= 3 or not follow_up_question:
+
+        return {"needs_additional_info": False}
 
     llm_msg = f"Ich habe für dich gerade ein Support-Ticket erstellt. Um dich optimal zu unterstützen, beantworte  bitte folgende Fragen:\n{follow_up_question}"
     ticket_id = state.get("ticket_id")
@@ -549,7 +553,7 @@ def ask_for_additional_info(state: ChatbotState):
     except Exception as e:
         print(f"Failed to add internal article: {e}")
     return {
-        "needs_additional_info": False,
+        "needs_additional_info": True,
         "additional_info_attempts": attempts + 1,
         "messages": [AIMessage(content=llm_msg)]
     }
@@ -574,7 +578,7 @@ def give_solutions(state: ChatbotState):
 
     query = f"{issue} + {additional}"
 
-    if not query:
+    if not issue:
         return {"messages": [AIMessage(content="Keine ausreichende Anfrage für die Suche.")], "solutions": []}
 
     try:

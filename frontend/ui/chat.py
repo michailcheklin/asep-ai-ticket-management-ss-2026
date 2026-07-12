@@ -287,16 +287,18 @@ def apply_response_to_session(user_input: str, res_json: dict) -> None:
     if "ticket_id" in res_json:
         st.session_state.ticket_id = res_json.get("ticket_id")
 
-    # Never try to parse the bullet points of tutorials into a Q&A mode
-    # in the first tutorial.
-    if st.session_state.intent != "tutorial":
-        # Detect bullet-point questions → enter guided Q&A mode
+    # Skip question parsing for tutorial responses — their bullet points
+    # are instructional steps, not questions for the user to answer
+    is_tutorial_response = (
+        st.session_state.get("intent") == "tutorial"
+        and st.session_state.get("tutorial_attempts", 0) > 0
+    )
+    if not is_tutorial_response:
         questions = parse_questions_from_message(answer)
         if questions:
             st.session_state.pending_questions = questions
             st.session_state.current_question_idx = 0
             st.session_state.question_answers = []
-            # Nach unten zum Fragen-Widget scrollen
             st.session_state["scroll_target"] = "question_widget_anchor"
 
 
