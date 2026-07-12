@@ -10,10 +10,9 @@ from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from .state import ChatbotState
 from backend.rag.retrieve_info import retrieve_relevant_entries
 from ..services.TicketService import TicketService
-from ..llm.llm import llm, structured_llm, AGENT_PROMPT, category_llm
 from ..llm.prompts import TICKET_CATEGORY_RULES
 from ..services.ProblemService import ProblemService
-from ..llm.llm import llm, structured_llm, AGENT_PROMPT
+from ..llm.llm import llm, structured_llm, AGENT_PROMPT, category_llm
 from .node_logging import log_node_entry
 from ..api.zammad import create_ticket_by_user_email, add_tag_to_ticket
 from .models.IntentDecision import IntentDecision
