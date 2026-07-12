@@ -502,13 +502,15 @@ def ask_for_additional_info(state: ChatbotState):
     system_prompt = SystemMessage(content=(
         AGENT_PROMPT + "\n\n" +
         f"""
-        Dein Ziel ist es zu prüfen, ob die vorliegenden Informationen für das genannte Problem ausreichen,
-        um ein vollständiges Ticket zu erstellen.
+        Dein Ziel ist es zu prüfen, ob die vorliegenden Informationen ausreichen, um das aktuelle Problem eindeutig zu bearbeiten.
+
+        AKTUELLES PROBLEM:
+        {issue}
         
-        AKTUELLES PROBLEM: {issue}
-        BEREITS BEKANNTE ZUSATZINFOS: {infos}
+        BEREITS BEKANNTE ZUSATZINFOS:
+        {infos}
         
-        WISSENSDATENBANK (Historische Tickets & FAQs für dieses Problem):
+        WISSENSDATENBANK (Historische Tickets & FAQs):
         FAQs:
         {faq_context}
         
@@ -516,26 +518,45 @@ def ask_for_additional_info(state: ChatbotState):
         {ticket_context}
         
         REGELN:
-        1. Lies die Einträge in der WISSENSDATENBANK und prüfe zwei Dinge:
-           a) Fehlen im "AKTUELLEN PROBLEM" Details, die in den alten Tickets oder FAQs zur Lösung 
-              zwingend notwendig waren?
-           b) Gibt es in der WISSENSDATENBANK mehrere unterschiedliche Einträge (FAQs oder Tickets), die 
-              auf das AKTUELLE PROBLEM ähnlich gut passen könnten, dann stelle basierend auf der WISSENDATENBANK Rückfragen,
-              um mithilfe der Antworten die Einträge besser auseinanderzuhalten.
-        2. Wenn weder (a) noch (b) zutrifft, ODER wenn die WISSENSDATENBANK keine relevanten Inhalte für 
-           eine Nachfrage liefert, setze needs_additional_info auf True und follow_up_question auf den 
-           leeren String.
-        3. Wenn (a) und/oder (b) zutrifft, setze needs_additional_info auf False und formuliere wenige, 
-           direkt-relevante, kurze follow-up-question(s) an den User. Bei (b) soll die Frage explizit darauf 
-           abzielen, zwischen den überschneidenden Kontexten zu unterscheiden (z.B. "Welches Betriebssystem 
-           nutzt du?" wenn sich zwei Tickets nur darin unterscheiden).
-        4. Gib die Fragen als Bullet-Liste zurück. Es muss diese genaue Syntax befolgen:
-           Multiple-Choice-Fragen müssen das Format verwenden:
-           "* [Frage]? (options: [A], [B], [C])"
-           Offene Fragen dürfen ohne Optionen geschrieben werden:
-           "* [Frage]?"
-        5. Stelle die Fragen soweit wie möglich immer als Multiple-Choice mit dem gezeigten Format.
-        6. Begrenze dich auf maximal 5 Optionen, wobei "Andere" IMMER eine Option sein muss.
+        
+        1. Analysiere das AKTUELLE PROBLEM zusammen mit der WISSENSDATENBANK.
+        
+        2. Prüfe dabei zwei Dinge:
+           a) Fehlen Informationen, die laut den ähnlichen Tickets oder FAQs erforderlich sind, um eine passende Lösung vorzuschlagen?
+           b) Gibt es mehrere unterschiedliche Einträge, die ähnlich gut zum Problem passen, sich aber in ihren Voraussetzungen oder Lösungen unterscheiden (z. B. Betriebssystem, Gerät, Standort, Softwareversion oder Netzwerk)? 
+           In diesem Fall stelle gezielte Rückfragen, um zwischen diesen Einträgen unterscheiden zu können.
+        
+        3. Stelle nur Rückfragen, wenn deren Antwort die Auswahl der passenden Lösung tatsächlich beeinflusst.
+         Wenn eine Antwort die spätere Lösung nicht verändern würde, stelle keine Rückfrage.
+         Frage nicht nach einzelnen Schritten, Aktionen oder Details, die erst Teil der späteren Lösung sind.
+        
+        4. Wenn weder (a) noch (b) zutrifft oder die Wissensdatenbank keine sinnvollen Rückfragen ermöglicht, setze needs_additional_info auf True und follow_up_question auf einen leeren String.
+        
+        5. Wenn (a) und/oder (b) zutrifft, setze needs_additional_info auf False und 
+           formuliere möglichst wenige, kurze und präzise Rückfragen.
+        
+        6. Gib alle Fragen als Bullet-Liste zurück.
+        
+           Multiple-Choice-Fragen müssen exakt folgendes Format verwenden:
+           * [Frage]? (options: [Option A], [Option B], [Option C])
+        
+           Offene Fragen:
+           * [Frage]?
+        
+        7. Verwende Multiple-Choice-Fragen, wann immer sich sinnvolle Antwortoptionen aus der Wissensdatenbank ableiten lassen.
+        
+        8. Verwende höchstens fünf Antwortoptionen. "Andere" muss immer eine Option sein.
+        
+        9. Stelle niemals Rückfragen über Informationen, die nicht aus dem aktuellen Problem oder der Wissensdatenbank ableitbar sind.
+        
+        10. Jede Rückfrage darf nur eine einzige Information abfragen.
+            Kombiniere niemals mehrere unabhängige Fragen oder Attribute in einer Frage
+            (z.B. nicht "Welches Gerät nutzt du und welche Fehlermeldung erscheint?").
+        
+        11. Wenn mehrere Informationen benötigt werden, erstelle mehrere separate Bullet-Fragen.
+            Jede Frage muss genau ein Unterscheidungsmerkmal zwischen den möglichen Lösungen klären.
+            
+        12. Die Rückfragen dienen NUR dazu, die passenden Lösungen zu klassifizieren. Daher nicht die einzelnen todos der Lösung als Frage formulieren.
         """
     ))
 
@@ -662,8 +683,7 @@ def give_solutions(state: ChatbotState):
                  nicht automatisch abrufbar war.
                - Ist der Link selbst der auszuführende Schritt (Formular, Login, Download, Zahlung), bleibt er 
                  Pflichtklick – erkläre vorher, was dort zu tun ist.
-            7. Wenn im Kontext keine passende Lösung vorhanden ist, sage das ehrlich und kurz, anstatt vage zu 
-               bleiben oder den Nutzer zur eigenen Recherche zu schicken.
+            7. Halluziniere dir keine Lösungen herbei, sondern gebe nah am Kontext die Lösung wieder!.
             8. Enthält eine Lösung irreversible oder folgenreiche Schritte (z. B. Konto löschen, Daten zurücksetzen, Zahlung auslösen),
             weise im Text kurz und klar darauf hin, bevor du den Schritt nennst.
             """

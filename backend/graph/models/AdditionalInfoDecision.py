@@ -7,14 +7,13 @@ class AdditionalInfoDecision(BaseModel):
     needs_additional_info: bool = Field(
         default=False,
         description=(
-            "False, wenn das Problem mit den vorhandenen Informationen noch nicht "
-            "eindeutig bearbeitet werden kann und zuerst weitere Informationen vom "
-            "Nutzer benötigt werden. Dies gilt insbesondere dann, wenn mehrere "
-            "unterschiedliche Ursachen oder mehrere stark voneinander abweichende "
-            "Lösungswege plausibel sind und anhand der bisherigen Angaben nicht "
-            "entschieden werden kann, welcher zutrifft. "
-            "True nur dann, wenn die vorhandenen Informationen ausreichen, um "
-            "eine konkrete und passende Lösung mit hoher Sicherheit vorzuschlagen."
+            "False, wenn vor einer Lösung noch zusätzliche Informationen vom Nutzer "
+            "benötigt werden. Dies ist insbesondere der Fall, wenn mehrere "
+            "unterschiedliche Einträge aus der Wissensdatenbank plausibel sind und "
+            "deren Lösungen voneinander abweichen. Die Rückfrage soll genau die "
+            "Information ermitteln, die zwischen diesen Einträgen unterscheidet. "
+            "True nur dann, wenn mit den vorhandenen Informationen eine passende "
+            "Lösung ausgewählt werden kann."
         )
     )
     follow_up_question: Optional[str] = Field(
