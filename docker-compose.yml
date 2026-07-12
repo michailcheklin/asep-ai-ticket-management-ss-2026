@@ -14,6 +14,7 @@ services:
       LANGSMITH_TRACING: true
       LANGSMITH_API_KEY: ${LANGSMITH_API_KEY:-}
       LANGSMITH_ENDPOINT: https://eu.api.smith.langchain.com
+      AGENT: ${AGENT:-ZIM}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
       interval: 10s

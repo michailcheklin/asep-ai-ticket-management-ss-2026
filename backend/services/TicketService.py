@@ -8,8 +8,10 @@ from ..api.zammad import (
     replace_tag_for_ticket,
     mark_ticket_as_closed,
     update_ticket_kategorie,
+    update_ticket_title,
     resolve_zammad_kategorie,
 )
+
 from ..llm.llm import llm
 
 
@@ -52,6 +54,40 @@ class TicketService:
             return f"[{matrikelnummer}] {title}"
         return title
 
+
+    def update_ticket_title_from_state(self, state, ticket_id, use_llm: bool = False):
+        """
+        Rebuilds the ticket title from the current chatbot state and
+        overwrites it on the existing Zammad ticket.
+
+        :param state: Current chatbot state.
+        :param ticket_id: ID of the existing Zammad ticket.
+        :param use_llm: If True, generate a concise title via LLM (used when
+            the conversation is finalized). If False, build a cheap plain
+            title (used on every extractor iteration).
+        """
+        issue = state.get("issue_description", "")
+        matrikelnummer = state.get("matrikelnummer", "")
+        if not issue:
+           return
+
+        if use_llm:
+            summary = state.get("full_conversation") or issue
+            title = self.generate_title(summary, matrikelnummer)
+        else:
+            title = f"[{matrikelnummer or 'unknown'}] {issue}"
+
+        update_ticket_title(ticket_id, title)
+
+    
+    def _finalize_ticket_metadata(self, state, ticket_id):
+        """
+        Updates category and title on the existing ticket once the
+        conversation with the chatbot is finalized.
+        """
+        update_ticket_kategorie(ticket_id, state.get("category"))
+        self.update_ticket_title_from_state(state, ticket_id, use_llm=True)
+        
     # -------------------------
     # Public API
     # -------------------------
@@ -103,7 +139,7 @@ class TicketService:
         full_body = f"Das Gespräch mit dem Chatbot wurde abgeschlossen. Folgende Informationen wurden erfasst:\n\n{body}"
         
         try:
-            update_ticket_kategorie(ticket_id, state.get("category"))
+            self._finalize_ticket_metadata(state, ticket_id)
             self.append_message_to_ticket(
                 ticket_id=ticket_id,
                 body=full_body,
@@ -136,7 +172,7 @@ class TicketService:
 
         try:
             if ticket_id:
-                update_ticket_kategorie(ticket_id, state.get("category"))
+                self._finalize_ticket_metadata(state, ticket_id)
                 self.append_message_to_ticket(
                     ticket_id=ticket_id,
                     body="[ZIM AI-AGENT] Der Nutzer hat das Problem als durch den KI-Chatbot gelöst markiert. Das Ticket wird daher geschlossen.",
