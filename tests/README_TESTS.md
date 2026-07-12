@@ -110,11 +110,51 @@ Each test follows the Arrange-Act-Assert pattern: the relevant LLM object, `retr
 
 Note: `ask_for_additional_info` builds its structured-output LLM inline (`llm.with_structured_output(AdditionalInfoDecision)`) rather than using a module-level singleton like `category_llm`/`intent_llm`/`structured_llm`. Its tests therefore patch `backend.graph.nodes.llm` and configure `mock_llm.with_structured_output.return_value.invoke.return_value` instead of patching a dedicated LLM object directly.
 
+**What each individual test checks (expected output):**
+* `test_intent_classification.py`
+  * `test_returns_valid_intent_from_llm` — a mocked `"tutorial"` LLM decision results in `result["intent"] == "tutorial"`.
+  * `test_falls_back_to_unclear_on_unknown_intent` — a mocked out-of-schema intent (`"anleitung"`) falls back to `result["intent"] == "unclear"`.
+  * `test_prompt_includes_previous_intent_and_conversation` — the prompt sent to the LLM contains both the previous intent (`"tutorial"`) and the latest user message.
+  * `test_email_is_extracted_when_missing` — an email found in the user message is written to `result["user_email"]`.
+  * `test_existing_email_is_not_overwritten` — if `user_email` is already set, the key is absent from the returned state update (i.e. not overwritten).
+  * `test_expected_intents_are_defined` — `INTENTS == ["tutorial", "problem", "unclear", "solved"]`.
+* `test_ticket_category.py`
+  * `test_returns_valid_category_from_llm` — a mocked `"Incident"` decision results in `classify_ticket_category(...) == "Incident"`.
+  * `test_falls_back_when_llm_returns_unknown_category` — a mocked out-of-schema category (`"Netzwerk"`) falls back to `"Service Request"`.
+  * `test_prompt_includes_full_conversation_context` — the prompt contains all prior user messages, not just the latest one.
+  * `test_moodle_login_classified_as_incident` / `test_wlan_classified_as_incident` — representative Moodle-login and WLAN cases both classify as `"Incident"`.
+  * `test_extract_information_does_not_set_category` — `extract_information` returns the extracted `issue_description` but never sets a `"category"` key.
+  * `test_extract_prompt_does_not_include_category_rules` — the extraction prompt contains neither `"4. Kategorie"` nor `"ITSM-Ticket-Typ"`.
+  * `test_classify_ticket_node_sets_category` — the `classify_ticket` node sets `state_update["category"]` from the (mocked) classifier and calls it exactly once.
+  * `test_resolve_ticket_category_reuses_existing_value` — if `state["category"]` is already set, `_resolve_ticket_category` returns it unchanged without calling the classifier.
+  * `test_finish_ticket_reuses_category_without_reclassifying` — `finish_ticket` reuses an existing `category` (no reclassification call) and passes it through unchanged into the Zammad ticket payload.
+  * `test_expected_categories_are_defined` — `TICKET_CATEGORIES == ["Incident", "Service Request", "Change", "Problem", "Complaint"]`.
+  * `test_regression_fixtures_load_from_old_tickets` — `rag/old_tickets.json` loads exactly 56 valid cases.
+  * `test_holdout_fixtures_load` — `rag/category_holdout_tests.json` loads at least 5 valid cases.
+* `test_ticket_category_live.py` (only runs with `RUN_LLM_CATEGORY_TESTS=1`)
+  * `test_live_wlan_is_incident` / `test_live_moodle_login_is_incident` / `test_live_login_without_keywords_is_incident` — the real LLM classifies each representative case as `"Incident"`.
+  * `test_regression_cases_from_old_tickets` — real-LLM accuracy across all regression cases is at least `CATEGORY_REGRESSION_MIN_ACCURACY` (default 90%).
+  * `test_holdout_cases_generalization` — real-LLM accuracy across all unseen holdout cases is at least `CATEGORY_HOLDOUT_MIN_ACCURACY` (default 80%).
+* `test_ask_for_additional_info.py`
+  * `test_skips_follow_up_when_rag_has_no_matches` — no FAQ/ticket matches → returns `{"needs_additional_info": True}` and the LLM is never invoked.
+  * `test_marks_complete_when_two_additional_infos_already_collected` — 2 or more `additional_info` entries already collected → returns `{"needs_additional_info": True}` regardless of the LLM decision, and Zammad is not contacted.
+  * `test_marks_complete_after_max_attempts` — `additional_info_attempts >= 3` → returns `{"needs_additional_info": True}`, Zammad is not contacted.
+  * `test_marks_complete_when_llm_decides_no_more_info_needed` — the LLM decision has `needs_additional_info=True` → returns `{"needs_additional_info": True}`, Zammad is not contacted.
+  * `test_asks_follow_up_question_and_appends_to_ticket` — the LLM decision has `needs_additional_info=False` with a follow-up question → returns `needs_additional_info: False`, increments `additional_info_attempts`, includes the question in the returned `AIMessage`, and appends exactly one internal note to the Zammad ticket with the correct `ticket_id`/`sender`/`internal` values.
+* `test_give_solutions.py`
+  * `test_returns_early_message_when_issue_description_empty` — empty `issue_description` → returns the fixed "Keine ausreichende Anfrage..." message with `solutions: []`, and RAG is never queried.
+  * `test_returns_error_message_when_rag_raises` — RAG retrieval raises an exception → returns the fixed "Fehler bei der Suche..." message with `solutions: []`.
+  * `test_builds_solutions_from_two_faq_matches` — 2 FAQ matches → `solutions` contains exactly those two `{"title": "FAQ: <id>", ...}` entries.
+  * `test_fills_up_with_ticket_matches_when_fewer_than_two_faq_matches` — 1 FAQ match + a ticket match → `solutions` is filled up to 2 with a `{"title": "Ähnliches Ticket (<category>)", ...}` entry.
+  * `test_appends_summary_to_ticket_with_correct_payload` — the LLM-generated summary is appended to the Zammad ticket with the correct `ticket_id`/`sender`/`internal` values.
+  * `test_continues_when_ticket_append_fails` — the Zammad append call raises an exception → the function does not propagate it and still returns the `messages`/`solutions` state update.
+
 **When is the test passed:**
 All assertions in every test case must pass. `test_ticket_category_live.py`'s classes are skipped unless `RUN_LLM_CATEGORY_TESTS=1` is set — without it, the job still counts as passed, just with those cases reported as skipped.
 
 **Additional notes:**
-* All five files run together in one CI job (`run_test_graph_nodes`) via a single `pytest` invocation, since they all test nodes from the same module and share the same mocking approach — this keeps the pipeline lean instead of one job per node.
+* The four mocked files (`test_intent_classification.py`, `test_ticket_category.py`, `test_ask_for_additional_info.py`, `test_give_solutions.py`) run together in one CI job (`run_test_graph_nodes`, stage `before_deepeval`) via a single `pytest` invocation on every push, since they all test nodes from the same module, share the same mocking approach, and never touch a real LLM — this keeps the pipeline lean instead of one job per node.
+* `test_ticket_category_live.py` is **not** part of that job — it needs `RUN_LLM_CATEGORY_TESTS=1` to actually execute anything (without it, every test class is skipped), and it burns real SAIA quota (56 regression + 5+ holdout + 3 spot-check calls). It instead has its own CI job, `run_test_ticket_category_live` (stage `deepeval`), gated the same way as `run_deepeval_tests`: manual and `allow_failure: true` on merge-request pipelines, so it only runs when someone explicitly triggers it (e.g. after changing the classification prompt/logic), not on every push.
 * `test_ticket_category.py`'s `TicketCategoryConstantsTests` and `test_ticket_category_live.py`'s regression/holdout suites load fixtures from `backend/rag/old_tickets.json` and `backend/rag/category_holdout_tests.json` via the shared helper module `category_test_support.py`. Regression/holdout accuracy thresholds are configurable via `CATEGORY_REGRESSION_MIN_ACCURACY` (default 0.90), `CATEGORY_HOLDOUT_MIN_ACCURACY` (default 0.80), and an optional `CATEGORY_REGRESSION_LIMIT` cap.
 * To run the live LLM suite locally: `RUN_LLM_CATEGORY_TESTS=1 pytest tests/test_ticket_category_live.py -v -s` (uses real SAIA/Ollama quota — don't run casually, see the SAIA request cap in the main `CLAUDE.md`).
 
