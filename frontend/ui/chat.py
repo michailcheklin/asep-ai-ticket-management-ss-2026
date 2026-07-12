@@ -289,15 +289,14 @@ def apply_response_to_session(user_input: str, res_json: dict) -> None:
 
     # Never try to parse the bullet points of tutorials into a Q&A mode
     # in the first tutorial.
-    if st.session_state.intent != "tutorial":
-        # Detect bullet-point questions → enter guided Q&A mode
-        questions = parse_questions_from_message(answer)
-        if questions:
-            st.session_state.pending_questions = questions
-            st.session_state.current_question_idx = 0
-            st.session_state.question_answers = []
-            # Nach unten zum Fragen-Widget scrollen
-            st.session_state["scroll_target"] = "question_widget_anchor"
+    # Detect bullet-point questions → enter guided Q&A mode
+    questions = parse_questions_from_message(answer)
+    if questions:
+        st.session_state.pending_questions = questions
+        st.session_state.current_question_idx = 0
+        st.session_state.question_answers = []
+        # Nach unten zum Fragen-Widget scrollen
+        st.session_state["scroll_target"] = "question_widget_anchor"
 
 
 def process_user_message(client: ChatClient, user_input: str) -> None:
