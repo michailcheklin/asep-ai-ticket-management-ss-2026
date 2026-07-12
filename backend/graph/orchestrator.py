@@ -98,6 +98,12 @@ def route_after_intent(state: ChatbotState):
     if intent == "solved" and state.get("tutorial_attempts", 0) > 0:
         return "classify_ticket_node"
 
+    if intent == "tutorial" and state.get("tutorial_attempts", 0) > 0:
+        if state.get("tutorial_attempts", 0) <= 3:
+            return "give_tutorial_node"
+        else:
+            return "classify_ticket_node"
+
     if intent == "tutorial" or intent == "problem":
         return "ask_for_additional_info"
 
@@ -197,7 +203,7 @@ workflow.add_conditional_edges(
     source="classify_intent_node",
     path=route_after_intent,
     path_map=build_pathmap_from_nodes_list_for_visualisation(
-        ["classify_ticket_node", "ask_for_additional_info", "ask_intent_node"]
+        ["classify_ticket_node", "ask_for_additional_info", "ask_intent_node", "give_tutorial_node"]
     )
 )
 
