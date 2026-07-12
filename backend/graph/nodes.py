@@ -194,12 +194,6 @@ CHATVERLAUF (User-Nachrichten):
 
     state_update = {"intent": intent}
 
-    # 4)
-    if not state.get("user_email") and user_messages:
-        match = re.search(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}", user_messages[-1])
-        if match:
-            state_update["user_email"] = match.group(0)
-
     return state_update
 
 
@@ -223,8 +217,9 @@ def give_tutorial(state: ChatbotState):
     log_node_entry("give_tutorial", state)
     attempts = state.get("tutorial_attempts", 0)
 
-    user_messages = [msg.content for msg in state["messages"] if isinstance(msg, HumanMessage)]
-    query = " ".join(user_messages[-2:]) if user_messages else ""
+    issue = state.get("issue_description", "")
+    additional_info = " ".join(state.get("additional_info", []))
+    query = f"{issue} {additional_info}".strip()
 
     rag_results = retrieve_relevant_entries(query, n_results=2)
     faq_context = "\n".join(f"- {m['text']}" for m in rag_results.get("faq_matches", []))
@@ -449,6 +444,7 @@ def ask_for_additional_info(state: ChatbotState):
     log_node_entry("ask_for_additional_info", state)
     problem = state.get("issue_description", "")
     infos = state.get("additional_info", [])
+    infos_string = " ".join(infos)
     attempts = state.get("additional_info_attempts", 0)
 
     print(f"[DEBUG: ask_for_additional_info]: attempts: {attempts} ")
@@ -456,7 +452,7 @@ def ask_for_additional_info(state: ChatbotState):
     aditionalInfo_llm = llm.with_structured_output(AdditionalInfoDecision)
 
 
-    search_query = problem
+    search_query = f"{problem} {infos_string}".strip()
     rag_results = retrieve_relevant_entries(search_query, n_results=2)
 
     faq_matches = rag_results.get("faq_matches", [])
@@ -464,7 +460,7 @@ def ask_for_additional_info(state: ChatbotState):
 
     if not faq_matches and not ticket_matches:
         print("[DEBUG] RAG lieferte keine Ergebnisse. Überspringe Rückfrage.")
-        return {"needs_additional_info": True}
+        return {"needs_additional_info": False}
 
     faq_context = "\n".join([f"- {match['text']}" for match in faq_matches])
     ticket_context = "\n".join([f"- {match['text']} (Kategorie: {match['category']})" for match in ticket_matches])
@@ -489,9 +485,9 @@ def ask_for_additional_info(state: ChatbotState):
         REGELN:
         1. Lies die Einträge in der WISSENSDATENBANK. Fehlen in unserem "AKTUELLEN PROBLEM" Details, 
            die in den alten Tickets oder FAQs zur Lösung zwingend notwendig waren?
-        2. Wenn alles Wichtige da ist, ODER wenn die WISSENSDATENBANK keine relevanten Inhalte für eine Nachfrage liefert, 
-           setze needs_additional_info auf True und setze follow_up_question auf den leeren String. 
-        3. Wenn wichtige Details fehlen, setze needs_additional_info auf False und formuliere 
+        2. Wenn die wichtigsten Informationen da sind, ODER wenn die WISSENSDATENBANK keine relevanten Inhalte für eine Nachfrage liefert, 
+           setze needs_additional_info auf False und setze follow_up_question auf den leeren String. 
+        3. Wenn wichtige Details fehlen, setze needs_additional_info auf True und formuliere 
            wenige, direkt-relevante, kurze, follow-up-question(s) an den User basierend auf dem RAG-Kontext.
         4. Gib die Fragen als Bullet-Liste zurück. Es muss dieses genaues Syntax befolgen:
            Multiple-Choice-Fragen müssen das Format verwenden:
@@ -518,8 +514,8 @@ def ask_for_additional_info(state: ChatbotState):
 
 
     # Logic switch if all information needed is collected or not
-    if len(infos) >= 2 or decision.needs_additional_info or attempts >= 3:
-        return {"needs_additional_info": True}
+    if len(infos) >= 2 or not decision.follow_up_question.strip() or not decision.needs_additional_info or attempts >= 3:
+        return {"needs_additional_info": False}
     else:
         llm_msg = f"Ich habe für dich gerade ein Support-Ticket erstellt. Um dich optimal zu unterstützen, beantworte  bitte folgende Fragen:\n{decision.follow_up_question}"
         ticket_id = state.get("ticket_id")
@@ -534,7 +530,7 @@ def ask_for_additional_info(state: ChatbotState):
             except Exception as e:
                 print(f"Failed to add internal article: {e}")
             return {
-                "needs_additional_info": False,
+                "needs_additional_info": True,
                 "additional_info_attempts": attempts + 1,
                 "messages": [AIMessage(content=llm_msg)]
             }
@@ -555,9 +551,10 @@ def give_solutions(state: ChatbotState):
     user_msg = msgs[-1].content.strip() if msgs else ""
 
     issue = (state.get("issue_description") or "").strip()
-    additional = " ".join(state.get("additional_info", [])) if state.get("additional_info") else ""
+    infos = state.get("additional_info", [])
+    infos_string = " ".join(infos)
 
-    query = issue
+    query = f"{issue} {infos_string}".strip()
 
     if not query:
         return {"messages": [AIMessage(content="Keine ausreichende Anfrage für die Suche.")], "solutions": []}
