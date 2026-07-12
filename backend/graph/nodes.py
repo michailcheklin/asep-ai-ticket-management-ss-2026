@@ -12,12 +12,15 @@ from backend.rag.retrieve_info import retrieve_relevant_entries
 from ..services.TicketService import TicketService
 from ..llm.llm import llm, structured_llm, AGENT_PROMPT, category_llm
 from ..llm.prompts import TICKET_CATEGORY_RULES
+from ..services.ProblemService import ProblemService
+from ..llm.llm import llm, structured_llm, AGENT_PROMPT
 from .node_logging import log_node_entry
 from ..api.zammad import create_ticket_by_user_email, add_tag_to_ticket
 from .models.IntentDecision import IntentDecision
 
 
 ticket_service = TicketService()
+problem_service = ProblemService()
 
 
 def classify_ticket_category(
@@ -71,6 +74,34 @@ def classify_ticket(state: ChatbotState):
     return {"category": category}
 
 
+@traceable
+def escalate_incidents(state: ChatbotState):
+    """Workflow node: maintain the 'Recent Incidents' RAG and escalate if needed.
+
+    Only runs when the category is 'Incident' and a ticket already exists.
+    This node does not affect the user chat (fire-and-forget) and therefore
+    returns no state changes.
+    """
+    if state.get("category") != "Incident":
+        return {}
+
+    ticket_id = state.get("ticket_id")
+    if not ticket_id or ticket_id == -1:
+        return {}
+
+    try:
+        result = problem_service.register_and_check_incident(
+            ticket_id=ticket_id,
+            issue_description=state.get("issue_description", ""),
+            additional_info=list(state.get("additional_info", [])),
+        )
+        print(f"[escalate_incidents] ticket {ticket_id} -> {result}")
+    except Exception as e:
+        print(f"[escalate_incidents] failed for ticket {ticket_id}: {e}")
+
+    return {}
+
+
 
 INTENTS = ["tutorial", "problem", "unclear", "solved"]
 intent_llm = llm.with_structured_output(IntentDecision)
@@ -78,7 +109,7 @@ intent_llm = llm.with_structured_output(IntentDecision)
 
 @traceable
 def classify_intent(state: ChatbotState):
-    """Workflow-Node: bewertet bei jeder Nachricht neu, was der Nutzer moechte (Issue #161)."""
+    """Workflow node: re-evaluates on every message what the user wants (Issue #161)."""
     log_node_entry("classify_intent", state)
 
     # 1)
@@ -86,7 +117,7 @@ def classify_intent(state: ChatbotState):
     conversation = "\n".join(f"- {m}" for m in user_messages) if user_messages else "(keine)"
     previous_intent = state.get("intent") or "(noch keiner)"
 
-    # 2) Entscheidungskriterien
+    # 2) Decision criteria
     system_prompt = SystemMessage(content=f"""Du bist ein Verteiler im IT-Support des ZIM einer Universitaet.
 Entscheide anhand des GESAMTEN Chatverlaufs, was der Nutzer AKTUELL moechte:
 
@@ -135,7 +166,7 @@ CHATVERLAUF (User-Nachrichten):
 
 @traceable
 def ask_intent(state: ChatbotState):
-    """Fragt nach, ob der Nutzer eine Anleitung moechte oder Support braucht."""
+    """Asks whether the user wants a tutorial or needs support."""
     log_node_entry("ask_intent", state)
     system_prompt = SystemMessage(content=(
           AGENT_PROMPT + "\n\n"
@@ -148,7 +179,7 @@ def ask_intent(state: ChatbotState):
 
 @traceable
 def give_tutorial(state: ChatbotState):
-    """Erstellt eine Schritt-fuer-Schritt-Anleitung aus der Wissensdatenbank (Issue #161)."""
+    """Creates a step-by-step tutorial from the knowledge base (Issue #161)."""
     log_node_entry("give_tutorial", state)
     attempts = state.get("tutorial_attempts", 0)
 
@@ -194,7 +225,7 @@ REGELN:
 
 @traceable
 def finish_tutorial(state: ChatbotState):
-    """Schliesst den Tutorial-Pfad ab: geschlossenes AI-Solved-Ticket y Verabschiedung."""
+    """Closes the tutorial path: creates a closed AI-solved ticket and says goodbye."""
     log_node_entry("finish_tutorial", state)
     result = ticket_service.create_closed_tutorial_ticket(state)
 
@@ -249,7 +280,7 @@ def extract_information(state: ChatbotState):
         conversation_context=conversation_context or "keine",
     ))
 
-    # Telling python to treat output from structured llm as ExtractedTicketData instance
+    # Cast structured LLM output to ExtractedTicketData
     extracted_data = cast(ExtractedTicketData, structured_llm.invoke([
         SystemMessage(content=system_prompt),
         last_user_message
