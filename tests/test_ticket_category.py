@@ -25,8 +25,8 @@ from tests.category_test_support import (
     load_regression_cases,
     validate_cases,
 )
+from backend.graph.models.TicketCategoryDecision import TICKET_CATEGORIES
 from backend.graph.nodes import (
-    TICKET_CATEGORIES,
     classify_ticket,
     classify_ticket_category,
     extract_information,
