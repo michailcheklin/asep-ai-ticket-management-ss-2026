@@ -1,5 +1,5 @@
 """
-Unit tests for LLM-based intent classification (Issue #161).
+Unit tests for LLM-based intent classification.
 
 Mocks the LLM by default, mirroring test_ticket_category.py.
 Tests the fallback logic, prompt construction and e-mail extraction of
