@@ -1,94 +1,23 @@
 import re
 from typing import cast
-from pydantic import BaseModel, Field
 
 from langsmith import traceable
 
 from .models.ExtractedTicketData import ExtractedTicketData
 from .models.AdditionalInfoDecision import AdditionalInfoDecision
+from .models.TicketCategoryDecision import TICKET_CATEGORIES, TicketCategoryDecision
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from .state import ChatbotState
 from backend.rag.retrieve_info import retrieve_relevant_entries
 from ..services.TicketService import TicketService
-from ..llm.llm import llm, structured_llm, AGENT_PROMPT
+from ..llm.llm import llm, structured_llm, AGENT_PROMPT, category_llm
+from ..llm.prompts import TICKET_CATEGORY_RULES
 from .node_logging import log_node_entry
 from ..api.zammad import create_ticket_by_user_email, add_tag_to_ticket
 from .models.IntentDecision import IntentDecision
 
 
 ticket_service = TicketService()
-
-TICKET_CATEGORIES = [
-    "Incident",
-    "Service Request",
-    "Change",
-    "Problem",
-    "Complaint",
-]
-
-
-class TicketCategoryDecision(BaseModel):
-    """Schema for the LLM output of the dedicated ticket category classification step."""
-    category: str = Field(
-        description=f"Exactly one of: {', '.join(TICKET_CATEGORIES)}"
-    )
-
-category_llm = llm.with_structured_output(TicketCategoryDecision)
-
-_CATEGORY_RULES = """
-Klassifiziere nach ITSM-Ticket-Typ und Hauptabsicht des Nutzers.
-Ignoriere einzelne Schlüsselwörter, wenn sie nicht zur Hauptabsicht passen.
-
-Ticket-Typen:
-
-1. Complaint:
-Wähle diesen Typ, wenn die Hauptabsicht eine Beschwerde, Unzufriedenheit,
-Frust, Ärger oder Kritik an Support, Bearbeitung, Wartezeit, Kommunikation
-oder fehlender Hilfe ist.
-Das gilt auch dann, wenn zusätzlich ein technisches Problem erwähnt wird.
-Typische Hinweise: "unhappy", "frustrated", "angry", "upset", "unacceptable",
-"complained", "nobody fixed it", "no help in time", "not answered".
-
-2. Problem:
-Wähle diesen Typ nur, wenn die Hauptabsicht die Analyse einer wiederkehrenden
-oder grundlegenden Ursache ist.
-Ein aktueller Ausfall bleibt Incident, auch wenn mehrere Nutzer betroffen sind.
-Problem ist passend bei Root-Cause-Analyse, wiederkehrenden Incidents,
-bekannter Fehlerursache oder systematischer Untersuchung.
-
-3. Change:
-Wähle diesen Typ, wenn eine Änderung an System, Konfiguration, Berechtigung,
-Rolle, Gruppe, Weiterleitung oder Prozess gewünscht wird.
-Beispiele: neue Rolle vergeben, Gruppe anpassen, Zugriff ändern,
-Mailbox-Weiterleitung ändern, Berechtigung erweitern.
-
-4. Service Request:
-Wähle diesen Typ bei Anfragen, Anträgen, Informationswünschen oder
-administrativen Anliegen ohne Fokus auf eine technische Störung.
-Wichtig: Zahlungs-, Gebühren-, Rechnungs-, Rückerstattungs- und
-Accounting-Anliegen sind in diesem Projekt Service Request, auch wenn ein
-Portal einen falschen Zahlungsstatus, eine Fehlermeldung oder ein Exportproblem zeigt.
-Beispiele: Semesterbeitrag klären, Rechnung anfordern, Zahlungsstatus prüfen,
-Rückerstattung, Software anfordern, Anleitung erhalten, Zugriff beantragen.
-
-5. Incident:
-Wähle diesen Typ, wenn ein IT-Service, System, Gerät, Netzwerk oder eine
-Software aktuell nicht funktioniert und keine speziellere Kategorie oben passt.
-Beispiele: Login unmöglich, WLAN aus, Drucker defekt, Moodle Upload geht nicht,
-VPN verbindet nicht, Anwendung stürzt ab.
-
-Priorität bei Überschneidungen:
-Complaint > Problem > Change > Service Request > Incident.
-
-Wenn ein Ticket sowohl eine technische Störung als auch ein Zahlungs-/Rechnungsanliegen enthält,
-wähle Service Request, sofern Zahlung, Rechnung, Gebühr oder Accounting das eigentliche Ziel ist.
-
-Wenn ein Ticket sowohl eine technische Störung als auch Ärger/Beschwerde enthält,
-wähle Complaint, sofern die Beschwerde die Hauptabsicht ist.
-
-Bewerte den Ticket-Typ immer anhand des GESAMTEN Chatverlaufs und aller bekannten Infos.
-Gib genau einen Ticket-Typ zurück.
-"""
 
 
 def classify_ticket_category(
@@ -109,7 +38,7 @@ Chatverlauf (User-Nachrichten):
 Problembeschreibung: {issue_description or "(noch nicht bekannt)"}
 Zusatzinfos: {infos}
 
-{_CATEGORY_RULES}"""
+{TICKET_CATEGORY_RULES}"""
     decision = cast(TicketCategoryDecision, category_llm.invoke([SystemMessage(content=prompt)]))
     if decision.category in TICKET_CATEGORIES:
         return decision.category
@@ -348,6 +277,12 @@ def extract_information(state: ChatbotState):
     if ticket_id is not None:
         print(f"Appending to ticket {ticket_id} the user message: {last_user_message.content}")
         ticket_service.append_message_to_ticket(ticket_id, last_user_message.content, sender="Customer")
+        # Update the ticket title with the latest extracted information 
+        merged_state = {**state, **state_update}
+        if extracted_data.problem:
+            merged_state["issue_description"] = extracted_data.problem
+        ticket_service.update_ticket_title_from_state(merged_state, ticket_id)
+
     # If this is the first message with a valid issue: create ticket
     elif extracted_data.problem is not None and extracted_data.problem != "":
         matrikelnummer = extracted_data.matrikelnummer or state.get("matrikelnummer", "unknown")
