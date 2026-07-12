@@ -353,6 +353,12 @@ def extract_information(state: ChatbotState):
     if ticket_id is not None:
         print(f"Appending to ticket {ticket_id} the user message: {last_user_message.content}")
         ticket_service.append_message_to_ticket(ticket_id, last_user_message.content, sender="Customer")
+        # Update the ticket title with the latest extracted information 
+        merged_state = {**state, **state_update}
+        if extracted_data.problem:
+            merged_state["issue_description"] = extracted_data.problem
+        ticket_service.update_ticket_title_from_state(merged_state, ticket_id)
+
     # If this is the first message with a valid issue: create ticket
     elif extracted_data.problem is not None and extracted_data.problem != "":
         matrikelnummer = extracted_data.matrikelnummer or state.get("matrikelnummer", "unknown")
