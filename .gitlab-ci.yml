@@ -151,7 +151,7 @@ run_test_chat_endpoint_connectivity:
     - echo "AGENT=ZIM" >> .env
     - pytest ./tests/test_chat_endpoint_connectivity.py -v -s
 
-run_test_intent_classification:
+run_test_graph_nodes:
   stage: before_deepeval
   tags:
     - dind
@@ -174,8 +174,7 @@ run_test_intent_classification:
     - source $VENV_DIR/bin/activate
     - if [ -f tests/requirements.txt ]; then pip install -r tests/requirements.txt; fi
     - echo "AGENT=ZIM" >> .env
-    - cd ./backend
-    - python -m unittest tests.test_intent_classification
+    - PYTHONPATH=. pytest tests/test_intent_classification.py tests/test_ticket_category.py tests/test_ask_for_additional_info.py tests/test_give_solutions.py -v -s
 
 
 run_test_ticket_confirmation:
@@ -226,6 +225,42 @@ run_rag_retrieve:
     - source $VENV_DIR/bin/activate
     - if [ -f tests/requirements.txt ]; then pip install -r tests/requirements.txt; fi
     - PYTHONPATH=. pytest tests/test_rag_retrieve.py -v -s
+
+run_test_ticket_category_live:
+  stage: before_deepeval
+  # Merge request pipeline
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      # Manual and non-blocking, like run_deepeval_tests below: this burns real
+      # SAIA quota (56 regression + 5+ holdout + 3 spot-check live LLM calls),
+      # so it should only run once per MR when the classification prompt/logic
+      # actually changed, not on every push.
+      when: manual
+      allow_failure: true
+  tags:
+    - dind
+    - ude-sse
+  cache:
+    - key: ${CI_COMMIT_REF_SLUG}
+      paths:
+        - $PIP_CACHE_DIR
+        - $VENV_DIR/lib/python*/site-packages/
+      policy: pull
+    - key: hf-models
+      paths:
+        - .cache/huggingface/
+      policy: pull
+  script:
+    - export HF_HOME=$HF_HOME
+    - python --version
+    - pip install --upgrade pip
+    - python -m venv $VENV_DIR
+    - source $VENV_DIR/bin/activate
+    - if [ -f tests/requirements.txt ]; then pip install -r tests/requirements.txt; fi
+    - echo "AGENT=ZIM" >> .env
+    - echo "SAIA_API_KEY=$SAIA_API_KEY" >> .env
+    - echo "USE_SAIA_API=true" >> .env
+    - RUN_LLM_CATEGORY_TESTS=1 PYTHONPATH=. pytest tests/test_ticket_category_live.py -v -s
 
 run_deepeval_tests:
   stage: deepeval

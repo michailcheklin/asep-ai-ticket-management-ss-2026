@@ -3,30 +3,23 @@ Unit tests for LLM-based ticket category classification.
 
 Mocks the LLM by default. Live suites live in test_ticket_category_live.py.
 
-Run from backend/:
-    python test_ticket_category.py
+Run from the repo root:
+    pytest tests/test_ticket_category.py -v -s
 
 Live LLM tests:
-    RUN_LLM_CATEGORY_TESTS=1 python test_ticket_category.py
+    RUN_LLM_CATEGORY_TESTS=1 pytest tests/test_ticket_category_live.py -v -s
 
 Optional thresholds:
     CATEGORY_REGRESSION_MIN_ACCURACY=0.90
     CATEGORY_HOLDOUT_MIN_ACCURACY=0.80
 """
 
-import importlib.util
-import sys
 import unittest
-from pathlib import Path
 from unittest.mock import patch
-
-BACKEND_ROOT = Path(__file__).resolve().parents[1]
-if str(BACKEND_ROOT) not in sys.path:
-    sys.path.insert(0, str(BACKEND_ROOT))
 
 from langchain_core.messages import HumanMessage
 
-from category_test_support import (
+from tests.category_test_support import (
     category_decision,
     load_holdout_cases,
     load_regression_cases,
@@ -239,30 +232,5 @@ class TicketCategoryConstantsTests(unittest.TestCase):
         validate_cases(cases)
 
 
-def _load_test_module(module_name: str):
-    """Load a sibling test module from its file path without package-name ambiguity."""
-    module_path = Path(__file__).resolve().with_name(f"{module_name}.py")
-    spec = importlib.util.spec_from_file_location(module_name, module_path)
-    if spec is None or spec.loader is None:
-        raise ImportError(f"Could not load test module from {module_path}")
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[module_name] = module
-    spec.loader.exec_module(module)
-    return module
-
-
-def run_tests():
-    """Discover and run unit plus live ticket category test modules."""
-    loader = unittest.TestLoader()
-    suite = unittest.TestSuite()
-
-    suite.addTests(loader.loadTestsFromModule(_load_test_module("test_ticket_category")))
-    suite.addTests(loader.loadTestsFromModule(_load_test_module("test_ticket_category_live")))
-
-    runner = unittest.TextTestRunner(verbosity=2)
-    result = runner.run(suite)
-    return 0 if result.wasSuccessful() else 1
-
-
 if __name__ == "__main__":
-    raise SystemExit(run_tests())
+    unittest.main()

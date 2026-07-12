@@ -1,15 +1,13 @@
-"""Live LLM tests for ticket category classification."""
+"""Live LLM tests for ticket category classification.
+
+Run from the repo root:
+    RUN_LLM_CATEGORY_TESTS=1 pytest tests/test_ticket_category_live.py -v -s
+"""
 
 import os
-import sys
 import unittest
-from pathlib import Path
 
-BACKEND_ROOT = Path(__file__).resolve().parents[1]
-if str(BACKEND_ROOT) not in sys.path:
-    sys.path.insert(0, str(BACKEND_ROOT))
-
-from category_test_support import (
+from tests.category_test_support import (
     load_holdout_cases,
     load_regression_cases,
     regression_limit,
