@@ -321,6 +321,7 @@ def extract_information(state: ChatbotState):
         EXTRAKTIONS-REGELN:
         1. Basis-Daten (Textfelder): Suche nach der 'email', der 'matrikelnummer' und dem Haupt-'problem' und speichere diese ausschließlich in ihren jeweiligen Textfeldern.
         2. Das 'problem' darf ausschließlich gesetzt werden, wenn der Nutzer tatsächlich ein konkretes IT-Problem oder eine Supportanfrage beschreibt.
+        2a. Ist in BEREITS BEKANNTER KONTEXT unter "Problembeschreibung" bereits ein Wert vorhanden, setze 'problem' NICHT erneut. Beschreibt die aktuelle Nachricht eine Verfeinerung, Präzisierung oder Detailantwort zum bereits bekannten Problem (z.B. eine Antwort auf eine Rückfrage), ordne diesen Inhalt stattdessen dem Feld 'additional_info' zu.
         3. Zusatzinformationen (Listen-Feld): Extrahiere alle weiteren technischen oder lokalen Details, die für die Lösung des Problems nützlich sein könnten, und weise sie dem Feld 'additional_info' zu.
         - Beispiele für wertvolle Details: Orte (z.B. 'Gebäude LF', 'Bibliothek'), Geräte/Systeme (z.B. 'MacBook', 'Windows 11'), betroffene Services (z.B. 'eduroam', 'VPN') oder spezifische Fehlercodes.
         - FORMAT: Speichere diese Zusatzinfos als einzelne, kompakte Strings innerhalb der Liste (z.B. ["Gebäude LF", "MacBook", "eduroam"]).
@@ -548,28 +549,30 @@ def ask_for_additional_info(state: ChatbotState):
             content="Bitte prüfe anhand des Problems und der Zusatzinfos, ob weitere Informationen benötigt werden.")
     ]))
 
+    print(f"[DEBUG]: decision.needs_additional_info: {decision.needs_additional_info}")
+    print(f"[DEBUG]: decision.follow_up_question: {decision.follow_up_question!r}")
 
     # Logic switch if all information needed is collected or not
-    if len(infos) >= 2 or decision.needs_additional_info or attempts >= 3:
+    follow_up_question = (decision.follow_up_question or "").strip()
+    if len(infos) >= 2 or decision.needs_additional_info or attempts >= 3 or not follow_up_question:
         return {"needs_additional_info": True}
-    else:
-        llm_msg = f"Ich habe für dich gerade ein Support-Ticket erstellt. Um dich optimal zu unterstützen, beantworte  bitte folgende Fragen:\n{decision.follow_up_question}"
-        ticket_id = state.get("ticket_id")
-        if llm_msg:
-            try:
-                ticket_service.append_message_to_ticket(
-                    ticket_id=ticket_id,
-                    body=f"[ZIM AI-AGENT]\n\n{llm_msg}",
-                    sender="Agent",
-                    internal=True
-                )
-            except Exception as e:
-                print(f"Failed to add internal article: {e}")
-            return {
-                "needs_additional_info": False,
-                "additional_info_attempts": attempts + 1,
-                "messages": [AIMessage(content=llm_msg)]
-            }
+
+    llm_msg = f"Ich habe für dich gerade ein Support-Ticket erstellt. Um dich optimal zu unterstützen, beantworte  bitte folgende Fragen:\n{follow_up_question}"
+    ticket_id = state.get("ticket_id")
+    try:
+        ticket_service.append_message_to_ticket(
+            ticket_id=ticket_id,
+            body=f"[ZIM AI-AGENT]\n\n{llm_msg}",
+            sender="Agent",
+            internal=True
+        )
+    except Exception as e:
+        print(f"Failed to add internal article: {e}")
+    return {
+        "needs_additional_info": False,
+        "additional_info_attempts": attempts + 1,
+        "messages": [AIMessage(content=llm_msg)]
+    }
 
 @traceable
 def give_solutions(state: ChatbotState):
