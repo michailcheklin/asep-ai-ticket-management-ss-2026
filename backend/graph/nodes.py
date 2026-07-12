@@ -529,8 +529,8 @@ def ask_for_additional_info(state: ChatbotState):
 
     # Logic switch if all information needed is collected or not
     follow_up_question = (decision.follow_up_question or "").strip()
-    if len(infos) >= 1 and decision.needs_additional_info or attempts >= 3 or not follow_up_question:
-        return {"needs_additional_info": True}
+    if len(infos) >= 2 and decision.needs_additional_info or attempts >= 3 or not follow_up_question:
+        return {"needs_additional_info": False}
 
     llm_msg = f"Ich habe für dich gerade ein Support-Ticket erstellt. Um dich optimal zu unterstützen, beantworte  bitte folgende Fragen:\n{follow_up_question}"
     ticket_id = state.get("ticket_id")
@@ -544,7 +544,7 @@ def ask_for_additional_info(state: ChatbotState):
     except Exception as e:
         print(f"Failed to add internal article: {e}")
     return {
-        "needs_additional_info": False,
+        "needs_additional_info": True,
         "additional_info_attempts": attempts + 1,
         "messages": [AIMessage(content=llm_msg)]
     }
@@ -569,7 +569,7 @@ def give_solutions(state: ChatbotState):
 
     query = f"{issue} + {additional}"
 
-    if not query:
+    if not issue and not additional:
         return {"messages": [AIMessage(content="Keine ausreichende Anfrage für die Suche.")], "solutions": []}
 
     try:
