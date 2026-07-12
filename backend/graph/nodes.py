@@ -6,11 +6,13 @@ from langsmith import traceable
 
 from .models.ExtractedTicketData import ExtractedTicketData
 from .models.AdditionalInfoDecision import AdditionalInfoDecision
+from .models.TicketCategoryDecision import TICKET_CATEGORIES, TicketCategoryDecision
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from .state import ChatbotState
 from backend.rag.retrieve_info import retrieve_relevant_entries
 from ..services.TicketService import TicketService
-from ..llm.llm import llm, structured_llm, AGENT_PROMPT
+from ..llm.llm import llm, structured_llm, AGENT_PROMPT, category_llm
+from ..llm.prompts import TICKET_CATEGORY_RULES
 from .node_logging import log_node_entry
 from ..api.zammad import create_ticket_by_user_email, add_tag_to_ticket
 from .models.IntentDecision import IntentDecision
@@ -125,7 +127,7 @@ Chatverlauf (User-Nachrichten):
 Problembeschreibung: {issue_description or "(noch nicht bekannt)"}
 Zusatzinfos: {infos}
 
-{_CATEGORY_RULES}"""
+{TICKET_CATEGORY_RULES}"""
     decision = cast(TicketCategoryDecision, category_llm.invoke([SystemMessage(content=prompt)]))
     if decision.category in TICKET_CATEGORIES:
         return decision.category
