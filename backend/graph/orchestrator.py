@@ -151,7 +151,7 @@ def route_after_classification(state: ChatbotState):
     if intent == "solved" or state.get("tutorial_attempts", 0) > 3:
         return "finish_tutorial_node"
     else:
-        return "give_solutions_node"
+        return "escalate_incidents_node"
 
 
 
@@ -225,11 +225,10 @@ workflow.add_conditional_edges(
     source="classify_ticket_node",
     path=route_after_classification,
     path_map=build_pathmap_from_nodes_list_for_visualisation(
-        ["give_solutions_node", "finish_tutorial_node"]
+        ["escalate_incidents_node", "finish_tutorial_node"]
     )
 )
 
-workflow.add_edge("classify_ticket_node", "escalate_incidents_node")
 workflow.add_edge("escalate_incidents_node", "give_solutions_node")
 
 # Route after retrieving possible solutions.
