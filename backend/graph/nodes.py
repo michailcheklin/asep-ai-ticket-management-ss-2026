@@ -169,6 +169,13 @@ CHATVERLAUF (User-Nachrichten):
 
     state_update = {"intent": intent}
 
+    # 4) Try to extract an e-mail address from the user messages according to the
+    # e-mail format acc. to the RFC 5321
+    if not state.get("user_email") and user_messages:
+        match = re.search(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}", user_messages[-1])
+        if match:
+            state_update["user_email"] = match.group(0)
+
     return state_update
 
 
