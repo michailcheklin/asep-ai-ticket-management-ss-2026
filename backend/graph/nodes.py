@@ -569,7 +569,7 @@ def give_solutions(state: ChatbotState):
 
     query = f"{issue} + {additional}"
 
-    if not issue and not additional:
+    if not issue:
         return {"messages": [AIMessage(content="Keine ausreichende Anfrage für die Suche.")], "solutions": []}
 
     try:
