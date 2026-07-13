@@ -11,6 +11,7 @@ support_group = ENV.fetch("ZAMMAD_SUPPORT_GROUP")
 smtp_host = ENV.fetch("ZAMMAD_SMTP_HOST")
 smtp_port = ENV.fetch("ZAMMAD_SMTP_PORT")
 environment = ENV.fetch("APP_ENV", "local")
+backend_close_webhook_url = ENV.fetch("BACKEND_CLOSE_WEBHOOK_URL", "http://backend_app:8000/zammad/ticket-closed")
 
 # SMTP-Setup
 smtp_options =
@@ -74,6 +75,17 @@ group.update!(email_address_id: address.id, updated_by_id: 1)
 closed_state = Ticket::State.find_by!(name: "closed")
 open_state = Ticket::State.find_by!(name: "open")
 close_subject = 'Ihr Ticket wurde geschlossen (#{ticket.title})'
+
+backend_webhook = Webhook.find_or_initialize_by(name: "backend close callback")
+backend_webhook.assign_attributes(
+  endpoint: backend_close_webhook_url,
+  http_method: "post",
+  active: true,
+  ssl_verify: false,
+  updated_by_id: 1
+)
+backend_webhook.created_by_id ||= 1
+backend_webhook.save!
 close_body = <<~'HTML'
   <div>Guten Tag,</div>
   <br/>
@@ -114,6 +126,9 @@ close_trigger.assign_attributes(
       "body" => close_body,
       "recipient" => "ticket_customer",
       "subject" => close_subject
+    },
+    "notification.webhook" => {
+      "webhook_id" => backend_webhook.id
     },
     "ticket.tags" => {
       "operator" => "add",

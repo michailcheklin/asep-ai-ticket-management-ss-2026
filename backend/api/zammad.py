@@ -298,6 +298,28 @@ def replace_tag_for_ticket(ticket_id: int, old_tag: str, new_tag: str):
     except Exception as e:
         print(f"Other error occured during tag replacement: {e}")
 
+def log_ticket_close_event(ticket_id: int | None, source: str = "manual", metadata: dict | None = None):
+    """
+    Basic backend hook for ticket close events.
+
+    The function only prints information for now, but it can be extended
+    to trigger further backend logic later.
+    """
+    metadata = metadata or {}
+    closure_source = "chatbot-API" if source in {"chatbot_api", "chatbot", "api"} else "ZIM-staff"
+
+    print("[ZAMMAD CLOSE EVENT]")
+    print(f"  source: {closure_source}")
+    print(f"  ticket_id: {ticket_id}")
+
+
+    if metadata.get("ticket_number"):
+        print(f"  ticket_number: {metadata['ticket_number']}")
+    if metadata.get("title"):
+        print(f"  title: {metadata['title']}")
+    if metadata.get("state"):
+        print(f"  state: {metadata['state']}")
+
 def mark_ticket_as_closed(ticket_id:int):
     """
     Sends a Zammad API call to close the ticket (state is set to closed) with the provided ticket ID.
@@ -320,3 +342,64 @@ def mark_ticket_as_closed(ticket_id:int):
         print(f"Invalid URL for Zammad provided: Could not reach Zammad to mark ticket as closed")
     except Exception as e:
         print(f"Other error occured during marking ticket as closed: {e}")
+
+def get_ticket_tags(ticket_id: int) -> list[str]:
+    """
+    Fetches the current tags of a Zammad ticket.
+    :param ticket_id: The ticket id to look up.
+    :return: List of tag names, empty list on failure.
+    """
+    try:
+        response = requests.get(
+            url=f"{server_address}/api/v1/tags",
+            params={"object": "Ticket", "o_id": ticket_id},
+            headers=headers,
+            timeout=GENERAL_TIMEOUT
+        )
+        response.raise_for_status()
+        return response.json().get("tags", [])
+    except ConnectionError:
+        print(f"Connection error: Could not reach Zammad to fetch tags for ticket {ticket_id}")
+        return []
+    except MissingSchema:
+        print(f"Invalid URL for Zammad provided: Could not reach Zammad to fetch tags for ticket {ticket_id}")
+        return []
+    except Exception as e:
+        print(f"Other error occurred while fetching tags for ticket {ticket_id}: {e}")
+        return []
+
+
+def get_ticket_article_bodies(ticket_id: int | None, article_ids: list[int] | None = None) -> list[str]:
+    """Fetch article bodies for a Zammad ticket using the API."""
+    if not ticket_id:
+        return []
+
+    try:
+        params = {"ticket_id": ticket_id}
+        if article_ids:
+            params["id[]"] = article_ids
+
+        response = requests.get(
+            url=f"{server_address}/api/v1/ticket_articles",
+            params=params,
+            headers=headers,
+            timeout=GENERAL_TIMEOUT,
+        )
+        response.raise_for_status()
+        payload = response.json()
+        if isinstance(payload, list):
+            return [
+                str(article.get("body", "")).strip()
+                for article in payload
+                if isinstance(article, dict) and str(article.get("body", "")).strip()
+            ]
+        return []
+    except ConnectionError:
+        print(f"Connection error: Could not reach Zammad to fetch articles for ticket {ticket_id}")
+        return []
+    except MissingSchema:
+        print(f"Invalid URL for Zammad provided: Could not fetch ticket articles for {ticket_id}")
+        return []
+    except Exception as e:
+        print(f"Other error occurred while fetching ticket articles for {ticket_id}: {e}")
+        return []
