@@ -13,7 +13,7 @@ from ..services.TicketService import TicketService
 from ..llm.prompts import TICKET_CATEGORY_RULES
 from ..services.ProblemService import ProblemService
 from ..llm.llm import llm, structured_llm, AGENT_PROMPT, category_llm
-from .node_logging import log_node_entry, langgraph_logger
+from .node_logging import log_node_entry, langgraph_logger, truncate_long_strings_in_dicts_for_logging
 from ..api.zammad import create_ticket_by_user_email, add_tag_to_ticket
 from .models.IntentDecision import IntentDecision
 from backend.rag.rag_logging import rag_logger
@@ -456,9 +456,9 @@ def ask_for_additional_info(state: ChatbotState):
     ticket_context = "\n".join([f"- {match['text']} (Kategorie: {match['category']})" for match in ticket_matches])
 
 
-    rag_logger.logger.debug(f"faq_matches: {faq_matches}\n\n")
+    rag_logger.logger.debug(f"faq_matches: {truncate_long_strings_in_dicts_for_logging(faq_matches)}\n\n")
     rag_logger.logger.debug("-"*10 + "\n\n")
-    rag_logger.logger.debug(f"faq_context: {faq_context}")
+    rag_logger.logger.debug(f"faq_context: {truncate_long_strings_in_dicts_for_logging(faq_context)}")
 
 
     system_prompt = SystemMessage(content=(
