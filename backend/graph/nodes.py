@@ -605,7 +605,7 @@ def give_solutions(state: ChatbotState):
     for t in ticket_matches:
         solutions.append(
             {"title": f"Ähnliches Ticket ({t.get('category', 'unknown')})", "description": t.get("messages", "")})
-    langgraph_logger.logger.log(f"give_solutions node returned: {solutions}")
+    langgraph_logger.logger.info(f"give_solutions node returned: {solutions}")
 
     problem = state.get("issue_description", "")
     infos = state.get("additional_info", [])
