@@ -456,9 +456,8 @@ def ask_for_additional_info(state: ChatbotState):
     ticket_context = "\n".join([f"- {match['text']} (Kategorie: {match['category']})" for match in ticket_matches])
 
 
-    rag_logger.logger.debug(f"faq_matches: {truncate_long_strings_in_dicts_for_logging(faq_matches)}\n\n")
-    rag_logger.logger.debug("-"*10 + "\n\n")
-    rag_logger.logger.debug(f"faq_context: {truncate_long_strings_in_dicts_for_logging(faq_context)}")
+    rag_logger.logger.debug(f"faq_matches:\n{truncate_long_strings_in_dicts_for_logging(faq_matches)}")
+    rag_logger.logger.debug(f"faq_context:\n{truncate_long_strings_in_dicts_for_logging(faq_context)}")
 
 
     system_prompt = SystemMessage(content=(
