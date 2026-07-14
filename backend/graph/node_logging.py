@@ -1,15 +1,6 @@
-﻿import logging
+﻿from ..services.BackendLoggingService import BackendLogger
 
-langgraph_logger = logging.getLogger("Langgraph")
-langgraph_logger.setLevel(logging.DEBUG)
-
-langgraph_logger_handler = logging.StreamHandler()
-langgraph_logger_handler.setLevel(logging.DEBUG)
-
-langgraph_logger_formatter = logging.Formatter("%(asctime)s: [%(name)s] [%(levelname)s]: %(message)s")
-langgraph_logger_handler.setFormatter(langgraph_logger_formatter)
-
-langgraph_logger.addHandler(langgraph_logger_handler)
+langgraph_logger = BackendLogger("Langgraph")
 
 
 def log_node_entry(node_name:str, state):
@@ -20,6 +11,6 @@ def log_node_entry(node_name:str, state):
     :param node_name: The name of the node that was entered
     :param state: The state that the node had when entered
     """
-    langgraph_logger.debug(f"Entered {node_name}")
-    langgraph_logger.debug(f"Current state:\n{state}")
+    langgraph_logger.logger.debug(f"Entered {node_name}")
+    langgraph_logger.logger.debug(f"Current state:\n{state}")
 

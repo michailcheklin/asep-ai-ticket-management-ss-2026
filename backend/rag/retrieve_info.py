@@ -8,13 +8,13 @@ from sentence_transformers import SentenceTransformer, CrossEncoder
 from .rag_logging import rag_logger
 
 # --- These run ONCE when the module is first imported ---
-rag_logger.info("Loading FAQ embedder...")
+rag_logger.logger.info("Loading FAQ embedder...")
 faq_embedder  = SentenceTransformer("intfloat/multilingual-e5-large")
-rag_logger.info("Loading FAQ re-ranker...")
+rag_logger.logger.info("Loading FAQ re-ranker...")
 faq_reranker  = CrossEncoder("cross-encoder/mmarco-mMiniLMv2-L12-H384-v1")
-rag_logger.info("Loading ticket embedder...")
+rag_logger.logger.info("Loading ticket embedder...")
 ticket_embedder = SentenceTransformer("deutsche-telekom/gbert-large-paraphrase-cosine")
-rag_logger.info("Connecting to databases...")
+rag_logger.logger.info("Connecting to databases...")
 
 # Get the directory where retrieve_info.py is located
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -24,11 +24,11 @@ ticket_db_path = os.path.join(BASE_DIR, "ticket_db")
 
 if not os.path.exists(faq_db_path):
     faq_db_not_found_error_message = f"[RAG] FAQ database not found at: {faq_db_path}"
-    rag_logger.critical(faq_db_not_found_error_message)
+    rag_logger.logger.critical(faq_db_not_found_error_message)
     raise FileNotFoundError(faq_db_not_found_error_message)
 if not os.path.exists(ticket_db_path):
     ticket_db_not_found_error_message = f"[RAG] Ticket database not found at: {ticket_db_path}"
-    rag_logger.critical(ticket_db_not_found_error_message)
+    rag_logger.logger.critical(ticket_db_not_found_error_message)
     raise FileNotFoundError(ticket_db_not_found_error_message)
 
 faq_client    = chromadb.PersistentClient(path=faq_db_path)
@@ -43,7 +43,7 @@ ticket_collection = ticket_client.get_or_create_collection(
     metadata={"hnsw:space": "cosine"}
 )
 
-rag_logger.info("Ready.\n")
+rag_logger.logger.info("Ready.\n")
 
 # --- Thresholds ---
 TICKET_SIMILARITY_THRESHOLD   = 0.35
@@ -143,22 +143,22 @@ def select_faq_matches(ranked: list) -> list:
     tier1 = [(fid, doc, s, meta) for fid, doc, _, s, meta in ranked if s >= FAQ_TIER_1_THRESHOLD]
     if len(tier1) >= 1:
         selected = tier1[:FAQ_TIER_1_COUNT]
-        rag_logger.info(f"FAQ tier 1 matched: returning {len(selected)} results above {FAQ_TIER_1_THRESHOLD}")
+        rag_logger.logger.info(f"FAQ tier 1 matched: returning {len(selected)} results above {FAQ_TIER_1_THRESHOLD}")
         return selected
 
     tier2 = [(fid, doc, s, meta) for fid, doc, _, s, meta in ranked if s >= FAQ_TIER_2_THRESHOLD]
     if len(tier2) >= 1:
         selected = tier2[:FAQ_TIER_2_COUNT]
-        rag_logger.info(f"FAQ tier 2 matched: returning {len(selected)} results above {FAQ_TIER_2_THRESHOLD}")
+        rag_logger.logger.info(f"FAQ tier 2 matched: returning {len(selected)} results above {FAQ_TIER_2_THRESHOLD}")
         return selected
 
     tier3 = [(fid, doc, s, meta) for fid, doc, _, s, meta in ranked if s >= FAQ_TIER_3_THRESHOLD]
     if len(tier3) >= 1:
         selected = tier3[:FAQ_TIER_3_COUNT]
-        rag_logger.info(f"FAQ tier 3 matched: returning {len(selected)} results above {FAQ_TIER_3_THRESHOLD}")
+        rag_logger.logger.info(f"FAQ tier 3 matched: returning {len(selected)} results above {FAQ_TIER_3_THRESHOLD}")
         return selected
 
-    rag_logger.info(f"FAQ no results above minimum threshold {FAQ_TIER_3_THRESHOLD}")
+    rag_logger.logger.info(f"FAQ no results above minimum threshold {FAQ_TIER_3_THRESHOLD}")
     return []
 
 def retrieve_relevant_entries(user_query: str, n_results: int = 5) -> dict:
@@ -181,7 +181,7 @@ def retrieve_relevant_entries(user_query: str, n_results: int = 5) -> dict:
     """
 
     # ── FAQ retrieval + cross-encoder re-ranking ───────────────────────────────
-    rag_logger.info("Encoding FAQ query...")
+    rag_logger.logger.info("Encoding FAQ query...")
     faq_embedding = faq_embedder.encode(
         "query: " + user_query,
         normalize_embeddings=True
@@ -198,7 +198,7 @@ def retrieve_relevant_entries(user_query: str, n_results: int = 5) -> dict:
         for faq_id, dist in zip(faq_results["ids"][0], faq_results["distances"][0])
     }
 
-    rag_logger.info(f"Running cross-encoder re-ranking on {len(faq_results['ids'][0])} FAQ candidates...")
+    rag_logger.logger.info(f"Running cross-encoder re-ranking on {len(faq_results['ids'][0])} FAQ candidates...")
     pairs        = [[user_query, doc] for doc in faq_results["documents"][0]]
     raw_scores   = faq_reranker.predict(pairs)
     scaled_scores = scaled_sigmoid(raw_scores)
@@ -215,13 +215,13 @@ def retrieve_relevant_entries(user_query: str, n_results: int = 5) -> dict:
         reverse=True
     )
 
-    rag_logger.info("FAQ re-ranking results:")
+    rag_logger.logger.info("FAQ re-ranking results:")
     for faq_id, doc, raw, scaled, meta in ranked:
         pre = pre_rerank[faq_id]
-        rag_logger.info(f"[{faq_id}]")
-        rag_logger.info(f"before rerank (cosine):  {pre:.4f}")
-        rag_logger.info(f"raw rerank score:         {raw:.4f}")
-        rag_logger.info(f"after rerank (sigmoid):   {scaled:.4f}")
+        rag_logger.logger.info(f"[{faq_id}]")
+        rag_logger.logger.info(f"before rerank (cosine):  {pre:.4f}")
+        rag_logger.logger.info(f"raw rerank score:         {raw:.4f}")
+        rag_logger.logger.info(f"after rerank (sigmoid):   {scaled:.4f}")
 
     selected = select_faq_matches(ranked)
     faq_matches = [
@@ -235,7 +235,7 @@ def retrieve_relevant_entries(user_query: str, n_results: int = 5) -> dict:
     ]
     
     # ── Ticket retrieval (symmetric) ──────────────────────────────────────────
-    rag_logger.info("Encoding ticket query...")
+    rag_logger.logger.info("Encoding ticket query...")
     ticket_embedding = ticket_embedder.encode(
         user_query,
         normalize_embeddings=True
@@ -255,7 +255,7 @@ def retrieve_relevant_entries(user_query: str, n_results: int = 5) -> dict:
             ticket_results["metadatas"][0]
         ):
             similarity = 1 - ticket_distance
-            rag_logger.info(f"[RAG]   [{ticket_id}] similarity: {similarity:.4f}")
+            rag_logger.logger.info(f"[RAG]   [{ticket_id}] similarity: {similarity:.4f}")
             if similarity >= TICKET_SIMILARITY_THRESHOLD:
                 ticket_meta = ticket_meta or {}
                 ticket_matches.append({
@@ -268,8 +268,8 @@ def retrieve_relevant_entries(user_query: str, n_results: int = 5) -> dict:
     faq_matches    = sorted(faq_matches,    key=lambda x: x["similarity"], reverse=True)
     ticket_matches = sorted(ticket_matches, key=lambda x: x["similarity"], reverse=True)
 
-    rag_logger.info(f"Final: {len(faq_matches)} FAQ matches, {len(ticket_matches)} ticket matches")
-    rag_logger.info(f"Inferred category: {infer_category(ticket_matches)}")
+    rag_logger.logger.info(f"Final: {len(faq_matches)} FAQ matches, {len(ticket_matches)} ticket matches")
+    rag_logger.logger.info(f"Inferred category: {infer_category(ticket_matches)}")
 
     return {
         "faq_matches":    faq_matches,
