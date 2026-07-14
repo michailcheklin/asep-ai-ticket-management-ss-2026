@@ -14,7 +14,7 @@ class BackendLogger:
         self._logger_handler = logging.StreamHandler()
         self._logger_handler.setLevel(logging.DEBUG)
 
-        self._logger_formatter = logging.Formatter("%(asctime)s: [%(name)s] [%(levelname)s]: %(message)s")
+        self._logger_formatter = logging.Formatter("%(asctime)s: [%(levelname)s]: %(name)s: %(message)s")
         self._logger_handler.setFormatter(self._logger_formatter)
 
         self.logger.addHandler(self._logger_handler)
