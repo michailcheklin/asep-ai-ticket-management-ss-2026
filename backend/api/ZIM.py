@@ -96,6 +96,7 @@ async def chat_endpoint(request: ChatRequest):
     :return: Updated conversation state
     """
 
+    zim_logger.logger.info(f"Received request to the chat endpoint\n{request}")
     """
     complete_evaluation = __check_prompt(request.user_message)
 
