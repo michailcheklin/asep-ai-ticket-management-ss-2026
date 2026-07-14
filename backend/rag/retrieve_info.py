@@ -215,13 +215,23 @@ def retrieve_relevant_entries(user_query: str, n_results: int = 5) -> dict:
         reverse=True
     )
 
-    rag_logger.logger.info("FAQ re-ranking results:")
+    rag_logger.logger.info("FAQ re-ranking results (converting from cosine to sigmoid):")
+    rag_result_ranking_table_columns = ['Title'.ljust(80),
+                                        'before'.ljust(20),
+                                        'after (raw)'.ljust(20),
+                                        'after (sigmoid)'.ljust(20),]
+    rag_logger.logger.info("|".join(rag_result_ranking_table_columns))
+
     for faq_id, doc, raw, scaled, meta in ranked:
         pre = pre_rerank[faq_id]
-        rag_logger.logger.info(f"[{faq_id}]")
-        rag_logger.logger.info(f"before rerank (cosine):  {pre:.4f}")
-        rag_logger.logger.info(f"raw rerank score:         {raw:.4f}")
-        rag_logger.logger.info(f"after rerank (sigmoid):   {scaled:.4f}")
+        rag_result_ranking_table_entry = [
+            str(faq_id).ljust(80),
+            f'{pre:.4f}'.ljust(20),
+            f'{raw:.4f}'.ljust(20),
+            f'{scaled:.4f}'.ljust(20),
+        ]
+
+        rag_logger.logger.info("|".join(rag_result_ranking_table_entry))
 
     selected = select_faq_matches(ranked)
     faq_matches = [
