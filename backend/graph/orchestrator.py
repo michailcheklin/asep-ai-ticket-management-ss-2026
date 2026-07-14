@@ -3,6 +3,8 @@ from pathlib import Path
 
 from langchain_core.tracers import LangChainTracer
 from langgraph.graph import StateGraph, START, END
+
+from backend.graph.node_logging import langgraph_logger
 from .state import ChatbotState
 from .nodes import (
     extract_information,
@@ -43,13 +45,8 @@ def __execute_langchain_workflow(state: ChatbotState):
 
     updated_state = graph.invoke(state)
     bot_response = updated_state["messages"][-1].content
+    langgraph_logger.logger.debug(f"Final updated state:\n{updated_state}")
 
-    print("\n===== FINAL UPDATED STATE =====")
-    print(f"Email:       {updated_state.get('user_email')}")
-    print(f"Matrikelnr.:    {updated_state.get('matrikelnummer')}")
-    print(f"Problem:     {updated_state.get('issue_description')}")
-    print(f"Additional Info: {updated_state.get('additional_info')}")
-    print("==============================================\n")
 
     return {
         "bot_response": bot_response,
@@ -79,7 +76,7 @@ def route_based_on_state(state: ChatbotState):
         return "ask_email_node"
 
     elif not state.get("issue_description"):
-        print(f"[DEBUG]: Attempts for ask_for_issue node: {state.get('ask_issue_attempts')}")
+        langgraph_logger.logger.debug(f"Attempts for ask_for_issue node: {state.get('ask_issue_attempts')}")
         if state.get("ask_issue_attempts", 0) >= 3:
             return "finish_node"
         else:
@@ -98,6 +95,7 @@ def route_after_intent(state: ChatbotState):
     if intent == "solved" and state.get("tutorial_attempts", 0) > 0:
         return "classify_ticket_node"
 
+    langgraph_logger.logger.debug(f"Attempts for tutorial: {state.get('tutorial_attempts')}")
     if intent == "tutorial" and state.get("tutorial_attempts", 0) > 0:
         if state.get("tutorial_attempts", 0) <= 3:
             return "give_tutorial_node"
@@ -120,6 +118,7 @@ def route_after_evaluator(state: ChatbotState):
     if not state.get("needs_additional_info"):
         intent = state.get("intent")
 
+        langgraph_logger.logger.debug(f"Attempts for tutorial: {state.get('tutorial_attempts')}")
         if intent == "tutorial":
             if state.get("tutorial_attempts", 0) <= 3:
                 return "give_tutorial_node"
