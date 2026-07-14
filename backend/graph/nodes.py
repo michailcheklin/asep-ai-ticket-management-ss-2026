@@ -605,7 +605,10 @@ def give_solutions(state: ChatbotState):
     for t in ticket_matches:
         solutions.append(
             {"title": f"Ähnliches Ticket ({t.get('category', 'unknown')})", "description": t.get("messages", "")})
-    langgraph_logger.logger.info(f"give_solutions node returned: {solutions}")
+    # Writing a truncated version of the solutions into the logs in the console
+    # while the actual solutions are kept intact
+    truncated_solutions_for_logs = [truncate_long_strings_in_dicts_for_logging(solution) for solution in solutions]
+    langgraph_logger.logger.info(f"give_solutions node returned: {truncated_solutions_for_logs}")
 
     problem = state.get("issue_description", "")
     infos = state.get("additional_info", [])
