@@ -13,7 +13,9 @@ from ..services.TicketService import TicketService
 from ..rag import recent_incidents
 from ..api.zammad import log_ticket_close_event, get_ticket_tags, get_ticket_article_bodies
 from ..rag.rag_store_tickets import store_ticket_state_to_rag
+from ..services.BackendLoggingService import BackendLogger
 
+zim_logger = BackendLogger("ZIM")
 ticket_service = TicketService()
 
 # Create FastAPI application instance
@@ -230,7 +232,7 @@ async def zammad_ticket_closed(payload: dict):
     tags = get_ticket_tags(ticket_id) if ticket_id else []
     matched_tags = EXCLUDE_FROM_TRAINING_TAGS.intersection(tags)
     if matched_tags:
-        print(f"[RAG] Ticket {ticket_id} excluded from training: {matched_tags}")
+        zim_logger.logger.info(f"Ticket {ticket_id} excluded from AI training due to tag: {matched_tags}")
         return {
             "status": "ignored",
             "reason": f"excluded_from_training:{','.join(matched_tags)}",
@@ -251,10 +253,10 @@ async def zammad_ticket_closed(payload: dict):
         "ticket_id": ticket_id,
         "messages": agent_messages,
     }
-    print(f"\n\nDEBUG: RAG STATE= {rag_state}\n\n")
+    zim_logger.logger.debug(f"RAG STATE= {rag_state}")
 
     if ticket_id:
-        print(f"[RAG] Close webhook received for ticket {ticket_id}")
+        zim_logger.logger.info(f"Close webhook received for ticket {ticket_id}")
         store_ticket_state_to_rag(rag_state, ticket_id=ticket_id)
 
     log_ticket_close_event(ticket_id=ticket_id, source="manual", metadata=metadata)
@@ -339,7 +341,7 @@ async def ticket_closed(payload: dict):
         recent_incidents.mark_incident_closed(int(ticket_id))
         return {"ok": True, "removed_ticket_id": int(ticket_id)}
     except Exception as e:
-        print(f"[/webhook/ticket-closed] failed for {ticket_id}: {e}")
+        zim_logger.logger.error(f"Ticket close webhook failed for {ticket_id}: {e}")
         return {"ok": False, "error": str(e)}
 
 
