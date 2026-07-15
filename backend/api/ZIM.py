@@ -96,7 +96,7 @@ async def chat_endpoint(request: ChatRequest):
     :return: Updated conversation state
     """
 
-    zim_logger.logger.info(f"Received request to the chat endpoint\n{request}")
+    zim_logger.info(f"Received request to the chat endpoint\n{request}")
     """
     complete_evaluation = __check_prompt(request.user_message)
 
@@ -233,7 +233,7 @@ async def zammad_ticket_closed(payload: dict):
     tags = get_ticket_tags(ticket_id) if ticket_id else []
     matched_tags = EXCLUDE_FROM_TRAINING_TAGS.intersection(tags)
     if matched_tags:
-        zim_logger.logger.info(f"Ticket {ticket_id} excluded from AI training due to tag: {matched_tags}")
+        zim_logger.info(f"Ticket {ticket_id} excluded from AI training due to tag: {matched_tags}")
         return {
             "status": "ignored",
             "reason": f"excluded_from_training:{','.join(matched_tags)}",
@@ -254,10 +254,10 @@ async def zammad_ticket_closed(payload: dict):
         "ticket_id": ticket_id,
         "messages": agent_messages,
     }
-    zim_logger.logger.debug(f"RAG STATE= {rag_state}")
+    zim_logger.debug(f"RAG STATE= {rag_state}")
 
     if ticket_id:
-        zim_logger.logger.info(f"Close webhook received for ticket {ticket_id}")
+        zim_logger.info(f"Close webhook received for ticket {ticket_id}")
         store_ticket_state_to_rag(rag_state, ticket_id=ticket_id)
 
     log_ticket_close_event(ticket_id=ticket_id, source="manual", metadata=metadata)
@@ -342,7 +342,7 @@ async def ticket_closed(payload: dict):
         recent_incidents.mark_incident_closed(int(ticket_id))
         return {"ok": True, "removed_ticket_id": int(ticket_id)}
     except Exception as e:
-        zim_logger.logger.error(f"Ticket close webhook failed for {ticket_id}: {e}")
+        zim_logger.error(f"Ticket close webhook failed for {ticket_id}: {e}")
         return {"ok": False, "error": str(e)}
 
 

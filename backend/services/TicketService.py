@@ -123,11 +123,11 @@ class TicketService:
             )
             success = self._success_message(title, state)
             success["ticket_id"] = ticket_id
-            ticketservice_logger.logger.info(f"Successfully created ticket with ID: {ticket_id}")
+            ticketservice_logger.info(f"Successfully created ticket with ID: {ticket_id}")
             return success
 
         except Exception as e:
-            ticketservice_logger.logger.error(f"Error happened while creating support ticket:\nError: {e}")
+            ticketservice_logger.error(f"Error happened while creating support ticket:\nError: {e}")
             return self._error_message()
         
     def append_support_ticket_context(self, state, ticket_id, internal=True):
@@ -149,9 +149,9 @@ class TicketService:
                 sender="Agent",
                 internal=internal
             )
-            ticketservice_logger.logger.info(f"Successfully appended context to ticket {ticket_id}")
+            ticketservice_logger.info(f"Successfully appended context to ticket {ticket_id}")
         except Exception as e:
-            ticketservice_logger.logger.error(f"Error while appending context: {e}")
+            ticketservice_logger.error(f"Error while appending context: {e}")
 
     def append_message_to_ticket(self, ticket_id: int, body: str, sender: str = "Agent", internal: bool = True) -> None:
         """
@@ -161,7 +161,7 @@ class TicketService:
         try:
             add_article_to_ticket(ticket_id=ticket_id, body=body, sender=sender, internal=internal)
         except Exception as e:
-            ticketservice_logger.logger.error(f"Failed to append article: {e}")
+            ticketservice_logger.error(f"Failed to append article: {e}")
 
     def create_ai_solved_ticket(self, state):
         """
@@ -200,7 +200,7 @@ class TicketService:
             }
 
         except Exception as e:
-            ticketservice_logger.logger.error(f"AI solved ticket could not be created\nError: {e}")
+            ticketservice_logger.error(f"AI solved ticket could not be created\nError: {e}")
             return {
                 "messages": [
                     AIMessage(content="Fehler beim Abschließen des Tickets.")
@@ -238,7 +238,7 @@ class TicketService:
             add_tag_to_ticket(ticket_id, "AI-Solved")
             return {"ticket_id": ticket_id, "is_complete": True}
         except Exception as e:
-            ticketservice_logger.logger.error(f"Failed to close tutorial ticket\nError: {e}")
+            ticketservice_logger.error(f"Failed to close tutorial ticket\nError: {e}")
             return {"is_complete": True}
 
     # -------------------------

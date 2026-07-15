@@ -11,8 +11,8 @@ def log_node_entry(node_name:str, state):
     :param node_name: The name of the node that was entered
     :param state: The state that the node had when entered
     """
-    langgraph_logger.logger.debug(f"Entered {node_name}")
-    langgraph_logger.logger.debug(f"Current state:\n{state}")
+    langgraph_logger.debug(f"Entered {node_name}")
+    langgraph_logger.debug(f"Current state:\n{state}")
 
 def truncate_long_strings_in_dicts_for_logging(obj, max_length=200):
     """
