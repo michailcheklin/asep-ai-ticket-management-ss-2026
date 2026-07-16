@@ -1,5 +1,7 @@
 
-from flask import Flask, request, redirect, make_response, render_template_string
+import secrets
+
+from flask import Flask, jsonify, request, redirect, make_response, render_template_string
 
 
 # fake_idp.py — fake Shibboleth login page for local development
@@ -9,6 +11,47 @@ IDP_PORT = 4999
 app = Flask(__name__, static_folder="fake_idp_static", static_url_path="/resources")
 
 COOKIE_NAME = "fake_shib_email"
+
+# Simulated LDAP directory — maps Unikennung to Shibboleth attributes.
+# Unknown usernames get a generated student profile.
+TEST_USERS = {
+    "mmueller": {
+        "display_name": "Max Mueller",
+        "role": "student",
+        "faculty": "Informatik",
+        "matrikelnummer": "3078631",
+        "email": "max.mueller@stud.uni-due.de",
+    },
+    "aschmidt": {
+        "display_name": "Anna Schmidt",
+        "role": "mitarbeiter",
+        "faculty": "BWL",
+        "matrikelnummer": "",
+        "email": "anna.schmidt@uni-due.de",
+    },
+    "jklein": {
+        "display_name": "Julia Klein",
+        "role": "student",
+        "faculty": "Medizin",
+        "matrikelnummer": "3145982",
+        "email": "julia.klein@stud.uni-due.de",
+    },
+}
+
+sessions: dict[str, dict] = {}
+
+
+def _lookup_user(unikennung: str) -> dict:
+    if unikennung in TEST_USERS:
+        return TEST_USERS[unikennung]
+    return {
+        "display_name": unikennung.capitalize(),
+        "role": "student",
+        "faculty": "Unbekannt",
+        "matrikelnummer": "0000000",
+        "email": f"{unikennung}@uni-due.de",
+    }
+
 
 LOGIN_HTML = """<!doctype html>
 <html lang="de">
@@ -179,17 +222,30 @@ def index():
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
-    """Login logic + creating email cookie"""
+    """Login logic + creating session with user metadata"""
     next_url = request.args.get("next") or request.form.get("next") or "http://localhost:8501"
 
     if request.method == "POST":
         unikennung = (request.form.get("username") or "user").strip().lower()
-        email = f"{unikennung}@uni-due.de"
-        response = make_response(redirect(next_url))
-        response.set_cookie(COOKIE_NAME, email, max_age=3600, httponly=True, samesite="Lax")
-        return response
+        profile = _lookup_user(unikennung)
+
+        token = secrets.token_urlsafe(16)
+        sessions[token] = profile
+
+        separator = "&" if "?" in next_url else "?"
+        return redirect(f"{next_url}{separator}session_token={token}")
 
     return render_template_string(LOGIN_HTML, next=next_url)
+
+
+@app.route("/api/userinfo")
+def userinfo():
+    """Return user metadata for a valid session token."""
+    token = request.args.get("token", "")
+    profile = sessions.get(token)
+    if not profile:
+        return jsonify({"error": "invalid or expired token"}), 401
+    return jsonify(profile)
 
 
 if __name__ == "__main__":
