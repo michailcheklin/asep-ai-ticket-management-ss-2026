@@ -133,6 +133,11 @@ async def chat_endpoint(request: ChatRequest):
         "full_conversation": request.full_conversation,
         "intent": request.intent,
         "tutorial_attempts": request.tutorial_attempts,
+        "display_name": request.display_name,
+        "role": request.role,
+        "faculty": request.faculty,
+        "device": request.device,
+        "os_name": request.os_name,
     }
     return __execute_langchain_workflow(current_state)
 
@@ -296,6 +301,11 @@ async def solution_feedback(request: ChatRequest):
         "user_addendum": request.user_addendum,
         "intent": request.intent,
         "tutorial_attempts": request.tutorial_attempts,
+        "display_name": request.display_name,
+        "role": request.role,
+        "faculty": request.faculty,
+        "device": request.device,
+        "os_name": request.os_name,
     }
 
     current_state["category"] = _resolve_ticket_category(current_state)

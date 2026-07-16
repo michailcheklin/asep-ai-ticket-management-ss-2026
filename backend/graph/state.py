@@ -39,3 +39,10 @@ class ChatbotState(TypedDict):
 
     
     solutions: Annotated[list[dict], operator.add]
+
+    # user metadata from IdP / browser
+    display_name: str
+    role: str
+    faculty: str
+    device: str
+    os_name: str

@@ -68,6 +68,11 @@ def __execute_langchain_workflow(state: ChatbotState):
         "full_conversation": updated_state.get("full_conversation", ""),
         "intent": updated_state.get("intent", ""),
         "tutorial_attempts": updated_state.get("tutorial_attempts", 0),
+        "display_name": updated_state.get("display_name", ""),
+        "role": updated_state.get("role", ""),
+        "faculty": updated_state.get("faculty", ""),
+        "device": updated_state.get("device", ""),
+        "os_name": updated_state.get("os_name", ""),
     }
 
 def route_based_on_state(state: ChatbotState):
