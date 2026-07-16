@@ -421,7 +421,10 @@ def process_solution_feedback(
         st.session_state.pending_ticket_confirmation = None
         st.session_state.show_ticket_addendum_form = False
         st.session_state["scroll_target"] = None
-        return "Ich habe dein Feedback notiert und ein Support-Ticket erstellt. Ein Agent wird sich bald um dein Anliegen kümmern."
+        metadata = st.session_state.get("user_metadata") or {}
+        first_name = metadata.get("display_name", "").split()[0] if metadata.get("display_name") else ""
+        greeting = f"Danke, {first_name}!" if first_name else "Danke!"
+        return f"{greeting} Ich habe dein Feedback notiert und ein Support-Ticket erstellt. Ein Agent wird sich bald um dein Anliegen kümmern."
 
     # For "Yes" response, parse the JSON response
     res_json = client.send_feedback(payload)
