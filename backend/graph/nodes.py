@@ -22,6 +22,23 @@ ticket_service = TicketService()
 problem_service = ProblemService()
 
 
+def _build_metadata_context(state: dict) -> str:
+    parts = []
+    if state.get("display_name"):
+        parts.append(f"Name des Nutzers: {state['display_name']}")
+    if state.get("role"):
+        parts.append(f"Rolle: {state['role']}")
+    if state.get("faculty"):
+        parts.append(f"Fakultaet: {state['faculty']}")
+    if state.get("device"):
+        parts.append(f"Geraet: {state['device']}")
+    if state.get("os_name"):
+        parts.append(f"Betriebssystem: {state['os_name']}")
+    if not parts:
+        return ""
+    return "\n\nBENUTZER-KONTEXT:\n" + "\n".join(parts)
+
+
 def _format_faq_match_for_prompt(match: dict) -> str:
     """Rendert einen faq_matches-Eintrag (dict mit id, text, similarity,
     optional extracted_urls) als Prompt-Text."""
@@ -208,7 +225,9 @@ def give_tutorial(state: ChatbotState):
     ticket_context = "\n".join(f"- {m['text']}" for m in rag_results.get("ticket_matches", []))
 
 
-    system_prompt = SystemMessage(content=AGENT_PROMPT + "\n\n" + f"""
+    metadata_context = _build_metadata_context(state)
+
+    system_prompt = SystemMessage(content=AGENT_PROMPT + metadata_context + "\n\n" + f"""
 
     Der Nutzer moechte eine Anleitung, um sein Anliegen SELBST zu loesen.
 
@@ -274,7 +293,9 @@ def extract_information(state: ChatbotState):
     prior_infos = state.get("additional_info", [])
     conversation_context = "\n".join(f"- {msg}" for msg in user_messages)
 
-    system_prompt = AGENT_PROMPT + "\n\n" + ("""Deine Aufgabe ist es, als hochpräziser KI-Daten-Extraktor aus den eingehenden Chat-Nachrichten von Studierenden und Mitarbeitern strukturierte Ticket-Daten zu extrahieren.
+    metadata_context = _build_metadata_context(state)
+
+    system_prompt = AGENT_PROMPT + metadata_context + "\n\n" + ("""Deine Aufgabe ist es, als hochpräziser KI-Daten-Extraktor aus den eingehenden Chat-Nachrichten von Studierenden und Mitarbeitern strukturierte Ticket-Daten zu extrahieren.
 
         BEREITS BEKANNTER KONTEXT:
         Problembeschreibung: {prior_issue}
@@ -461,8 +482,10 @@ def ask_for_additional_info(state: ChatbotState):
     print("-"*10 + "\n\n")
     print(f"[DEBUG]: faq_context: {faq_context}")
 
+    metadata_context = _build_metadata_context(state)
+
     system_prompt = SystemMessage(content=(
-        AGENT_PROMPT + "\n\n" +
+        AGENT_PROMPT + metadata_context + "\n\n" +
         f"""
         Dein Ziel ist es zu prüfen, ob die vorliegenden Informationen ausreichen, um das aktuelle Problem eindeutig zu bearbeiten.
 
@@ -517,6 +540,8 @@ def ask_for_additional_info(state: ChatbotState):
             Jede Frage muss genau ein Unterscheidungsmerkmal zwischen den möglichen Lösungen klären.
             
         12. Die Rückfragen dienen NUR dazu, die passenden Lösungen zu klassifizieren. Daher nicht die einzelnen todos der Lösung als Frage formulieren.
+
+        13. Stelle KEINE Rückfragen zu Informationen, die bereits im BENUTZER-KONTEXT bekannt sind (z.B. Betriebssystem, Gerät, Rolle). Diese Daten sind bereits verifiziert und muessen nicht erneut erfragt werden. Nutze sie direkt fuer die Auswahl der passenden Lösung.
         """
     ))
 
@@ -541,7 +566,18 @@ def ask_for_additional_info(state: ChatbotState):
 
         return {"needs_additional_info": False}
 
-    llm_msg = f"Ich habe für dich gerade ein Support-Ticket erstellt. Um dich optimal zu unterstützen, beantworte  bitte folgende Fragen:\n{follow_up_question}"
+    known_parts = []
+    if state.get("display_name"):
+        known_parts.append(f"Name: {state['display_name']}")
+    if state.get("device"):
+        known_parts.append(f"Gerät: {state['device']}")
+    if state.get("os_name"):
+        known_parts.append(f"Betriebssystem: {state['os_name']}")
+    known_str = ""
+    if known_parts:
+        known_str = " Folgende Informationen liegen uns bereits vor: " + ", ".join(known_parts) + "."
+
+    llm_msg = f"Ich habe für dich gerade ein Support-Ticket erstellt.{known_str} Um dich optimal zu unterstützen, beantworte bitte folgende Fragen:\n{follow_up_question}"
     ticket_id = state.get("ticket_id")
     try:
         ticket_service.append_message_to_ticket(
@@ -599,17 +635,21 @@ def give_solutions(state: ChatbotState):
     for m in faq_matches[:2]:
         solutions.append({"title": f"FAQ: {m['id']}", "description": _format_faq_match_for_prompt(m)})
     for t in ticket_matches:
+        if len(solutions) >= 2:
+            break
         solutions.append(
-            {"title": f"Ähnliches Ticket ({t.get('category', 'unknown')})", "description": t.get("messages", "")})
+            {"title": f"Ähnliches Ticket ({t.get('category', 'unknown')})", "description": t.get("text", "")})
     print(f"[Node: give_solutions] Solutions: {solutions}")
 
     problem = state.get("issue_description", "")
     infos = state.get("additional_info", [])
 
+    metadata_context = _build_metadata_context(state)
+
     system_prompt = SystemMessage(content=(
-        AGENT_PROMPT + "\n\n" +
+        AGENT_PROMPT + metadata_context + "\n\n" +
         f"""
-            Deine Aufgabe ist es, basierend auf dem 
+            Deine Aufgabe ist es, basierend auf dem
             aktuellen Problem und den bereits bekannten Zusatzinfos eine konkrete, direkt umsetzbare Lösung zu geben.
             
             AKTUELLES PROBLEM: {problem}
