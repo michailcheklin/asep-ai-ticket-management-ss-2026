@@ -408,10 +408,12 @@ class TicketService:
         :param state: Current chatbot state.
         :return: State update containing the confirmation message.
         """
+        first_name = state.get("display_name", "").split()[0] if state.get("display_name") else ""
+        greeting = f"Perfekt, {first_name}!" if first_name else "Perfekt!"
         return {
             "messages": [
                 AIMessage(content=(
-                    "Perfekt! Dein Ticket wurde erfolgreich erstellt.\n\n"
+                    f"{greeting} Dein Ticket wurde erfolgreich erstellt.\n\n"
                     "Ein Support-Mitarbeiter meldet sich so bald wie möglich bei dir.\n\n"
                     "**Ticketübersicht**\n\n"
                     f"**Betreff:** {title}\n\n"
