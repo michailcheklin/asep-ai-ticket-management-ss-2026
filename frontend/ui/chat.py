@@ -1,11 +1,15 @@
 """Shared Streamlit chat UI used by the live app and the mock clone."""
 import copy
+import os
 import re
 
+import requests
 import streamlit as st
 from streamlit.components.v1 import html
 
 from frontend.clients.base import ChatClient
+
+IDP_BASE_URL = os.getenv("IDP_BASE_URL", "http://localhost:4999")
 
 INITIAL_STATES = {
     "messages": [
@@ -34,9 +38,71 @@ INITIAL_STATES = {
     "question_answers": [],    # answers collected so far in the current round
     "_ready_to_send": None,    # combined message text waiting to be dispatched
     "scroll_target": None,     # anchor id to scroll to after rerun
+    "user_metadata": None,      # dict from IdP + browser UA, or None if not logged in
+    "metadata_confirmed": False,  # True after user confirms browser-detected device/OS
 }
 
 WAITING_MESSAGE = '*:color[Bitte warten. Antwort wird generiert...]{foreground="#888888"}*'
+
+
+# ── User-Agent parsing ──────────────────────────────────────────────────────
+
+def _parse_device_from_ua(ua: str) -> str:
+    ua_lower = ua.lower()
+    if "ipad" in ua_lower or "tablet" in ua_lower:
+        return "Tablet"
+    if "iphone" in ua_lower or "mobi" in ua_lower or ("android" in ua_lower and "tablet" not in ua_lower):
+        return "Mobile"
+    return "Desktop"
+
+
+def _parse_os_from_ua(ua: str) -> str:
+    if "iPhone" in ua or "iPad" in ua:
+        return "iOS"
+    if "Windows" in ua:
+        return "Windows"
+    if "Android" in ua:
+        return "Android"
+    if "Macintosh" in ua or "Mac OS" in ua:
+        return "macOS"
+    if "Linux" in ua:
+        return "Linux"
+    return "Unbekannt"
+
+
+def _fetch_and_store_metadata() -> None:
+    """Fetch user metadata from the IdP API and enrich with browser info."""
+    if st.session_state.get("user_metadata") is not None:
+        return
+
+    token = st.query_params.get("session_token")
+    if not token:
+        return
+
+    try:
+        resp = requests.get(f"{IDP_BASE_URL}/api/userinfo", params={"token": token}, timeout=3)
+        if resp.status_code != 200:
+            return
+        metadata = resp.json()
+    except Exception:
+        return
+
+    ua = st.context.headers.get("User-Agent", "")
+    metadata["device"] = _parse_device_from_ua(ua)
+    metadata["os_name"] = _parse_os_from_ua(ua)
+
+    st.session_state["user_metadata"] = metadata
+
+    if metadata.get("email"):
+        st.session_state["email_input"] = metadata["email"]
+    if metadata.get("matrikelnummer"):
+        st.session_state["matrikelnummer_input"] = metadata["matrikelnummer"]
+
+    name = metadata.get("display_name", "").split()[0] if metadata.get("display_name") else ""
+    if name and "messages" not in st.session_state:
+        st.session_state["messages"] = [
+            {"role": "assistant", "content": f"Hallo {name}! Ich bin ZIM Helper. Erzähl mir bitte von deinem Anliegen."}
+        ]
 
 
 # ── Session state helpers ────────────────────────────────────────────────────
@@ -119,6 +185,9 @@ def are_form_fields_valid() -> bool:
             string=st.session_state["email_input"],
         )
     )
+    metadata = st.session_state.get("user_metadata")
+    if metadata and metadata.get("role") != "student":
+        return is_email_valid
     is_matrikelnummer_valid = bool(
         re.fullmatch(pattern=r"[0-9]+", string=st.session_state["matrikelnummer_input"])
     )
@@ -185,6 +254,17 @@ def _is_other_option(option: str) -> bool:
 
 # ── Payload builders ─────────────────────────────────────────────────────────
 
+def _metadata_fields() -> dict:
+    metadata = st.session_state.get("user_metadata") or {}
+    return {
+        "display_name": metadata.get("display_name", ""),
+        "role": metadata.get("role", ""),
+        "faculty": metadata.get("faculty", ""),
+        "device": metadata.get("device", ""),
+        "os_name": metadata.get("os_name", ""),
+    }
+
+
 def build_chat_payload(user_input: str) -> dict:
     return {
         "user_message": user_input,
@@ -201,6 +281,7 @@ def build_chat_payload(user_input: str) -> dict:
         "tutorial_attempts": st.session_state.tutorial_attempts,
         "ticket_id": st.session_state.get("ticket_id"),
         "full_conversation": st.session_state.full_conversation,
+        **_metadata_fields(),
     }
 
 
@@ -223,6 +304,7 @@ def build_feedback_payload(message_index: int, helpful: bool, user_addendum: str
         "ticket_id": st.session_state.get("ticket_id"),
         "full_conversation": st.session_state.full_conversation,
         "user_addendum": user_addendum,
+        **_metadata_fields(),
     }
 
 
@@ -458,6 +540,55 @@ def render_chat_history(client: ChatClient) -> None:
             render_message_extras(message, i, client)
 
 
+def render_metadata_confirmation() -> None:
+    """Let the user confirm or correct browser-detected device and OS."""
+    metadata = st.session_state.get("user_metadata")
+    if not metadata:
+        return
+
+    with st.container(border=True):
+        st.markdown("**Erkannte Geräteinformationen**")
+
+        device_correct = st.radio(
+            f"Wir haben erkannt, dass du ein **{metadata.get('device', 'Unbekannt')}**-Gerät verwendest. Stimmt das?",
+            ["Ja", "Nein"],
+            key="confirm_device",
+            index=None,
+        )
+        custom_device = ""
+        if device_correct == "Nein":
+            custom_device = st.text_input("Welches Gerät verwendest du?", key="custom_device_input")
+
+        os_correct = st.radio(
+            f"Wir haben erkannt, dass du **{metadata.get('os_name', 'Unbekannt')}** verwendest. Stimmt das?",
+            ["Ja", "Nein"],
+            key="confirm_os",
+            index=None,
+        )
+        custom_os = ""
+        if os_correct == "Nein":
+            custom_os = st.text_input("Welches Betriebssystem verwendest du?", key="custom_os_input")
+
+        if st.button("Bestätigen", key="confirm_metadata_btn", use_container_width=True):
+            if device_correct is None or os_correct is None:
+                st.error("Bitte beantworte beide Fragen.")
+                return
+            if device_correct == "Nein" and not custom_device.strip():
+                st.error("Bitte gib dein Gerät an.")
+                return
+            if os_correct == "Nein" and not custom_os.strip():
+                st.error("Bitte gib dein Betriebssystem an.")
+                return
+
+            if device_correct == "Nein":
+                metadata["device"] = custom_device.strip()
+            if os_correct == "Nein":
+                metadata["os_name"] = custom_os.strip()
+
+            st.session_state["metadata_confirmed"] = True
+            st.rerun()
+
+
 def render_question_widget(client: ChatClient) -> None:
     """Step-by-step Q&A widget for pending bullet-point questions.
 
@@ -532,8 +663,18 @@ def render_question_widget(client: ChatClient) -> None:
 def run_app(client: ChatClient, *, mock_mode: bool = False) -> None:
     st.set_page_config(page_title="Support-Annahme über ZIM Helper", layout="centered")
 
+    _fetch_and_store_metadata()
+
+    metadata = st.session_state.get("user_metadata")
+
     with st.sidebar:
         st.header("Einstellungen")
+        if metadata:
+            role_label = "Student" if metadata.get("role") == "student" else "Mitarbeiter"
+            st.markdown(f"**Eingeloggt als:** {metadata.get('display_name', '')}")
+            st.caption(f"{role_label} · {metadata.get('faculty', '')}")
+            if metadata.get("device") or metadata.get("os_name"):
+                st.caption(f"{metadata.get('device', '')} · {metadata.get('os_name', '')}")
         if st.button("Neu starten", type="secondary"):
             reset_session_state()
             st.rerun()
@@ -544,13 +685,25 @@ def run_app(client: ChatClient, *, mock_mode: bool = False) -> None:
         st.caption("Mock-Modus: keine Backend- oder KI-Aufrufe.")
 
     st.subheader("Deine Kontaktdaten")
-    st.text_input("E-Mail-Adresse *", key="email_input")
-    st.text_input("Matrikelnummer *", key="matrikelnummer_input")
+    is_logged_in = metadata is not None
+    st.text_input("E-Mail-Adresse *", key="email_input", disabled=is_logged_in)
+    if not metadata or metadata.get("role") == "student":
+        st.text_input("Matrikelnummer *", key="matrikelnummer_input", disabled=is_logged_in)
     st.divider()
+
+    metadata_pending = metadata and not st.session_state.get("metadata_confirmed")
+    if metadata_pending:
+        render_metadata_confirmation()
+
     st.header("ZIM Helper")
 
     init_session_state()
     render_chat_history(client)
+
+    # Priority 0: metadata confirmation must be completed before chatting.
+    if metadata_pending:
+        st.chat_input(placeholder="Bitte bestätige zuerst deine Geräteinformationen.", disabled=True)
+        return
 
     # Priority 1: a finished Q&A round is ready — dispatch it to the backend.
     # process_user_message is called here (top level) so the in-progress
