@@ -78,6 +78,7 @@ class GiveSolutionsTests(unittest.TestCase):
             [
                 {"title": "FAQ: faq-1", "description": "Starte den Router neu."},
                 {"title": "FAQ: faq-2", "description": "Prüfe die eduroam-Zertifikate."},
+                {"title": "Ähnliches Ticket (Incident)", "description": "Altes ähnliches Ticket"},
             ],
         )
         self.assertIn("Zusammenfassung der Lösungen.", result["messages"][0].content)

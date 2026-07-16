@@ -24,7 +24,7 @@ def cases_from_ticket_entries(entries: list[dict], id_prefix: str) -> list[dict]
     """Convert JSON ticket entries into normalized live-test case dicts."""
     cases = []
     for index, entry in enumerate(entries):
-        ticket = entry["ticket"]
+        ticket = entry["full_conversation"]
         cases.append({
             "id": f"{id_prefix}_{index}",
             "issue_description": ticket,
