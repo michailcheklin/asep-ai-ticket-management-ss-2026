@@ -603,7 +603,7 @@ def give_solutions(state: ChatbotState):
         solutions.append({"title": f"FAQ: {m['id']}", "description": _format_faq_match_for_prompt(m)})
     for t in ticket_matches:
         solutions.append(
-            {"title": f"Ähnliches Ticket ({t.get('category', 'unknown')})", "description": t.get("messages", "")})
+            {"title": f"Ähnliches Ticket ({t.get('category', 'unknown')})", "description": t.get("text", "")})
     # Writing a truncated version of the solutions into the logs in the console
     # while the actual solutions are kept intact
     truncated_solutions_for_logs = [truncate_long_strings_in_dicts_for_logging(solution) for solution in solutions]
