@@ -39,7 +39,8 @@ INITIAL_STATES = {
     "_ready_to_send": None,    # combined message text waiting to be dispatched
     "scroll_target": None,     # anchor id to scroll to after rerun
     "user_metadata": None,      # dict from IdP + browser UA, or None if not logged in
-    "metadata_confirmed": False,  # True after user confirms browser-detected device/OS
+    "metadata_confirmed": False,   # True after user confirms browser-detected device/OS
+    "_pending_first_message": None, # first user message held until metadata is confirmed
 }
 
 WAITING_MESSAGE = '*:color[Bitte warten. Antwort wird generiert...]{foreground="#888888"}*'
@@ -541,7 +542,11 @@ def render_chat_history(client: ChatClient) -> None:
 
 
 def render_metadata_confirmation() -> None:
-    """Let the user confirm or correct browser-detected device and OS."""
+    """Let the user confirm or correct browser-detected device and OS.
+
+    Shown after the first message is sent. On confirmation the held
+    message is released for dispatch to the backend.
+    """
     metadata = st.session_state.get("user_metadata")
     if not metadata:
         return
@@ -586,6 +591,7 @@ def render_metadata_confirmation() -> None:
                 metadata["os_name"] = custom_os.strip()
 
             st.session_state["metadata_confirmed"] = True
+            st.session_state["_ready_to_send"] = st.session_state.pop("_pending_first_message", None)
             st.rerun()
 
 
@@ -690,25 +696,20 @@ def run_app(client: ChatClient, *, mock_mode: bool = False) -> None:
     if not metadata or metadata.get("role") == "student":
         st.text_input("Matrikelnummer *", key="matrikelnummer_input", disabled=is_logged_in)
     st.divider()
-
-    metadata_pending = metadata and not st.session_state.get("metadata_confirmed")
-    if metadata_pending:
-        render_metadata_confirmation()
-
     st.header("ZIM Helper")
 
     init_session_state()
     render_chat_history(client)
 
-    # Priority 0: metadata confirmation must be completed before chatting.
-    if metadata_pending:
+    metadata_needs_confirm = metadata and not st.session_state.get("metadata_confirmed")
+
+    # Priority 0: first message sent — confirm metadata before dispatching to backend.
+    if metadata_needs_confirm and st.session_state.get("_pending_first_message"):
+        render_metadata_confirmation()
         st.chat_input(placeholder="Bitte bestätige zuerst deine Geräteinformationen.", disabled=True)
         return
 
-    # Priority 1: a finished Q&A round is ready — dispatch it to the backend.
-    # process_user_message is called here (top level) so the in-progress
-    # user/assistant messages render below the chat history, not inside the
-    # question widget's bordered container.
+    # Priority 1: a finished Q&A round or released first message is ready.
     ready = st.session_state.get("_ready_to_send")
     if ready:
         st.session_state["_ready_to_send"] = None
@@ -750,6 +751,10 @@ def run_app(client: ChatClient, *, mock_mode: bool = False) -> None:
             disabled=chat_disabled,
             on_submit=bot_starting_thinking,
         ):
-            process_user_message(client, user_input)
-            st.session_state.bot_thinking = False
-            st.rerun()
+            if metadata_needs_confirm:
+                st.session_state["_pending_first_message"] = user_input
+                st.rerun()
+            else:
+                process_user_message(client, user_input)
+                st.session_state.bot_thinking = False
+                st.rerun()

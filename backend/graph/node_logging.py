@@ -10,4 +10,8 @@ def log_node_entry(node_name:str, state):
     """
     print(f"{datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3]} Entered node {node_name}")
     print(f"Current state: {state}")
+    metadata_keys = ("display_name", "role", "faculty", "device", "os_name")
+    metadata = {k: state.get(k, "") for k in metadata_keys if state.get(k)}
+    if metadata:
+        print(f"User metadata: {metadata}")
 
