@@ -137,17 +137,28 @@ class TicketService:
         :param ticket_id: The ID of the existing ticket to append to.
         :param internal: Whether the message should be internal.
         """
-        body = self._build_open_body(state)
-        full_body = f"Das Gespräch mit dem Chatbot wurde abgeschlossen. Folgende Informationen wurden erfasst:\n\n{body}"
+
+        solution_body = self._build_solution_body(state)
+        chat_info_body = f"Das Gespräch mit dem Chatbot wurde abgeschlossen. Folgende Informationen wurden erfasst:\n\n{self._build_open_body(state)}"
         
         try:
+            # Internal article with the chat history formatted for the ZIM team
             self._finalize_ticket_metadata(state, ticket_id)
             self.append_message_to_ticket(
                 ticket_id=ticket_id,
-                body=full_body,
+                body=chat_info_body,
                 sender="Agent",
                 internal=internal
             )
+
+            # Public article with the solutions
+            self.append_message_to_ticket(
+                ticket_id=ticket_id,
+                body=solution_body,
+                sender="Agent",
+                internal=False
+            )
+
             print(f"Successfully appended context to ticket {ticket_id}")
         except Exception as e:
             print(f"[TicketService ERROR] Failed to append context: {e}")
@@ -260,8 +271,17 @@ class TicketService:
             f"Kategorie: {resolve_zammad_kategorie(state.get('category')) or state.get('category', 'Service Request')}\n"
             f"Problem:\n{state['issue_description']}\n\n"
             f"Zusatzinfos:\n{self._format_additional_info(state.get('additional_info', []))}"
-            f"{self._chat_history_and_solutions_section(state)}"
+            f"{self._chat_history_section(state)}"
         )
+
+    def _build_solution_body(self, state):
+        """
+        Builds the body for the public article with the solutions that the bot offered.
+        :param state: Current chatbot state.
+        :return: Formatted solution body as plain text.
+        """
+        return self._solutions_section(state)
+
 
     def _build_ai_body(self, state):
         """
@@ -281,14 +301,14 @@ class TicketService:
             f"Problem:\n{state['issue_description']}\n\n"
             f"Zusatzinfos:\n{self._format_additional_info(state.get('additional_info', []))}"
             f"\n\nStatus: Durch KI gelöst"
-            f"{self._chat_history_and_solutions_section(state)}"
+            f"{self._chat_history_section(state)}"
         )
 
-    def _chat_history_and_solutions_section(self, state) -> str:
+    def _chat_history_section(self, state) -> str:
         """
-        Returns the chat history and solutions selection formatted into Zammad ticket format based on the state
+        Returns the chat history formatted into Zammad ticket format based on the state
         :param state: The current state of the chatbot
-        :return: The formatted chat history and solutions
+        :return: The formatted chat history
         """
         summary = (state.get("full_conversation") or "").strip() or "(keine Zusammenfassung vorhanden)"
         addendum = (state.get("user_addendum") or "").strip()
@@ -306,6 +326,15 @@ class TicketService:
             f"{'=' * 40}\n\n"
             f"{summary}"
             f"{addendum_section}\n\n"
+        )
+
+    def _solutions_section(self, state) -> str:
+        """
+        Returns the solutions formatted into Zammad ticket format based on the state
+        :param state: The current state of the chatbot
+        :return: The formatted solutions offered by the chatbot
+        """
+        return (
             f"{'=' * 40}\n"
             f"VOM BOT ANGEBOTENE LÖSUNGEN\n"
             f"{'=' * 40}\n\n"
