@@ -600,7 +600,7 @@ def give_solutions(state: ChatbotState):
         solutions.append({"title": f"FAQ: {m['id']}", "description": _format_faq_match_for_prompt(m)})
     for t in ticket_matches:
         solutions.append(
-            {"title": f"Ähnliches Ticket ({t.get('category', 'unknown')})", "description": t.get("messages", "")})
+            {"title": f"Ähnliches Ticket ({t.get('category', 'unknown')})", "description": t.get("text", "")})
     print(f"[Node: give_solutions] Solutions: {solutions}")
 
     problem = state.get("issue_description", "")
