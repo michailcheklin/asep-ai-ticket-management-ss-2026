@@ -120,7 +120,7 @@ def update_ticket_kategorie(ticket_id: int, kategorie: str | None) -> None:
             headers=headers,
             timeout=GENERAL_TIMEOUT,
         )
-        zammad_logger.info(f"Category '{resolved_kategorie}' set on ticket {ticket_id}")
+        zammad_logger.info(f"HTTP {response.status_code}: Category '{resolved_kategorie}' set on ticket {ticket_id}")
     except ConnectionError:
         zammad_logger.error("Connection error: Could not reach Zammad to update ticket kategorie")
     except MissingSchema:
@@ -141,7 +141,7 @@ def update_ticket_title(ticket_id: int, title:str) -> None:
             headers=headers,
             timeout=GENERAL_TIMEOUT,
         )
-        zammad_logger.info(f"Title '{title}' set on ticket {ticket_id}")
+        zammad_logger.info(f"HTTP {response.status_code}: Title '{title}' set on ticket {ticket_id}")
     except ConnectionError:
         zammad_logger.error("Connection error: Could not reach Zammad to update ticket title")
     except MissingSchema:
@@ -259,7 +259,7 @@ def add_tag_to_ticket(ticket_id: int, tag: str):
             headers=headers,
             timeout=GENERAL_TIMEOUT
         )
-        zammad_logger.info(f"Tag '{tag}' added to ticket {ticket_id}")
+        zammad_logger.info(f"HTTP {response.status_code}: Tag '{tag}' added to ticket {ticket_id}")
     except ConnectionError:
         zammad_logger.error("Connection error: Could not reach Zammad to add tag to ticket")
     except MissingSchema:
@@ -286,7 +286,7 @@ def replace_tag_for_ticket(ticket_id: int, old_tag: str, new_tag: str):
             headers=headers,
             timeout=GENERAL_TIMEOUT
         )
-        zammad_logger.info(f"Tag '{new_tag}' added to ticket {ticket_id}")
+        zammad_logger.info(f"HTTP {response.status_code}: Tag '{new_tag}' added to ticket {ticket_id}")
     except ConnectionError:
         zammad_logger.error("Connection error: Could not reach Zammad to replace tag on ticket")
     except MissingSchema:

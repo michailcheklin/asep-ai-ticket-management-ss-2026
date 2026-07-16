@@ -9,6 +9,12 @@ class BackendLogger:
     into one object.
     """
     def __init__(self, logger_name):
+        """
+        Creates a new logger object with the given name
+        and configures the logger to write to the console with a defined format
+        :param logger_name: The name for the logger to use: For instance if the name is "RAG"
+        then the logs start with (time) [LEVEL]: {logger_name}:
+        """
         self.logger: Logger = logging.getLogger(logger_name)
         self.logger.setLevel(logging.DEBUG)
 
