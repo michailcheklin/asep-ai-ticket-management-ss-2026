@@ -36,7 +36,11 @@ def _build_metadata_context(state: dict) -> str:
         parts.append(f"Betriebssystem: {state['os_name']}")
     if not parts:
         return ""
-    return "\n\nBENUTZER-KONTEXT:\n" + "\n".join(parts)
+    context = "\n\nBENUTZER-KONTEXT:\n" + "\n".join(parts)
+    if state.get("display_name"):
+        first_name = state["display_name"].split()[0]
+        context += f"\n\nSprich den Nutzer in deiner Antwort mit seinem Vornamen ({first_name}) an."
+    return context
 
 
 def _format_faq_match_for_prompt(match: dict) -> str:
@@ -201,8 +205,9 @@ CHATVERLAUF (User-Nachrichten):
 def ask_intent(state: ChatbotState):
     """Asks whether the user wants a tutorial or needs support."""
     log_node_entry("ask_intent", state)
+    metadata_context = _build_metadata_context(state)
     system_prompt = SystemMessage(content=(
-          AGENT_PROMPT + "\n\n"
+          AGENT_PROMPT + metadata_context + "\n\n"
         "Die Absicht des Nutzers ist noch unklar. Frage kurz und freundlich, ob er eine Schritt-fuer-Schritt-"
         "Anleitung zum Selbermachen moechte oder ob der Support sich um sein Anliegen "
         "kuemmern soll. Beantworte keine anderen Fragen und wechsle nicht das Thema."
@@ -268,8 +273,9 @@ def finish_tutorial(state: ChatbotState):
     # set ticket tag to AI-solved
     finish_ai_solved_ticket(state)
 
+    metadata_context = _build_metadata_context(state)
     system_prompt = SystemMessage(content=(
-        AGENT_PROMPT + "\n\n"
+        AGENT_PROMPT + metadata_context + "\n\n"
         "Der Nutzer hat gerade bestaetigt, dass deine Anleitung sein Anliegen "
         "geloest hat. Verabschiede dich kurz, freundlich und natuerlich, mit Bezug "
         "auf sein konkretes Anliegen. Maximal 2 Saetze. Erwaehne, dass er sich "
@@ -316,6 +322,7 @@ def extract_information(state: ChatbotState):
         Login nicht möglich, Prüfungs-/Abgabeproblemen oder komplettem Ausfall.
         Setze priority auf 0 bei normalen oder weniger dringenden Problemen.
         5. Zusammenfassung (full_conversation): Dieses Feld MUSS bei jeder Antwort neu gesetzt werden - auch wenn sich nur wenig geändert hat. Schreibe eine aktualisierte Zusammenfassung des gesamten bisherigen Gesprächs aus der Perspektive eines Support-Agenten, der einem Kollegen den Fall erklärt. Integriere alle bisher bekannten Informationen, einschließlich Antworten auf Rückfragen. Beispiel: "Der Student fragt nach einer kostenlosen Windows 10 Lizenz für sein universitätseigenes Gerät. Er hat bereits ein qualifizierendes Betriebssystem und benötigt eine Vollversion." Maximal 3 Sätze, keine Aufzählung.
+        6. Integriere in der Zusammenfassung (full_conversation) die Metadata des Users.
         """.format(
         prior_issue=prior_issue or "noch nicht bekannt",
         prior_infos=", ".join(prior_infos) if prior_infos else "keine",
@@ -390,8 +397,9 @@ def ask_for_email(state: ChatbotState):
     :return: A dictionary containing the newly extracted fields to update the state.
     """
     log_node_entry("ask_for_email", state)
+    metadata_context = _build_metadata_context(state)
     system_prompt = SystemMessage(content=(
-        AGENT_PROMPT + "\n\n" +
+        AGENT_PROMPT + metadata_context + "\n\n" +
         "Dir fehlt noch die Uni-E-Mail-Adresse des Users (eine private Adresse ist auch in Ordnung). Frage danach."
     ))
 
@@ -408,8 +416,9 @@ def ask_for_matrikelnummer(state: ChatbotState):
     :return: A dictionary containing the newly extracted fields to update the state.
     """
     log_node_entry("ask_for_matrikelnummer", state)
+    metadata_context = _build_metadata_context(state)
     system_prompt = SystemMessage(content=(
-        AGENT_PROMPT + "\n\n" +
+        AGENT_PROMPT + metadata_context + "\n\n" +
         "Dir fehlt noch die 7-stellige Matrikelnummer des Users. Frage danach."
     ))
 
@@ -427,8 +436,9 @@ def ask_for_issue(state: ChatbotState):
     """
     log_node_entry("ask_for_issue", state)
     attempts = state.get("ask_issue_attempts", 0) + 1
+    metadata_context = _build_metadata_context(state)
     system_prompt = SystemMessage(content=(
-        AGENT_PROMPT + "\n\n" +
+        AGENT_PROMPT + metadata_context + "\n\n" +
         "Der Nutzer hat noch kein konkretes IT-Anliegen beschrieben. "
         "Bitte ihn, sein IT-Problem zu schildern."
     ))
