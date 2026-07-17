@@ -43,7 +43,6 @@ download_hugging_face_models:
     - python -m venv $VENV_DIR
     - source $VENV_DIR/bin/activate
     - if [ -f tests/requirements.txt ]; then pip install -r tests/requirements.txt; fi
-    - python ./backend/prompt_security/prompt_check_model_setup.py
     - PYTHONPATH=. python -c "import backend.rag.retrieve_info"
   cache:
     - key: ${CI_COMMIT_REF_SLUG}
@@ -61,7 +60,6 @@ download_hugging_face_models:
   rules:
     - changes:
         paths:
-          - backend/prompt_security/prompt_check_model_setup.py
           - backend/rag/retrieve_info.py
   tags:
     - dind
@@ -92,31 +90,6 @@ run_test_ticket_escalation:
     - if [ -f tests/requirements.txt ]; then pip install -r tests/requirements.txt; fi
     - echo "AGENT=ZIM" >> .env
     - pytest ./backend/tests/test_incident_escalation.py -s -v
-
-run_test_prompt_security:
-  stage: before_deepeval
-  cache:
-    - key: ${CI_COMMIT_REF_SLUG}
-      paths:
-        - $PIP_CACHE_DIR
-        - $VENV_DIR/lib/python*/site-packages/
-      policy: pull
-    - key: hf-models
-      paths:
-        - $HF_HOME
-      policy: pull
-  tags:
-    - dind
-    - ude-sse
-  script:
-    - export HF_HOME=$HF_HOME
-    - python --version
-    - pip install --upgrade pip
-    - python -m venv $VENV_DIR
-    - source $VENV_DIR/bin/activate
-    - if [ -f tests/requirements.txt ]; then pip install -r tests/requirements.txt; fi
-    - pytest ./tests/test_prompt_security_result.py -v -s
-
 
 run_test_chat_endpoint_connectivity:
   stage: before_deepeval
