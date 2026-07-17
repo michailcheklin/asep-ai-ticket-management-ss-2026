@@ -307,3 +307,50 @@ run_deepeval_conversational_tests:
     - echo "AGENT=ZIM" >> .env
     - echo "ZAMMAD_SERVER_ADDRESS=$ZAMMAD_SERVER_ADDRESS" >> .env
     - PYTHONPATH=. pytest tests/test_llm_conversation_benchmark.py -v -s
+
+
+run_deepeval_off_topic_reactions_tests:
+  stage: deepeval
+  # Merge request pipeline
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      # Making this manual to give the option to run this only once in an MR
+      # or not at all in MRs that do not affect the LLM generation
+      # rather than on every push from the point onwards an MR was created
+      # To give the option, this job shall not block pipelines.
+      when: manual
+      allow_failure: true
+  tags:
+    - dind
+    - ude-sse
+  artifacts:
+    paths:
+      - tests/benchmark_results.json
+  # Caching the Python dependencies per branch, or otherwise
+  # adding dependencies in one branch that cause a conflict
+  # would cause conflicts in all other branches
+  cache:
+    - key: ${CI_COMMIT_REF_SLUG}
+      paths:
+        - $PIP_CACHE_DIR
+        - $VENV_DIR/lib/python*/site-packages/
+      policy: pull
+    - key: hf-models
+      paths:
+        - .cache/huggingface/
+      policy: pull
+  script:
+    - python --version
+    - pip install --upgrade pip
+    - python -m venv $VENV_DIR
+    - source $VENV_DIR/bin/activate
+    - if [ -f tests/requirements.txt ]; then pip install -r tests/requirements.txt; fi
+    - echo "LANGSMITH_TRACING_V2=true" >> .env
+    - echo "LANGSMITH_API_KEY=$LANGSMITH_API_KEY" >> .env
+    - echo "LANGSMITH_ENDPOINT=https://eu.api.smith.langchain.com" >> .env
+    - echo "LANGCHAIN_PROJECT=ai-ticket-benchmark" >> .env
+    - echo "SAIA_API_KEY=$SAIA_API_KEY" >> .env
+    - echo "USE_SAIA_API=true" >> .env
+    - echo "AGENT=ZIM" >> .env
+    - echo "ZAMMAD_SERVER_ADDRESS=$ZAMMAD_SERVER_ADDRESS" >> .env
+    - PYTHONPATH=. pytest tests/test_llm_off_topic_reactions.py -v -s
