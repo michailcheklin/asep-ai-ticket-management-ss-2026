@@ -2,7 +2,7 @@
 from deepeval.test_case import SingleTurnParams, MultiTurnParams
 
 from tests.llm_benchmark_template import DeepEvalTemplate
-from tests.setup import SAIA_MODEL
+from tests.setup import SAIA_JUDGE_MODEL
 
 SCENARIOS = [
     # Off-Topic-Anfragen
@@ -33,7 +33,7 @@ METRICS = [
         evaluation_params=[
             MultiTurnParams.CONTENT,
         ],
-        model=SAIA_MODEL,
+        model=SAIA_JUDGE_MODEL,
         async_mode=False
     )
 ]

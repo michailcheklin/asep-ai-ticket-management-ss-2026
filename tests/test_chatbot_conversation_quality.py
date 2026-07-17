@@ -5,7 +5,7 @@ from deepeval.simulator.controller import end, proceed
 
 from backend.api.ZIM import chat_endpoint
 from backend.graph.models.ChatRequest import ChatRequest
-from tests.setup import SAIA_MODEL
+from tests.setup import SAIA_JUDGE_MODEL
 from deepeval.dataset import EvaluationDataset, ConversationalGolden
 from deepeval.test_case import Turn
 
@@ -49,17 +49,17 @@ dataset = EvaluationDataset(goldens=[
 # Our test metrics:
 # Did the bot address the user's conversation completely?
 conversation_completeness_metric = ConversationCompletenessMetric(
-    model=SAIA_MODEL,
+    model=SAIA_JUDGE_MODEL,
 )
 
 # Did the bot lose the topic's relevance over the conversation?
 turn_relevancy_metric = TurnRelevancyMetric(
-    model=SAIA_MODEL,
+    model=SAIA_JUDGE_MODEL,
 )
 
 # Did the bot lose the already found knowledge over the conversation?
 knowledge_retention_metric = KnowledgeRetentionMetric(
-    model=SAIA_MODEL,
+    model=SAIA_JUDGE_MODEL,
 )
 
 next_requests_store: dict[str, dict] = {}
@@ -143,7 +143,7 @@ async def stopping_controller(thread_id:str = None, **kwargs):
 # Create simulator and run the test
 simulator = ConversationSimulator(
     model_callback=model_callback,
-    simulator_model=SAIA_MODEL,
+    simulator_model=SAIA_JUDGE_MODEL,
     language="German",
     stopping_controller=stopping_controller,
     async_mode=True,

@@ -1,7 +1,7 @@
 ﻿from deepeval.metrics import ConversationCompletenessMetric
 
 from tests.llm_benchmark_template import DeepEvalTemplate
-from tests.setup import SAIA_MODEL
+from tests.setup import SAIA_JUDGE_MODEL
 
 SCENARIOS = [
     # Szenario 1: WLAN
@@ -44,7 +44,7 @@ MODEL_CONFIGS = {
     "gemma-4-31b":   "gemma-4-31b-it",
 }
 
-METRICS = [ConversationCompletenessMetric(model=SAIA_MODEL, async_mode=False)]
+METRICS = [ConversationCompletenessMetric(model=SAIA_JUDGE_MODEL, async_mode=False)]
 
 BENCHMARK_FILE_PATH = "tests/benchmark_conversation_results.json"
 

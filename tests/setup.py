@@ -16,5 +16,5 @@ def make_model(model_id: str) -> GPTModel:
     )
 
 
-SAIA_MODEL = make_model("gemma-4-31b-it")
+SAIA_JUDGE_MODEL = make_model("gemma-4-31b-it")
 
