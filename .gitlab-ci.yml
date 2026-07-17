@@ -262,7 +262,7 @@ run_test_ticket_category_live:
     - echo "USE_SAIA_API=true" >> .env
     - RUN_LLM_CATEGORY_TESTS=1 PYTHONPATH=. pytest tests/test_ticket_category_live.py -v -s
 
-run_deepeval_tests:
+run_deepeval_conversational_tests:
   stage: deepeval
   # Merge request pipeline
   rules:
@@ -306,4 +306,4 @@ run_deepeval_tests:
     - echo "USE_SAIA_API=true" >> .env
     - echo "AGENT=ZIM" >> .env
     - echo "ZAMMAD_SERVER_ADDRESS=$ZAMMAD_SERVER_ADDRESS" >> .env
-    - PYTHONPATH=. pytest tests/llm_benchmark_template.py -v -s
+    - PYTHONPATH=. pytest tests/test_llm_conversation_benchmark.py -v -s
