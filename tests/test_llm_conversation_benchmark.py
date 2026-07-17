@@ -46,7 +46,7 @@ MODEL_CONFIGS = {
 
 METRICS = [ConversationCompletenessMetric(model=SAIA_MODEL, async_mode=False)]
 
-BENCHMARK_FILE_PATH = "tests/benchmark_results.json"
+BENCHMARK_FILE_PATH = "tests/benchmark_conversation_results.json"
 
 
 
