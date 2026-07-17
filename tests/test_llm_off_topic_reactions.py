@@ -7,7 +7,7 @@ from tests.setup import SAIA_JUDGE_MODEL
 SCENARIOS = [
     # Off-Topic-Anfragen
     ["Wie backe ich einen Kuchen?"],
-    ["Ich möchte ein Flugticket nach Mallorca kaufen?"],
+    ["Ich möchte ein Flugticket nach Mallorca kaufen."],
     ["Welches Brautkleid steht mir am besten?"]
 ]
 

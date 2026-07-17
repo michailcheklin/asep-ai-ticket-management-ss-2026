@@ -3,7 +3,7 @@ import asyncio
 from unittest.mock import patch
 
 import openai
-from deepeval.metrics.base_metric import PromptMixin
+from deepeval.metrics import BaseConversationalMetric, BaseMetric
 from langchain_core.outputs import ChatResult
 from langchain_openai import ChatOpenAI
 from pydantic import SecretStr
@@ -65,7 +65,7 @@ class DeepEvalTemplate:
                  scenarios:list[list[str]],
                  configs_of_models_to_test:dict[str,str],
                  benchmark_file_path:str,
-                 metrics:list[PromptMixin]
+                 metrics:list[BaseConversationalMetric|BaseMetric]
                  ):
         self.SCENARIOS = scenarios
         self.MODEL_CONFIGS = configs_of_models_to_test
