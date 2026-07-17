@@ -51,31 +51,18 @@ If you are during regular development import code from other scripts, you need t
    * On Mac/Linux `pytest ./<name of test file> -s -v`
 4. The `-s -v` flag causes the normal application to print on the terminal
 
-**Exception — LLM benchmark test and RAG retrieval test:** These tests must be run from the project root, not from the `tests/` folder, because they import backend modules that require the project root to be on the Python path:
-   * LLM benchmark test:
-     * On Windows `set PYTHONPATH=. && pytest tests/test_llm_benchmark.py -v -s`
-     * On Mac `PYTHONPATH=. pytest tests/test_llm_benchmark.py -v -s`
+**Exception — LLM conversation benchmark test, LLM off-topic handling test and RAG retrieval test:** These tests must be run from the project root, not from the `tests/` folder, because they import backend modules that require the project root to be on the Python path:
+   * LLM conversation benchmark test:
+     * On Windows `set PYTHONPATH=. && pytest tests/test_llm_conversation_benchmark.py -v -s`
+     * On Mac `PYTHONPATH=. pytest tests/test_llm_conversation_benchmark.py -v -s`
+   * LLM off-topic request handling test:
+     * On Windows `set PYTHONPATH=. && pytest tests/test_llm_off_topic_reactions.py -v -s`
+     * On Mac `PYTHONPATH=. pytest tests/test_llm_off_topic_reactions.py -v -s`
    * RAG retrieval test:
      * On Windows `set PYTHONPATH=. && pytest tests/test_rag_retrieve.py -v -s`
      * On Mac `PYTHONPATH=. pytest tests/test_rag_retrieve.py -v -s`
 
 ## What is tested
-
-### Prompt security check
-**What does this test do:** 
-In this script, some inputs are sent to the function that checks the prompt for illegal topics, prompt injection and off-topic text. 
-
-**Why is this test done:** 
-To check if the prompt security algorithm is not too lax and not too strict.
-
-**How is the test done:** 
-For each prompt it is defined whether it is expected that the prompt is OK or not. The test checks if the prompt check correctly blocks or allows inputs and then calculates the accuracy, precision, recall and F1 score.
-
-**When is the test passed:** 
-Accuracy, Precision, Recall and F1 score must be above 75%. If any of the metrics falls below that limit, the test is failed. 
-
-**Additional notes:** 
-(Currently this feature is disabled due to causing bugs with the chatbot's generation, cf. https://gitlab.git.nrw/ude-sse/asep-sose26/team1-zim/ai-ticket-management/-/merge_requests/19#what-has-changed, the test stays for potential future implementations). 
 
 ### Chatbot connectivity
 **What does this test do:**
@@ -174,28 +161,9 @@ The test is passed if, for the three relevant queries, a FAQ match reaches `FAQ_
 **Additional notes:**
 The thresholds are imported directly from `backend/rag/retrieve_info.py` instead of being duplicated in the test, so the test always evaluates against the actual production values rather than a possibly stale copy. This test must be run from the project root with `PYTHONPATH=.` set (see exception above), since it imports `backend.rag.retrieve_info` via its full module path.
 
-### Chatbot conversation quality
+### LLM chat conversation Benchmark
 **What does this test do:**
-Here it is checked if the chatbot can properly react on the user. The following metrics are checked (also cf. https://deepeval.com/guides/guides-multi-turn-evaluation-metrics):
-* Conversation Completeness - Whether the chatbot does address all concerns of the user
-* Turn Relevancy - Whether the chatbot can provide relevant answers according to the context
-* Knowledge Retention - Whether the chatbot does not forget infos during the conversation.
-
-**Why is this test done:**
-This test is done to identify potential quality problems in the way the chatbot generates the responses to the user.
-
-**How is the test done:**
-In this script, a conversation between the user and the chatbot is simulated and then evaluated. 
-
-**When is the test passed:**
-The test is passed if all the three metrics return a score of over 50% (DeepEval default value).
-
-**Additional notes:**
-One test case uses around 30 SAIA prompts within 5-6 minutes, out of which around three quarters are for the metrics.
-
-### LLM Model Benchmark
-**What does this test do:**
-This script benchmarks multiple GWDG/SAIA LLMs by running them through realistic IT-support conversation scenarios and evaluating their response quality using DeepEval's `ConversationCompletenessMetric`. Results are saved to `tests/benchmark_results.json` and logged to LangSmith.
+This script benchmarks multiple GWDG/SAIA LLMs by running them through realistic IT-support conversation scenarios and evaluating their response quality using DeepEval's `ConversationCompletenessMetric`. Results are saved to `tests/benchmark_conversation_results.json` and logged to LangSmith.
 
 **Why is this test done:**
 To identify which LLM performs best as the chatbot's underlying model for the ZIM ticket management use case, and to document the strengths and weaknesses of each evaluated model.
@@ -254,3 +222,20 @@ This change was done to give the option to do these tests only when our applicat
 * * In the CI/CD pipeline, view the console output to view the results after the test has finished.
 * If the test hangs for a long time, it is most likely due to server overload on SAIA's side
 * To add more models, add entries into the `MODEL_CONFIGS` dictionary in `test_llm_benchmark.py` in the following format: `"model_name_that_appears_on_console:":"saia_internal_model_name"`, e. g. `"llama-3.1-8b": "meta-llama-3.1-8b-instruct",`.
+
+
+
+### LLM off-topic reaction test
+**What does this test do:**
+This script runs multiple GWDG/SAIA LLMs by running them through off-topic requests using DeepEval's `ConversationalGEval` metric with a description of that the bot should politely reject an off-topic request . Results are saved to `tests/off_topic_reactions_results.json` and logged to LangSmith.
+
+**Why is this test done:**
+To identify which LLM complies the best to its agent.md file when rejecting off-topic requests
+
+**How is the test done:**
+For each model in `MODEL_CONFIGS`, the chatbot is patched to use that model. 3 off-topic messages are sent in separate chats to simulate how the user sends an off-topic message as the first message.
+
+Each scenario produces a `ConversationalTestCase` which is then evaluated by the judge model (Gemma-4-31B) using the `ConversationalGEval`. Results are collected and written to `off_topic_reactions_results.json`. All LLM calls are automatically traced in LangSmith via the LangChain integration.
+
+**When is the test passed:**
+The test always passes (it is a benchmarking script, not a pass/fail test). Results are stored for manual analysis.
