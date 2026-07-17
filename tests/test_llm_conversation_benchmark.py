@@ -51,6 +51,12 @@ BENCHMARK_FILE_PATH = "tests/benchmark_conversation_results.json"
 
 
 def test_conversation_benchmark():
+    """
+    Executes the conversation benchmark on the deepeval test template instance
+    This method wrapping is made to allow to have a reusable DeepEval test template
+    concerning chatbot chat tests while making Pytest still be
+    able to run this in a CI pipeline
+    """
     conversation_benchmark = DeepEvalTemplate(
         scenarios=SCENARIOS,
         metrics=METRICS,

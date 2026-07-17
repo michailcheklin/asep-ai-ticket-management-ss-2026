@@ -42,7 +42,13 @@ BENCHMARK_FILE_PATH = "tests/off_topic_reactions_results.json"
 
 
 
-def test_conversation_benchmark():
+def test_off_topic_reactions():
+    """
+    Executes the off-topic reaction test on the deepeval test template instance.
+    This method wrapping is made to allow to have a reusable DeepEval test template
+    concerning chatbot chat tests while making Pytest still be
+    able to run this in a CI pipeline
+    """
     conversation_benchmark = DeepEvalTemplate(
         scenarios=SCENARIOS,
         metrics=METRICS,

@@ -8,6 +8,12 @@ SAIA_API_KEY = os.environ.get("SAIA_API_KEY", "")
 SAIA_BASE_URL = "https://chat-ai.academiccloud.de/v1/"
 
 def make_model(model_id: str) -> GPTModel:
+    """
+    Creates a GPTModel from the LLM parameters that conforms
+    to the DeepEval interface for defining LLMs
+    :param model_id:
+    :return:
+    """
     return GPTModel(
         model=model_id,
         temperature=0,
