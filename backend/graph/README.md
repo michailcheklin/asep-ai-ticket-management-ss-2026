@@ -6,7 +6,7 @@ To be able to trace the LangGraph flow using LangSmith you need to do following 
 2. Select the **EU** Data Region
 3. Sign up with an e-mail and set a password to create an account
 4. On account confirmation choose "Technical" and then "LangSmith".
-5. Go to ⚙️ Settings > Access and Security > API Keys
+5. Go to  Settings > Access and Security > API Keys
 6. Click "+ API Key"
 7. Choose "Personal Access Token" and choose a name for the LangSmith API key
 8. Copy your API key
@@ -78,74 +78,66 @@ graph TD
     Start(((START)))
     End(((END)))
 
-
-     %% --- KLASSIFIKATION & ZWEI PFADE  ---
+    %% --- ALLE REGISTRIERTEN NODES ---
+    extractor_node[extractor_node <br> extract_information]
     classify_intent_node[classify_intent_node <br> classify_intent]
     ask_intent_node[ask_intent_node <br> ask_intent]
     give_tutorial_node[give_tutorial_node <br> give_tutorial]
     finish_tutorial_node[finish_tutorial_node <br> finish_tutorial]
-    escalate_incidents_node[escalate_incidents_node <br> escalate issue]
-
-    %% --- ALLE REGISTRIERTEN NODES ---
-    extractor_node[extractor_node <br> extract_information]
-    ask_email_node[ask_email_node <br> ask_for_email]
     ask_issue_node[ask_issue_node <br> ask_for_issue]
     ask_for_additional_info[ask_for_additional_info]
     classify_ticket_node[classify_ticket_node <br> classify_ticket]
+    escalate_incidents_node[escalate_incidents_node <br> escalate_incidents]
     give_solutions_node[give_solutions_node <br> give_solutions]
     finish_node[finish_node <br> finish_ticket]
 
     %% --- ROUTER (CONDITIONAL EDGES) ---
-    route_after_intent{route_after_intent}
     route_based_on_state{route_based_on_state}
+    route_after_intent{route_after_intent}
     route_after_evaluator{route_after_evaluator}
+    route_after_classification{route_after_classification}
     route_after_solutions{route_after_solutions}
 
-    %% --- VERBINDUNGEN NACH CODE-LOGIK ---
-    
-    %% Entry Point
-    Start --> classify_intent_node
-    
-    %% Erster Conditional Router
-    classify_intent_node --> route_after_intent
-    
-    route_after_intent -->|not user_email| ask_email_node
-    route_after_intent -->|intent solved & tutorial_attempts > 0| finish_tutorial_node
-    route_after_intent -->|intent tutorial & tutorial_attempts < 2| give_tutorial_node
-    route_after_intent -->|intent tutorial & tutorial_attempts >= 2| extractor_node
-    route_after_intent -->|intent problem| extractor_node
-    route_after_intent -->|else / unclear| ask_intent_node
+    %% --- Entry Point ---
+    Start --> extractor_node
 
-
-    %% --- Tutorial-Pfad endet und wartet auf Nutzer ---
-    give_tutorial_node --> End
-    ask_intent_node --> End
-    finish_tutorial_node --> End
-
-    %% --- Ticket-Pfad: Vollstaendigkeit pruefen ---
+    %% --- Router nach Extraktion (E-Mail kommt aus der Login-Session, kein ask_email_node mehr) ---
     extractor_node --> route_based_on_state
-    route_based_on_state -->|not user_email| ask_email_node
-    route_based_on_state -->|not issue & attempts < 3| ask_issue_node
     route_based_on_state -->|not issue & attempts >= 3| finish_node
-    route_based_on_state -->|else| ask_for_additional_info
+    route_based_on_state -->|not issue & attempts < 3| ask_issue_node
+    route_based_on_state -->|else| classify_intent_node
 
-    ask_email_node --> End
-    ask_issue_node --> End
+    %% --- Router nach Intent-Klassifikation ---
+    classify_intent_node --> route_after_intent
+    route_after_intent -->|solved & tutorial_attempts > 0| classify_ticket_node
+    route_after_intent -->|tutorial & tutorial_attempts <= 3| give_tutorial_node
+    route_after_intent -->|tutorial & tutorial_attempts > 3| classify_ticket_node
+    route_after_intent -->|tutorial oder problem| ask_for_additional_info
+    route_after_intent -->|else / unclear| ask_intent_node
 
     %% --- Zusatzinfos auswerten ---
     ask_for_additional_info --> route_after_evaluator
-    route_after_evaluator -->|needs_additional_info == True| classify_ticket_node
-    route_after_evaluator -->|else| End
+    route_after_evaluator -->|needs_additional_info == True| End
+    route_after_evaluator -->|tutorial & tutorial_attempts <= 3| give_tutorial_node
+    route_after_evaluator -->|else| classify_ticket_node
 
-    classify_ticket_node --> escalate_incidents_node
+    %% --- Tutorial-Exit-Routing (Issue #178) ---
+    classify_ticket_node --> route_after_classification
+    route_after_classification -->|intent solved| finish_tutorial_node
+    route_after_classification -->|else| escalate_incidents_node
+
+    %% --- Problem-Pfad ---
     escalate_incidents_node --> give_solutions_node
-
-    %% --- Loesungen anbieten ---
     give_solutions_node --> route_after_solutions
     route_after_solutions -->|solutions & is_complete| finish_node
     route_after_solutions -->|solutions & not is_complete| End
     route_after_solutions -->|not solutions| finish_node
 
+    %% --- Enden (unbedingte Kanten zu END) ---
+    ask_issue_node --> End
+    ask_intent_node --> End
+    give_tutorial_node --> End
+    finish_tutorial_node --> End
     finish_node --> End
 
     %% --- STYLING ---
@@ -163,7 +155,6 @@ graph TD
     style escalate_incidents_node fill:#bbdefb,stroke:#1976d2
     style finish_node fill:#bbdefb,stroke:#1976d2
 
-    style ask_email_node fill:#ffecb3,stroke:#ff8f00
     style ask_issue_node fill:#ffecb3,stroke:#ff8f00
     style ask_for_additional_info fill:#ffecb3,stroke:#ff8f00
 ```

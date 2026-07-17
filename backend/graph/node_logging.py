@@ -11,3 +11,9 @@ def log_node_entry(node_name:str, state):
     print(f"{datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3]} Entered node {node_name}")
     print(f"Current state: {state}")
 
+def visit(node_name: str) -> dict:
+    """
+    Return fragment for graph nodes: registers the node in the
+    visited_nodes path. Usage: return {**visit("give_tutorial_node"), ...}
+    """
+    return {"visited_nodes": [node_name]}
