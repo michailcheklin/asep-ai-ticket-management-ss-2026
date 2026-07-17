@@ -8,12 +8,11 @@ from langchain_core.outputs import ChatResult
 from langchain_openai import ChatOpenAI
 from pydantic import SecretStr
 from deepeval.evaluate import evaluate
-from deepeval.metrics import ConversationCompletenessMetric, GEval
 from deepeval.test_case import ConversationalTestCase, Turn
 from backend.api.ZIM import chat_endpoint
 from backend.graph.models.ChatRequest import ChatRequest
 from backend.graph.models.ExtractedTicketData import ExtractedTicketData
-from tests.setup import SAIA_MODEL, SAIA_API_KEY, SAIA_BASE_URL
+from tests.setup import  SAIA_API_KEY, SAIA_BASE_URL
 from langsmith import Client as LangSmithClient
 from dotenv import load_dotenv
 
