@@ -251,7 +251,7 @@ run_deepeval_conversational_tests:
     - ude-sse
   artifacts:
     paths:
-      - tests/benchmark_results.json
+      - tests/benchmark_conversation_results.json
   # Caching the Python dependencies per branch, or otherwise
   # adding dependencies in one branch that cause a conflict
   # would cause conflicts in all other branches
@@ -298,7 +298,7 @@ run_deepeval_off_topic_reactions_tests:
     - ude-sse
   artifacts:
     paths:
-      - tests/benchmark_results.json
+      - tests/off_topic_reactions_results.json
   # Caching the Python dependencies per branch, or otherwise
   # adding dependencies in one branch that cause a conflict
   # would cause conflicts in all other branches
