@@ -57,7 +57,7 @@ class AskForAdditionalInfoTests(unittest.TestCase):
         result = ask_for_additional_info(base_state())
 
         # Assert
-        self.assertEqual(result, {"needs_additional_info": False})
+        self.assertEqual(result.get("needs_additional_info"), False)
         mock_llm.with_structured_output.return_value.invoke.assert_not_called()
 
     @patch("backend.graph.nodes.ticket_service.append_message_to_ticket")
@@ -88,7 +88,7 @@ class AskForAdditionalInfoTests(unittest.TestCase):
         result = ask_for_additional_info(state)
 
         # Assert
-        self.assertEqual(result, {"needs_additional_info": False})
+        self.assertEqual(result.get("needs_additional_info"), False)
         mock_append.assert_not_called()
 
     @patch("backend.graph.nodes.ticket_service.append_message_to_ticket")
@@ -117,7 +117,7 @@ class AskForAdditionalInfoTests(unittest.TestCase):
         result = ask_for_additional_info(state)
 
         # Assert
-        self.assertEqual(result, {"needs_additional_info": False})
+        self.assertEqual(result.get("needs_additional_info"), False)
         mock_append.assert_not_called()
 
     @patch("backend.graph.nodes.ticket_service.append_message_to_ticket")
@@ -144,7 +144,7 @@ class AskForAdditionalInfoTests(unittest.TestCase):
         result = ask_for_additional_info(base_state())
 
         # Assert
-        self.assertEqual(result, {"needs_additional_info": False})
+        self.assertEqual(result.get("needs_additional_info"), False)
         mock_append.assert_not_called()
 
     @patch("backend.graph.nodes.ticket_service.append_message_to_ticket")

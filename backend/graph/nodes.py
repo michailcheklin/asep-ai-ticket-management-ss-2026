@@ -1,4 +1,3 @@
-import re
 from typing import cast
 
 from langsmith import traceable
@@ -13,7 +12,7 @@ from ..services.TicketService import TicketService
 from ..llm.prompts import TICKET_CATEGORY_RULES
 from ..services.ProblemService import ProblemService
 from ..llm.llm import llm, structured_llm, AGENT_PROMPT, category_llm
-from .node_logging import log_node_entry, langgraph_logger, truncate_long_strings_in_dicts_for_logging
+from .node_logging import log_node_entry, langgraph_logger, truncate_long_strings_in_dicts_for_logging, visit
 from ..api.zammad import create_ticket_by_user_email, add_tag_to_ticket
 from .models.IntentDecision import IntentDecision
 from backend.rag.rag_logging import rag_logger
@@ -86,7 +85,10 @@ def classify_ticket(state: ChatbotState):
         list(state.get("additional_info", [])),
         user_messages,
     )
-    return {"category": category}
+    return {
+        **visit("classify_ticket_node"),
+        "category": category
+        }
 
 
 @traceable
@@ -98,11 +100,11 @@ def escalate_incidents(state: ChatbotState):
     returns no state changes.
     """
     if state.get("category") != "Incident":
-        return {}
+        return visit("escalate_incidents_node")
 
     ticket_id = state.get("ticket_id")
     if not ticket_id or ticket_id == -1:
-        return {}
+        return visit("escalate_incidents_node")
 
     try:
         result = problem_service.register_and_check_incident(
@@ -114,7 +116,7 @@ def escalate_incidents(state: ChatbotState):
     except Exception as e:
         langgraph_logger.error(f"Escalating incident failed for ticket {ticket_id}: {e}")
 
-    return {}
+    return visit("escalate_incidents_node")
 
 
 
@@ -124,7 +126,7 @@ intent_llm = llm.with_structured_output(IntentDecision)
 
 @traceable
 def classify_intent(state: ChatbotState):
-    """Workflow node: re-evaluates on every message what the user wants (Issue #161)."""
+    """Workflow node: re-evaluates on every message what the user wants """
     log_node_entry("classify_intent", state)
 
     # 1)
@@ -169,14 +171,10 @@ CHATVERLAUF (User-Nachrichten):
 
     state_update = {"intent": intent}
 
-    # 4) Try to extract an e-mail address from the user messages according to the
-    # e-mail format acc. to the RFC 5321
-    if not state.get("user_email") and user_messages:
-        match = re.search(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}", user_messages[-1])
-        if match:
-            state_update["user_email"] = match.group(0)
-
-    return state_update
+    return {
+        **visit("classify_intent_node"),
+        **state_update
+        }
 
 
 
@@ -191,11 +189,14 @@ def ask_intent(state: ChatbotState):
         "kuemmern soll. Beantworte keine anderen Fragen und wechsle nicht das Thema."
     ))
     response = llm.invoke([system_prompt] + state["messages"])
-    return {"messages": [response]}
+    return {
+        **visit("ask_intent_node"),
+        "messages": [response]
+        }
 
 @traceable
 def give_tutorial(state: ChatbotState):
-    """Creates a step-by-step tutorial from the knowledge base (Issue #161)."""
+    """Creates a step-by-step tutorial from the knowledge base"""
     log_node_entry("give_tutorial", state)
     attempts = state.get("tutorial_attempts", 0)
 
@@ -236,6 +237,7 @@ REGELN:
     response = llm.invoke([system_prompt] + state["messages"])
 
     return {
+        **visit("give_tutorial_node"),
         "messages": [response],
         "tutorial_attempts": attempts + 1
     }
@@ -258,7 +260,11 @@ def finish_tutorial(state: ChatbotState):
     ))
     response = llm.invoke([system_prompt] + state["messages"])
 
-    return {**result, "messages": [response]}
+    return {
+        **visit("finish_tutorial_node"),
+        **result,
+        "messages": [response]
+        }
 
 @traceable
 def extract_information(state: ChatbotState):
@@ -283,7 +289,7 @@ def extract_information(state: ChatbotState):
         {conversation_context}
 
         EXTRAKTIONS-REGELN:
-        1. Basis-Daten (Textfelder): Suche nach der 'email', der 'matrikelnummer' und dem Haupt-'problem' und speichere diese ausschließlich in ihren jeweiligen Textfeldern.
+        1. Basis-Daten (Textfelder): Suche nach der 'matrikelnummer' und dem Haupt-'problem' und speichere diese ausschließlich in ihren jeweiligen Textfeldern.
         2. Das 'problem' darf ausschließlich gesetzt werden, wenn der Nutzer tatsächlich ein konkretes IT-Problem oder eine Supportanfrage beschreibt.
         2a. Ist in BEREITS BEKANNTER KONTEXT unter "Problembeschreibung" bereits ein Wert vorhanden, setze 'problem' NICHT erneut. Beschreibt die aktuelle Nachricht eine Verfeinerung, Präzisierung oder Detailantwort zum bereits bekannten Problem (z.B. eine Antwort auf eine Rückfrage), ordne diesen Inhalt stattdessen dem Feld 'additional_info' zu.
         3. Zusatzinformationen (Listen-Feld): Extrahiere alle weiteren technischen oder lokalen Details, die für die Lösung des Problems nützlich sein könnten, und weise sie dem Feld 'additional_info' zu.
@@ -310,9 +316,8 @@ def extract_information(state: ChatbotState):
     langgraph_logger.debug(f"EXTRACTED DATA: {extracted_data}")
 
     state_update = {}
+    state_update["graph_runs"] = state.get("graph_runs", 0) + 1
 
-    if extracted_data.email and not state.get("user_email"):
-        state_update["user_email"] = extracted_data.email
     if extracted_data.matrikelnummer and not state.get("matrikelnummer"):
         state_update["matrikelnummer"] = extracted_data.matrikelnummer
     if extracted_data.problem and not state.get("issue_description"):
@@ -357,43 +362,11 @@ def extract_information(state: ChatbotState):
         langgraph_logger.info(f"Created ticket with ID {result} for the state update: {state_update}")
 
 
-    return state_update
+    return {
+        **visit("extractor_node"),
+        ** state_update,
+        }
 
-@traceable
-def ask_for_email(state: ChatbotState):
-    """
-    Queries Llama to politely ask the user for their missing email
-    :param state: The current conversation and ticket state
-    :return: A dictionary containing the newly extracted fields to update the state.
-    """
-    log_node_entry("ask_for_email", state)
-    system_prompt = SystemMessage(content=(
-        AGENT_PROMPT + "\n\n" +
-        "Dir fehlt noch die Uni-E-Mail-Adresse des Users (eine private Adresse ist auch in Ordnung). Frage danach."
-    ))
-
-    full_messages = [system_prompt] + state["messages"]
-    response = llm.invoke(full_messages)
-
-    return {"messages": [response]}
-
-@traceable
-def ask_for_matrikelnummer(state: ChatbotState):
-    """
-    Queries Llama to politely ask the user for their missing matrikelnummer
-    :param state: The current conversation and ticket state
-    :return: A dictionary containing the newly extracted fields to update the state.
-    """
-    log_node_entry("ask_for_matrikelnummer", state)
-    system_prompt = SystemMessage(content=(
-        AGENT_PROMPT + "\n\n" +
-        "Dir fehlt noch die 7-stellige Matrikelnummer des Users. Frage danach."
-    ))
-
-    full_messages = [system_prompt] + state["messages"]
-    response = llm.invoke(full_messages)
-
-    return {"messages": [response]}
 
 @traceable
 def ask_for_issue(state: ChatbotState):
@@ -415,12 +388,14 @@ def ask_for_issue(state: ChatbotState):
 
     if attempts >= 3:
         return {
+            **visit("ask_issue_node"),
             "messages": [response],
             "ask_issue_attempts": attempts,
             "is_complete": True
         }
 
     return {
+        **visit("ask_issue_node"),
         "messages": [response],
         "ask_issue_attempts": attempts
     }
@@ -450,7 +425,10 @@ def ask_for_additional_info(state: ChatbotState):
 
     if not faq_matches and not ticket_matches:
         rag_logger.debug(f"Query {query} returned no result. Skipping follow up question")
-        return {"needs_additional_info": False}
+        return {
+            **visit("ask_for_additional_info"),
+            "needs_additional_info": False
+            }
 
     faq_context = "\n".join([f"- {_format_faq_match_for_prompt(match)}" for match in faq_matches])
     ticket_context = "\n".join([f"- {match['text']} (Kategorie: {match['category']})" for match in ticket_matches])
@@ -538,7 +516,10 @@ def ask_for_additional_info(state: ChatbotState):
     follow_up_question = (decision.follow_up_question or "").strip()
     if len(infos) >= 2 or not decision.needs_additional_info or attempts >= 3 or not follow_up_question:
 
-        return {"needs_additional_info": False}
+        return {
+            **visit("ask_for_additional_info"),
+            "needs_additional_info": False
+            }
 
     llm_msg = f"Ich habe für dich gerade ein Support-Ticket erstellt. Um dich optimal zu unterstützen, beantworte  bitte folgende Fragen:\n{follow_up_question}"
     ticket_id = state.get("ticket_id")
@@ -552,6 +533,7 @@ def ask_for_additional_info(state: ChatbotState):
     except Exception as e:
         langgraph_logger.error(f"Failed to add internal article: {e}")
     return {
+        **visit("ask_for_additional_info"),
         "needs_additional_info": True,
         "additional_info_attempts": attempts + 1,
         "messages": [AIMessage(content=llm_msg)]
@@ -578,7 +560,10 @@ def give_solutions(state: ChatbotState):
     query = f"{issue} + {additional}"
 
     if not issue:
-        return {"messages": [AIMessage(content="Keine ausreichende Anfrage für die Suche.")], "solutions": []}
+        return {
+             **visit("give_solutions_node"),
+             "messages": [AIMessage(content="Keine ausreichende Anfrage für die Suche.")], "solutions": []
+             }
 
     try:
         rag_logger.info(f"Sending RAG query '{query}'")
@@ -591,7 +576,10 @@ def give_solutions(state: ChatbotState):
 
     except Exception as e:
         rag_logger.error(f"RAG ERROR {e}")
-        return {"messages": [AIMessage(content="Fehler bei der Suche in der Wissensdatenbank.")], "solutions": []}
+        return {
+             **visit("give_solutions_node"),
+             "messages": [AIMessage(content="Fehler bei der Suche in der Wissensdatenbank.")],
+             "solutions": []}
 
     faq_matches = results.get("faq_matches", [])
     ticket_matches = results.get("ticket_matches", [])
@@ -612,8 +600,18 @@ def give_solutions(state: ChatbotState):
     problem = state.get("issue_description", "")
     infos = state.get("additional_info", [])
 
+    tutorial_handover = ""
+    if state.get("tutorial_attempts", 0) > 3:
+        tutorial_handover = (
+            "\nWICHTIG: Die Anleitung wurde bereits mehrfach ausgegeben, das Problem "
+            "besteht weiterhin. Weise zu Beginn der Antwort kurz darauf hin, dass die "
+            "Anleitung offenbar nicht geholfen hat und nun konkrete Loesungen "
+            "vorgeschlagen bzw. das Anliegen an den Support uebergeben wird. "
+            "Formuliere durchgehend neutral, ohne direkte Anrede (weder 'du' noch 'Sie')."
+        )
+
     system_prompt = SystemMessage(content=(
-        AGENT_PROMPT + "\n\n" +
+        AGENT_PROMPT + "\n\n" + tutorial_handover + "\n\n" +
         f"""
             Deine Aufgabe ist es, basierend auf dem 
             aktuellen Problem und den bereits bekannten Zusatzinfos eine konkrete, direkt umsetzbare Lösung zu geben.
@@ -672,6 +670,7 @@ def give_solutions(state: ChatbotState):
 
 
     return {
+        **visit("give_solutions_node"),
         "messages": [final_message],
         "solutions": solutions,
         # "rag_debug": {
@@ -700,6 +699,7 @@ def finish_ticket(state):
             "(z. B. WLAN, VPN, E-Mail, Moodle oder Account-Probleme), helfe ich dir gerne weiter."
         )
         return {
+            **visit("finish_node"),
             "messages": [AIMessage(content=final_message)],
             "is_complete": True
         }
@@ -721,7 +721,11 @@ def finish_ticket(state):
     except Exception as e:
         langgraph_logger.info(f"give_solution node: Could not append message to ticket.\nError: {e}")
 
-    return {**result, "category": category}
+    return {
+        **visit("finish_node"),
+        **result,
+        "category": category
+        }
 
 @traceable
 def finish_ai_solved_ticket(state):
@@ -734,4 +738,7 @@ def finish_ai_solved_ticket(state):
     category = _resolve_ticket_category(state)
     state_with_category = {**state, "category": category}
     result = ticket_service.create_ai_solved_ticket(state_with_category)
-    return {**result, "category": category}
+    return {
+        **result,
+        "category": category
+        }

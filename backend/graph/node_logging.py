@@ -31,3 +31,10 @@ def truncate_long_strings_in_dicts_for_logging(obj, max_length=200):
         return [truncate_long_strings_in_dicts_for_logging(item, max_length) for item in obj]
     else:
         return obj
+
+def visit(node_name: str) -> dict:
+    """
+    Return fragment for graph nodes: registers the node in the
+    visited_nodes path. Usage: return {**visit("give_tutorial_node"), ...}
+    """
+    return {"visited_nodes": [node_name]}

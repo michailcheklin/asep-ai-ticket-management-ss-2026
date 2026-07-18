@@ -23,3 +23,4 @@ class ChatRequest(BaseModel):
     user_addendum: str = ""
     intent: str = ""
     tutorial_attempts: int = 0
+    graph_runs: int = 0

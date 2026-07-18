@@ -136,6 +136,7 @@ async def chat_endpoint(request: ChatRequest):
         "full_conversation": request.full_conversation,
         "intent": request.intent,
         "tutorial_attempts": request.tutorial_attempts,
+        "graph_runs": request.graph_runs,
     }
     return __execute_langchain_workflow(current_state)
 
@@ -299,6 +300,7 @@ async def solution_feedback(request: ChatRequest):
         "user_addendum": request.user_addendum,
         "intent": request.intent,
         "tutorial_attempts": request.tutorial_attempts,
+        "graph_runs": request.graph_runs,
     }
 
     current_state["category"] = _resolve_ticket_category(current_state)

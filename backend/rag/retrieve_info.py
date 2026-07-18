@@ -4,6 +4,7 @@ import numpy as np
 from collections import defaultdict
 import os
 from sentence_transformers import SentenceTransformer, CrossEncoder
+from langsmith import traceable
 
 from .rag_logging import rag_logger
 
@@ -161,6 +162,7 @@ def select_faq_matches(ranked: list) -> list:
     rag_logger.info(f"FAQ no results above minimum threshold {FAQ_TIER_3_THRESHOLD}")
     return []
 
+@traceable(run_type="retriever")
 def retrieve_relevant_entries(user_query: str, n_results: int = 5) -> dict:
     """
     Given a user query (new support ticket string), retrieve the most relevant
