@@ -559,10 +559,11 @@ def render_metadata_confirmation() -> None:
         return
 
     with st.container(border=True):
-        st.markdown("**Erkannte Geräteinformationen**")
+        st.markdown("**Erkannte Geräteinformationen**\n")
+        st.markdown("Dein Browser hat uns diese Informationen automatisch bereitgestellt. Dadurch können wir besser nachvollziehen, unter welchen Bedingungen dein Problem auftritt.")
 
         device_correct = st.radio(
-            f"Wir haben erkannt, dass du ein **{metadata.get('device', 'Unbekannt')}**-Gerät verwendest. Stimmt das?",
+            f"Bezieht sich dein Anliegen auf ein **{metadata.get('device', 'Unbekannt')}**-Gerät?",
             ["Ja", "Nein"],
             key="confirm_device",
             index=None,
@@ -572,7 +573,7 @@ def render_metadata_confirmation() -> None:
             custom_device = st.text_input("Welches Gerät verwendest du?", key="custom_device_input")
 
         os_correct = st.radio(
-            f"Wir haben erkannt, dass du **{metadata.get('os_name', 'Unbekannt')}** verwendest. Stimmt das?",
+            f"Bezieht sich dein Anliegen auf **{metadata.get('os_name', 'Unbekannt')}**?",
             ["Ja", "Nein"],
             key="confirm_os",
             index=None,
