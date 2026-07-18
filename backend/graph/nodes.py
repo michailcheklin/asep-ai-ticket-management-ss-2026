@@ -530,6 +530,8 @@ def ask_for_additional_info(state: ChatbotState):
         12. Die Rückfragen dienen NUR dazu, die passenden Lösungen zu klassifizieren. Daher nicht die einzelnen todos der Lösung als Frage formulieren.
 
         13. Stelle KEINE Rückfragen zu Informationen, die bereits im BENUTZER-KONTEXT bekannt sind (z.B. Betriebssystem, Gerät, Rolle). Diese Daten sind bereits verifiziert und muessen nicht erneut erfragt werden. Nutze sie direkt fuer die Auswahl der passenden Lösung.
+        
+        14. Vermeide die Wiedergabe einer Option mit einem Komma, also vermeide zum Beispiel: "options: Keine Verbindung, Verbindung, aber kein Internet, Verbindungsabbrüche, Keine IP‑Adresse, Andere"
         """
     ))
 
