@@ -17,6 +17,13 @@ class ChatbotState(TypedDict):
  
     tutorial_attempts: int
 
+
+    # Nodes visited during the current graph execution
+    visited_nodes: Annotated[list[str], operator.add]
+
+    # Number of graph executions in this conversation
+    graph_runs: int
+
     # ticket data
     user_email: str
     matrikelnummer: str

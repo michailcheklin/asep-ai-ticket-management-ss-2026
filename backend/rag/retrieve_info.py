@@ -4,6 +4,7 @@ import numpy as np
 from collections import defaultdict
 import os
 from sentence_transformers import SentenceTransformer, CrossEncoder
+from langsmith import traceable
 
 # --- These run ONCE when the module is first imported ---
 print("[RAG] Loading FAQ embedder...")
@@ -155,6 +156,7 @@ def select_faq_matches(ranked: list) -> list:
     print(f"[RAG] FAQ no results above minimum threshold {FAQ_TIER_3_THRESHOLD}")
     return []
 
+@traceable(run_type="retriever")
 def retrieve_relevant_entries(user_query: str, n_results: int = 5) -> dict:
     """
     Given a user query (new support ticket string), retrieve the most relevant

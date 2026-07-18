@@ -138,6 +138,7 @@ async def chat_endpoint(request: ChatRequest):
         "faculty": request.faculty,
         "device": request.device,
         "os_name": request.os_name,
+        "graph_runs": request.graph_runs,
     }
     return __execute_langchain_workflow(current_state)
 
@@ -306,6 +307,7 @@ async def solution_feedback(request: ChatRequest):
         "faculty": request.faculty,
         "device": request.device,
         "os_name": request.os_name,
+        "graph_runs": request.graph_runs,
     }
 
     current_state["category"] = _resolve_ticket_category(current_state)

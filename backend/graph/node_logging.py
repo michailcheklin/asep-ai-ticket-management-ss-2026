@@ -15,3 +15,9 @@ def log_node_entry(node_name:str, state):
     if metadata:
         print(f"User metadata: {metadata}")
 
+def visit(node_name: str) -> dict:
+    """
+    Return fragment for graph nodes: registers the node in the
+    visited_nodes path. Usage: return {**visit("give_tutorial_node"), ...}
+    """
+    return {"visited_nodes": [node_name]}
