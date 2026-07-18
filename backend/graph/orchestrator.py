@@ -61,7 +61,7 @@ def __execute_langchain_workflow(state: ChatbotState):
     updated_state_display_for_logs = copy.deepcopy(updated_state)
     updated_state_display_for_logs["solutions"] = list(map(truncate_long_strings_in_dicts_for_logging, updated_state_display_for_logs["solutions"]))
     langgraph_logger.debug(f"Final updated state:\n{updated_state_display_for_logs}")
-
+    langgraph_logger.debug(f"Run #{updated_state.get('graph_runs', 0)} — path: {' -> '.join(updated_state.get('visited_nodes', []))}")
 
     return {
         "bot_response": bot_response,
