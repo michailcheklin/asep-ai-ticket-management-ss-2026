@@ -262,7 +262,7 @@ To add another LLM test that simulates a set of sequences of user messages, do t
 6. In a method where the name starts with `test_` (so Pytest sees the code as a test), write this code:
     ```
     def test_your_name():
-        your_name_test = DeepEvalTemplate(
+        your_name_test = DeepEvalTestTemplate(
             scenarios=SCENARIOS,
             metrics=METRICS,
             configs_of_models_to_test=MODEL_CONFIGS,
@@ -271,7 +271,7 @@ To add another LLM test that simulates a set of sequences of user messages, do t
         your_name_test.test_benchmark_all_models()
     ```
    The code does these things:
-    1. Defines a DeepEval test template object with the message sequences to test, the metrics and the models and the file path of the result JSON file
+    1. Defines a DeepEval test template object with the message sequences to test, the metrics, the models to evaluate and the file path of the result JSON file
    2. Executes the test
 7. In `gitlab-ci.yml` add this code to integrate the new test as an optional and manual merge request pipeline in the CI/CD:
    ```

@@ -1,6 +1,6 @@
 ﻿from deepeval.metrics import ConversationCompletenessMetric
 
-from tests.llm_benchmark_template import DeepEvalTemplate
+from tests.llm_benchmark_template import DeepEvalTestTemplate
 from tests.setup import SAIA_JUDGE_MODEL
 
 SCENARIOS = [
@@ -57,7 +57,7 @@ def test_conversation_benchmark():
     concerning chatbot chat tests while making Pytest still be
     able to run this in a CI pipeline
     """
-    conversation_benchmark = DeepEvalTemplate(
+    conversation_benchmark = DeepEvalTestTemplate(
         scenarios=SCENARIOS,
         metrics=METRICS,
         configs_of_models_to_test=MODEL_CONFIGS,

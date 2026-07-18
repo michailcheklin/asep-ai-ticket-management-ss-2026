@@ -68,7 +68,7 @@ class LlamaPatchForChatOpenAI(ChatOpenAI):
         return super()._create_chat_result(response, generation_info)
 
 
-class DeepEvalTemplate:
+class DeepEvalTestTemplate:
     """
     Template for any DeepEval tests covering any chat interaction
     This faciliates adding more Deepeval chat tests while adhering to the DRY principle

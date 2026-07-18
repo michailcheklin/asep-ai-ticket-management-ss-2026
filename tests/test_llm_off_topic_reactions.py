@@ -1,7 +1,7 @@
 ﻿from deepeval.metrics import ConversationCompletenessMetric, GEval, ConversationalGEval
 from deepeval.test_case import SingleTurnParams, MultiTurnParams
 
-from tests.llm_benchmark_template import DeepEvalTemplate
+from tests.llm_benchmark_template import DeepEvalTestTemplate
 from tests.setup import SAIA_JUDGE_MODEL
 
 SCENARIOS = [
@@ -49,10 +49,10 @@ def test_off_topic_reactions():
     concerning chatbot chat tests while making Pytest still be
     able to run this in a CI pipeline
     """
-    conversation_benchmark = DeepEvalTemplate(
+    off_topic_reaction_test = DeepEvalTestTemplate(
         scenarios=SCENARIOS,
         metrics=METRICS,
         configs_of_models_to_test=MODEL_CONFIGS,
         benchmark_file_path=BENCHMARK_FILE_PATH,
     )
-    conversation_benchmark.test_benchmark_all_models()
+    off_topic_reaction_test.test_benchmark_all_models()

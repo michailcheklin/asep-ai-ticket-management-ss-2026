@@ -10,7 +10,7 @@ SAIA_BASE_URL = "https://chat-ai.academiccloud.de/v1/"
 def make_model(model_id: str) -> GPTModel:
     """
     Creates a GPTModel from the LLM parameters that conforms
-    to the DeepEval interface for defining LLMs
+    to the DeepEval interface for defining LLMs and points to the SAIA API
     :param model_id:
     :return:
     """
