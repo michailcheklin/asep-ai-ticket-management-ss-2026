@@ -239,3 +239,89 @@ Each scenario produces a `ConversationalTestCase` which is then evaluated by the
 
 **When is the test passed:**
 The test always passes (it is a benchmarking script, not a pass/fail test). Results are stored for manual analysis.
+
+
+## How to add more LLM tests
+To add another LLM test that simulates a set of sequences of user messages, do the following steps:
+1. Add a new Python file in the `tests` folder
+2. Define the 2D array of strings called `SCENARIOS` to define the scenarios:
+   1. Each separate chat is a sub array in the 2D array
+   2. In each subarray each string represents a chat message the user types no matter what the bot responds to
+3. Define the models that are tested in a dict called `MODEL_CONFIGS`:
+   1. Each key (as string) is the name of the model displayed in the result file 
+   2. The value (as string) of each key is the full name of the model acc. to the SAIA API
+4. Define an array of DeepEval conversational metrics with the name `METRICS` to be used for evaluation:
+   1. Each item is either a `ConversationalGEval` with a custom conversation metric or any of the predefined conversational metric such as `ConversationCompleteness` (for a full list, cf. https://deepeval.com/guides/guides-multi-turn-evaluation-metrics)
+   2. For any custom conversational metric you need to provide for the instantiation of a `ConversationalGEval` these arguments:
+      1. `name`: The name of the metric as a string - Appears in the result JSON file and in console outputs
+      2. `criteria`: A natural language definition of the criteria that DeepEval shall evaluate the conversation against
+      3. `evaluation_params`: The parameters the DeepEval evaluation shall take into account. For chat-only tests, `MultiTurnParams.CONTENT` suffices so that only the chat messages are checked
+      4. `model=SAIA_JUDGE_MODEL`: Sets the judge model to a SAIA API model defined in `tests/setup.py`. Do not leave that empty, else DeepEval will try to use the API of `openai.com` and not the SAIA API
+      5. `async_mode=False` - Ensures the metric evaluates the chat messages sequentially
+5. Provide in the `BENCHMARK_FILE_PATH` the filepath of the test result's JSON file which serves as a test artifact
+6. In a method where the name starts with `test_` (so Pytest sees the code as a test), write this code:
+    ```
+    def test_your_name():
+        your_name_test = DeepEvalTemplate(
+            scenarios=SCENARIOS,
+            metrics=METRICS,
+            configs_of_models_to_test=MODEL_CONFIGS,
+            benchmark_file_path=BENCHMARK_FILE_PATH,
+        )
+        your_name_test.test_benchmark_all_models()
+    ```
+   The code does these things:
+    1. Defines a DeepEval test template object with the message sequences to test, the metrics and the models and the file path of the result JSON file
+   2. Executes the test
+7. In `gitlab-ci.yml` add this code to integrate the new test as an optional and manual merge request pipeline in the CI/CD:
+   ```
+   run_deepeval_custom_tests:
+      stage: deepeval
+      # Merge request pipeline
+      rules:
+        - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+          # Making this manual to give the option to run this only once in an MR
+          # or not at all in MRs that do not affect the LLM generation
+          # rather than on every push from the point onwards an MR was created
+          # To give the option, this job shall not block pipelines.
+          when: manual
+          allow_failure: true
+      tags:
+        - dind
+        - ude-sse
+      artifacts:
+        paths:
+          - tests/deepeval_custom_tests_result_file_name.json
+      # Caching the Python dependencies per branch, or otherwise
+      # adding dependencies in one branch that cause a conflict
+      # would cause conflicts in all other branches
+      cache:
+        - key: ${CI_COMMIT_REF_SLUG}
+          paths:
+            - $PIP_CACHE_DIR
+            - $VENV_DIR/lib/python*/site-packages/
+          policy: pull
+        - key: hf-models
+          paths:
+            - .cache/huggingface/
+          policy: pull
+      script:
+        - python --version
+        - pip install --upgrade pip
+        - python -m venv $VENV_DIR
+        - source $VENV_DIR/bin/activate
+        - if [ -f tests/requirements.txt ]; then pip install -r tests/requirements.txt; fi
+        - echo "LANGSMITH_TRACING_V2=true" >> .env
+        - echo "LANGSMITH_API_KEY=$LANGSMITH_API_KEY" >> .env
+        - echo "LANGSMITH_ENDPOINT=https://eu.api.smith.langchain.com" >> .env
+        - echo "LANGCHAIN_PROJECT=ai-ticket-benchmark" >> .env
+        - echo "SAIA_API_KEY=$SAIA_API_KEY" >> .env
+        - echo "USE_SAIA_API=true" >> .env
+        - echo "AGENT=ZIM" >> .env
+        - echo "ZAMMAD_SERVER_ADDRESS=$ZAMMAD_SERVER_ADDRESS" >> .env
+        - PYTHONPATH=. pytest tests/test_deepeval_custom_tests.py -v -s
+   ```
+    Important notes for the CI file:
+   1. Use a descriptive name as the header of the job (here the name would be `run_deepeval_custom_tests`)
+   2. Make sure the correct artifact path is selected, where the result JSON is located (here it would be `tests/deepeval_custom_tests_result_file_name.json`)
+   3. In the last line after the installation of the requirements and the definition of environments, make sure to write the correct name of the test script (here it would be `pytest tests/test_deepeval_custom_tests.py`.
