@@ -50,6 +50,7 @@ WAITING_MESSAGE = '*:color[Bitte warten. Antwort wird generiert...]{foreground="
 # ── User-Agent parsing ──────────────────────────────────────────────────────
 
 def _parse_device_from_ua(ua: str) -> str:
+    """Classify device type (Tablet/Mobile/Desktop) from User-Agent substrings."""
     ua_lower = ua.lower()
     if "ipad" in ua_lower or "tablet" in ua_lower:
         return "Tablet"
@@ -59,6 +60,7 @@ def _parse_device_from_ua(ua: str) -> str:
 
 
 def _parse_os_from_ua(ua: str) -> str:
+    """Classify OS from User-Agent substrings; falls back to "Unbekannt" if unrecognized."""
     if "iPhone" in ua or "iPad" in ua:
         return "iOS"
     if "Windows" in ua:
@@ -74,9 +76,11 @@ def _parse_os_from_ua(ua: str) -> str:
 
 def _fetch_and_store_metadata() -> None:
     """Fetch user metadata from the IdP API and enrich with browser info."""
+    # Only fetch once per session; Shibboleth login already ran before the chat page loaded.
     if st.session_state.get("user_metadata") is not None:
         return
 
+    # No token means the user reached this page outside the Shibboleth login flow.
     token = st.query_params.get("session_token")
     if not token:
         return
@@ -89,17 +93,20 @@ def _fetch_and_store_metadata() -> None:
     except Exception:
         return
 
+    # Device/OS aren't provided by the IdP, so derive them client-side from the request headers.
     ua = st.context.headers.get("User-Agent", "")
     metadata["device"] = _parse_device_from_ua(ua)
     metadata["os_name"] = _parse_os_from_ua(ua)
 
     st.session_state["user_metadata"] = metadata
 
+    # Pre-fill the (still-required) form fields so the user doesn't retype known IdP data.
     if metadata.get("email"):
         st.session_state["email_input"] = metadata["email"]
     if metadata.get("matrikelnummer"):
         st.session_state["matrikelnummer_input"] = metadata["matrikelnummer"]
 
+    # Personalize the greeting with the user's first name, but only if the chat hasn't started yet.
     name = metadata.get("display_name", "").split()[0] if metadata.get("display_name") else ""
     if name and "messages" not in st.session_state:
         st.session_state["messages"] = [
@@ -257,6 +264,7 @@ def _is_other_option(option: str) -> bool:
 # ── Payload builders ─────────────────────────────────────────────────────────
 
 def _metadata_fields() -> dict:
+    """Extract the fixed subset of client metadata sent to the backend on every request."""
     metadata = st.session_state.get("user_metadata") or {}
     return {
         "display_name": metadata.get("display_name", ""),
