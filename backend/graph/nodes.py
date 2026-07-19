@@ -1,3 +1,4 @@
+import re
 from typing import cast
 
 from langsmith import traceable
@@ -19,6 +20,27 @@ from backend.rag.rag_logging import rag_logger
 
 ticket_service = TicketService()
 problem_service = ProblemService()
+
+
+def _build_metadata_context(state: dict) -> str:
+    parts = []
+    if state.get("display_name"):
+        parts.append(f"Name des Nutzers: {state['display_name']}")
+    if state.get("role"):
+        parts.append(f"Rolle: {state['role']}")
+    if state.get("faculty"):
+        parts.append(f"Fakultaet: {state['faculty']}")
+    if state.get("device"):
+        parts.append(f"Geraet: {state['device']}")
+    if state.get("os_name"):
+        parts.append(f"Betriebssystem: {state['os_name']}")
+    if not parts:
+        return ""
+    context = "\n\nBENUTZER-KONTEXT:\n" + "\n".join(parts)
+    if state.get("display_name"):
+        first_name = state["display_name"].split()[0]
+        context += f"\n\nSprich den Nutzer in deiner Antwort mit seinem Vornamen ({first_name}) an."
+    return context
 
 
 def _format_faq_match_for_prompt(match: dict) -> str:
@@ -182,8 +204,9 @@ CHATVERLAUF (User-Nachrichten):
 def ask_intent(state: ChatbotState):
     """Asks whether the user wants a tutorial or needs support."""
     log_node_entry("ask_intent", state)
+    metadata_context = _build_metadata_context(state)
     system_prompt = SystemMessage(content=(
-          AGENT_PROMPT + "\n\n"
+          AGENT_PROMPT + metadata_context + "\n\n"
         "Die Absicht des Nutzers ist noch unklar. Frage kurz und freundlich, ob er eine Schritt-fuer-Schritt-"
         "Anleitung zum Selbermachen moechte oder ob der Support sich um sein Anliegen "
         "kuemmern soll. Beantworte keine anderen Fragen und wechsle nicht das Thema."
@@ -209,7 +232,9 @@ def give_tutorial(state: ChatbotState):
     ticket_context = "\n".join(f"- {m['text']}" for m in rag_results.get("ticket_matches", []))
 
 
-    system_prompt = SystemMessage(content=AGENT_PROMPT + "\n\n" + f"""
+    metadata_context = _build_metadata_context(state)
+
+    system_prompt = SystemMessage(content=AGENT_PROMPT + metadata_context + "\n\n" + f"""
 
     Der Nutzer moechte eine Anleitung, um sein Anliegen SELBST zu loesen.
 
@@ -251,8 +276,9 @@ def finish_tutorial(state: ChatbotState):
     # set ticket tag to AI-solved
     finish_ai_solved_ticket(state)
 
+    metadata_context = _build_metadata_context(state)
     system_prompt = SystemMessage(content=(
-        AGENT_PROMPT + "\n\n"
+        AGENT_PROMPT + metadata_context + "\n\n"
         "Der Nutzer hat gerade bestaetigt, dass deine Anleitung sein Anliegen "
         "geloest hat. Verabschiede dich kurz, freundlich und natuerlich, mit Bezug "
         "auf sein konkretes Anliegen. Maximal 2 Saetze. Erwaehne, dass er sich "
@@ -280,7 +306,9 @@ def extract_information(state: ChatbotState):
     prior_infos = state.get("additional_info", [])
     conversation_context = "\n".join(f"- {msg}" for msg in user_messages)
 
-    system_prompt = AGENT_PROMPT + "\n\n" + ("""Deine Aufgabe ist es, als hochpräziser KI-Daten-Extraktor aus den eingehenden Chat-Nachrichten von Studierenden und Mitarbeitern strukturierte Ticket-Daten zu extrahieren.
+    metadata_context = _build_metadata_context(state)
+
+    system_prompt = AGENT_PROMPT + metadata_context + "\n\n" + ("""Deine Aufgabe ist es, als hochpräziser KI-Daten-Extraktor aus den eingehenden Chat-Nachrichten von Studierenden und Mitarbeitern strukturierte Ticket-Daten zu extrahieren.
 
         BEREITS BEKANNTER KONTEXT:
         Problembeschreibung: {prior_issue}
@@ -301,6 +329,7 @@ def extract_information(state: ChatbotState):
         Login nicht möglich, Prüfungs-/Abgabeproblemen oder komplettem Ausfall.
         Setze priority auf 0 bei normalen oder weniger dringenden Problemen.
         5. Zusammenfassung (full_conversation): Dieses Feld MUSS bei jeder Antwort neu gesetzt werden - auch wenn sich nur wenig geändert hat. Schreibe eine aktualisierte Zusammenfassung des gesamten bisherigen Gesprächs aus der Perspektive eines Support-Agenten, der einem Kollegen den Fall erklärt. Integriere alle bisher bekannten Informationen, einschließlich Antworten auf Rückfragen. Beispiel: "Der Student fragt nach einer kostenlosen Windows 10 Lizenz für sein universitätseigenes Gerät. Er hat bereits ein qualifizierendes Betriebssystem und benötigt eine Vollversion." Maximal 3 Sätze, keine Aufzählung.
+        6. Integriere in der Zusammenfassung (full_conversation) die Metadata des Users.
         """.format(
         prior_issue=prior_issue or "noch nicht bekannt",
         prior_infos=", ".join(prior_infos) if prior_infos else "keine",
@@ -377,8 +406,9 @@ def ask_for_issue(state: ChatbotState):
     """
     log_node_entry("ask_for_issue", state)
     attempts = state.get("ask_issue_attempts", 0) + 1
+    metadata_context = _build_metadata_context(state)
     system_prompt = SystemMessage(content=(
-        AGENT_PROMPT + "\n\n" +
+        AGENT_PROMPT + metadata_context + "\n\n" +
         "Der Nutzer hat noch kein konkretes IT-Anliegen beschrieben. "
         "Bitte ihn, sein IT-Problem zu schildern."
     ))
@@ -438,8 +468,10 @@ def ask_for_additional_info(state: ChatbotState):
     rag_logger.debug(f"faq_context:\n{truncate_long_strings_in_dicts_for_logging(faq_context)}")
 
 
+    metadata_context = _build_metadata_context(state)
+
     system_prompt = SystemMessage(content=(
-        AGENT_PROMPT + "\n\n" +
+        AGENT_PROMPT + metadata_context + "\n\n" +
         f"""
         Dein Ziel ist es zu prüfen, ob die vorliegenden Informationen ausreichen, um das aktuelle Problem eindeutig zu bearbeiten.
 
@@ -494,6 +526,10 @@ def ask_for_additional_info(state: ChatbotState):
             Jede Frage muss genau ein Unterscheidungsmerkmal zwischen den möglichen Lösungen klären.
             
         12. Die Rückfragen dienen NUR dazu, die passenden Lösungen zu klassifizieren. Daher nicht die einzelnen todos der Lösung als Frage formulieren.
+
+        13. Stelle KEINE Rückfragen zu Informationen, die bereits im BENUTZER-KONTEXT bekannt sind (z.B. Betriebssystem, Gerät, Rolle). Diese Daten sind bereits verifiziert und muessen nicht erneut erfragt werden. Nutze sie direkt fuer die Auswahl der passenden Lösung.
+        
+        14. Vermeide die Wiedergabe einer Option mit einem Komma, also vermeide zum Beispiel: "options: Keine Verbindung, Verbindung, aber kein Internet, Verbindungsabbrüche, Keine IP‑Adresse, Andere"
         """
     ))
 
@@ -521,7 +557,18 @@ def ask_for_additional_info(state: ChatbotState):
             "needs_additional_info": False
             }
 
-    llm_msg = f"Ich habe für dich gerade ein Support-Ticket erstellt. Um dich optimal zu unterstützen, beantworte  bitte folgende Fragen:\n{follow_up_question}"
+    known_parts = []
+    if state.get("display_name"):
+        known_parts.append(f"Name: {state['display_name']}")
+    if state.get("device"):
+        known_parts.append(f"Gerät: {state['device']}")
+    if state.get("os_name"):
+        known_parts.append(f"Betriebssystem: {state['os_name']}")
+    known_str = ""
+    if known_parts:
+        known_str = " Folgende Informationen liegen uns bereits vor: " + ", ".join(known_parts) + "."
+
+    llm_msg = f"Ich habe für dich gerade ein Support-Ticket erstellt.{known_str} Um dich optimal zu unterstützen, beantworte bitte folgende Fragen:\n{follow_up_question}"
     ticket_id = state.get("ticket_id")
     try:
         ticket_service.append_message_to_ticket(
@@ -610,10 +657,12 @@ def give_solutions(state: ChatbotState):
             "Formuliere durchgehend neutral, ohne direkte Anrede (weder 'du' noch 'Sie')."
         )
 
+    metadata_context = _build_metadata_context(state)
+
     system_prompt = SystemMessage(content=(
-        AGENT_PROMPT + "\n\n" + tutorial_handover + "\n\n" +
+        AGENT_PROMPT + "\n\n" + tutorial_handover + "\n\n" + metadata_context + "\n\n" +
         f"""
-            Deine Aufgabe ist es, basierend auf dem 
+            Deine Aufgabe ist es, basierend auf dem
             aktuellen Problem und den bereits bekannten Zusatzinfos eine konkrete, direkt umsetzbare Lösung zu geben.
             
             AKTUELLES PROBLEM: {problem}

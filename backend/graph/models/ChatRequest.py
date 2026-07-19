@@ -24,3 +24,8 @@ class ChatRequest(BaseModel):
     intent: str = ""
     tutorial_attempts: int = 0
     graph_runs: int = 0
+    display_name: str = ""
+    role: str = ""
+    faculty: str = ""
+    device: str = ""
+    os_name: str = ""
