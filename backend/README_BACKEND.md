@@ -216,6 +216,18 @@ Ticket creation and updates are implemented in `services/TicketService.py` and t
 - Chat history and offered solutions (for AISolved tickets)
 - Tags and status (e.g. `AISolved`, closed)
 
+## Logging
+The `BackendLoggingService.py` script located in `backend/services` provides an interface to create a named logger object. To create a new logger object, import the class `BackendLogger` and instantiate the `BackendLogger` class with the name, e.g.
+
+```
+from ..services.BackendLoggingService import BackendLogger
+
+zim_logger = BackendLogger("ZIM")
+```
+
+Each logger object prints messages in this format: `(timestamp) [LEVEL]: Name: message`, where `Name` is the name of the logger object and `LEVEL` is one of this set: `(DEBUG|INFO|WARNING|ERROR|CRITICAL)`. The levels of the message follow this order of severity: debug < info < warning < error < critical. To call the logger, do `instance_of_backend_logger.level(message)` where `level` is one of this set`(debug|info|warning|error|critical)` to send a log message with the corresponding level. 
+
+
 ---
 
 ## Prompt Security

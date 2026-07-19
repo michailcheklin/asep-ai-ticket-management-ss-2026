@@ -28,6 +28,7 @@ INITIAL_STATES = {
     "show_ticket_addendum_form": False,
     "intent": "",
     "tutorial_attempts": 0,
+    "graph_runs": 0,
     # ── Q&A widget state (frontend-only, never sent to the backend) ──────────
     "pending_questions": [],   # list of {text: str, options: list[str] | None}
     "current_question_idx": 0,
@@ -199,6 +200,7 @@ def build_chat_payload(user_input: str) -> dict:
         "ask_issue_attempts": st.session_state.ask_issue_attempts,
         "intent": st.session_state.intent,
         "tutorial_attempts": st.session_state.tutorial_attempts,
+        "graph_runs": st.session_state.graph_runs,
         "ticket_id": st.session_state.get("ticket_id"),
         "full_conversation": st.session_state.full_conversation,
     }
@@ -284,6 +286,8 @@ def apply_response_to_session(user_input: str, res_json: dict) -> None:
     st.session_state.full_conversation = res_json.get("full_conversation", "")
     st.session_state.intent = res_json.get("intent", "")
     st.session_state.tutorial_attempts = res_json.get("tutorial_attempts", 0)
+    st.session_state.graph_runs = res_json.get("graph_runs", 0)
+    
     if "ticket_id" in res_json:
         st.session_state.ticket_id = res_json.get("ticket_id")
 
