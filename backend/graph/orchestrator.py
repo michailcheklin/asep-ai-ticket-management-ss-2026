@@ -1,8 +1,11 @@
 import os
+import copy
 from pathlib import Path
 
 from langchain_core.tracers import LangChainTracer
 from langgraph.graph import StateGraph, START, END
+
+from backend.graph.node_logging import langgraph_logger, truncate_long_strings_in_dicts_for_logging
 from .state import ChatbotState
 from .nodes import (
     extract_information,
@@ -52,13 +55,13 @@ def __execute_langchain_workflow(state: ChatbotState):
     updated_state = graph.invoke(state)
     bot_response = updated_state["messages"][-1].content
 
-    print("\n===== FINAL UPDATED STATE =====")
-    print(f"Email:       {updated_state.get('user_email')}")
-    print(f"Matrikelnr.:    {updated_state.get('matrikelnummer')}")
-    print(f"Problem:     {updated_state.get('issue_description')}")
-    print(f"Additional Info: {updated_state.get('additional_info')}")
-    print(f"Run #{updated_state.get('graph_runs', 0)} — path: {' -> '.join(updated_state.get('visited_nodes', []))}")
-    print("==============================================\n")
+    # Creating a modified deep copy of the current state
+    # to display it on the console in logs.
+    # The original state is not modified.
+    updated_state_display_for_logs = copy.deepcopy(updated_state)
+    updated_state_display_for_logs["solutions"] = list(map(truncate_long_strings_in_dicts_for_logging, updated_state_display_for_logs["solutions"]))
+    langgraph_logger.debug(f"Final updated state:\n{updated_state_display_for_logs}")
+    langgraph_logger.debug(f"Run #{updated_state.get('graph_runs', 0)} — path: {' -> '.join(updated_state.get('visited_nodes', []))}")
 
     return {
         "bot_response": bot_response,
@@ -77,10 +80,8 @@ def __execute_langchain_workflow(state: ChatbotState):
         "full_conversation": updated_state.get("full_conversation", ""),
         "intent": updated_state.get("intent", ""),
         "tutorial_attempts": updated_state.get("tutorial_attempts", 0),
-    
         "graph_runs": updated_state.get("graph_runs", 0),
     }
-    
 
 
 def build_pathmap_from_nodes_list_for_visualisation(nodes_list:list[str]):

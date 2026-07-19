@@ -12,11 +12,10 @@ from ..services.TicketService import TicketService
 from ..llm.prompts import TICKET_CATEGORY_RULES
 from ..services.ProblemService import ProblemService
 from ..llm.llm import llm, structured_llm, AGENT_PROMPT, category_llm
-from .node_logging import log_node_entry
+from .node_logging import log_node_entry, langgraph_logger, truncate_long_strings_in_dicts_for_logging, visit
 from ..api.zammad import create_ticket_by_user_email, add_tag_to_ticket
 from .models.IntentDecision import IntentDecision
-from .node_logging import log_node_entry, visit
-
+from backend.rag.rag_logging import rag_logger
 
 ticket_service = TicketService()
 problem_service = ProblemService()
@@ -113,9 +112,9 @@ def escalate_incidents(state: ChatbotState):
             issue_description=state.get("issue_description", ""),
             additional_info=list(state.get("additional_info", [])),
         )
-        print(f"[escalate_incidents] ticket {ticket_id} -> {result}")
+        langgraph_logger.info(f"Escalating incident for ticket {ticket_id} -> {result}")
     except Exception as e:
-        print(f"[escalate_incidents] failed for ticket {ticket_id}: {e}")
+        langgraph_logger.error(f"Escalating incident failed for ticket {ticket_id}: {e}")
 
     return visit("escalate_incidents_node")
 
@@ -173,7 +172,7 @@ CHATVERLAUF (User-Nachrichten):
     state_update = {"intent": intent}
 
     return {
-        **visit("classify_intent_node"), 
+        **visit("classify_intent_node"),
         **state_update
         }
 
@@ -263,7 +262,7 @@ def finish_tutorial(state: ChatbotState):
 
     return {
         **visit("finish_tutorial_node"),
-        **result, 
+        **result,
         "messages": [response]
         }
 
@@ -314,9 +313,7 @@ def extract_information(state: ChatbotState):
         last_user_message
     ]))
 
-    print("\n===== EXTRACTED DATA =====")
-    print(extracted_data)
-    print("==========================\n")
+    langgraph_logger.debug(f"EXTRACTED DATA: {extracted_data}")
 
     state_update = {}
     state_update["graph_runs"] = state.get("graph_runs", 0) + 1
@@ -338,7 +335,7 @@ def extract_information(state: ChatbotState):
     ticket_id = state.get("ticket_id")
     # If ticket already exists: append
     if ticket_id is not None:
-        print(f"Appending to ticket {ticket_id} the user message: {last_user_message.content}")
+        langgraph_logger.info(f"Appending to ticket {ticket_id} the user message: {last_user_message.content}")
         ticket_service.append_message_to_ticket(ticket_id, last_user_message.content, sender="Customer")
         # Update the ticket title with the latest extracted information 
         merged_state = {**state, **state_update}
@@ -362,7 +359,7 @@ def extract_information(state: ChatbotState):
         state_update["ticket_id"] = result
         add_tag_to_ticket(result, "AI-Created")
 
-        print(f"Created ticket with ID {result} for the state update: {state_update}")
+        langgraph_logger.info(f"Created ticket with ID {result} for the state update: {state_update}")
 
 
     return {
@@ -415,7 +412,7 @@ def ask_for_additional_info(state: ChatbotState):
     infos = state.get("additional_info", [])
     attempts = state.get("additional_info_attempts", 0)
 
-    print(f"[DEBUG: ask_for_additional_info]: attempts: {attempts} ")
+    langgraph_logger.debug(f"ask_for_additional_info node: attempts: {attempts} ")
 
     aditionalInfo_llm = llm.with_structured_output(AdditionalInfoDecision)
 
@@ -427,7 +424,7 @@ def ask_for_additional_info(state: ChatbotState):
     ticket_matches = rag_results.get("ticket_matches", [])
 
     if not faq_matches and not ticket_matches:
-        print("[DEBUG] RAG lieferte keine Ergebnisse. Überspringe Rückfrage.")
+        rag_logger.debug(f"Query {query} returned no result. Skipping follow up question")
         return {
             **visit("ask_for_additional_info"),
             "needs_additional_info": False
@@ -436,9 +433,10 @@ def ask_for_additional_info(state: ChatbotState):
     faq_context = "\n".join([f"- {_format_faq_match_for_prompt(match)}" for match in faq_matches])
     ticket_context = "\n".join([f"- {match['text']} (Kategorie: {match['category']})" for match in ticket_matches])
 
-    print(f"[DEBUG]: faq_matches: {faq_matches}\n\n")
-    print("-"*10 + "\n\n")
-    print(f"[DEBUG]: faq_context: {faq_context}")
+
+    rag_logger.debug(f"faq_matches:\n{truncate_long_strings_in_dicts_for_logging(faq_matches)}")
+    rag_logger.debug(f"faq_context:\n{truncate_long_strings_in_dicts_for_logging(faq_context)}")
+
 
     system_prompt = SystemMessage(content=(
         AGENT_PROMPT + "\n\n" +
@@ -511,8 +509,8 @@ def ask_for_additional_info(state: ChatbotState):
             content="Bitte prüfe anhand des Problems und der Zusatzinfos, ob weitere Informationen benötigt werden.")
     ]))
 
-    print(f"[DEBUG]: decision.needs_additional_info: {decision.needs_additional_info}")
-    print(f"[DEBUG]: decision.follow_up_question: {decision.follow_up_question!r}")
+    langgraph_logger.debug(f"decision.needs_additional_info: {decision.needs_additional_info}")
+    langgraph_logger.debug(f"decision.follow_up_question: {decision.follow_up_question!r}")
 
     # Logic switch if all information needed is collected or not
     follow_up_question = (decision.follow_up_question or "").strip()
@@ -533,7 +531,7 @@ def ask_for_additional_info(state: ChatbotState):
             internal=True
         )
     except Exception as e:
-        print(f"Failed to add internal article: {e}")
+        langgraph_logger.error(f"Failed to add internal article: {e}")
     return {
         **visit("ask_for_additional_info"),
         "needs_additional_info": True,
@@ -568,15 +566,19 @@ def give_solutions(state: ChatbotState):
              }
 
     try:
-        print(f"[RAG QUERY] {query}")
+        rag_logger.info(f"Sending RAG query '{query}'")
         results = retrieve_relevant_entries(query, n_results=2)
-        print(
-            f"[RAG RESULT] faq={len(results.get('faq_matches', []))} tickets={len(results.get('ticket_matches', []))} inferred={results.get('inferred')}")
+
+        rag_logger.info("The RAG query returned following results:")
+        rag_logger.info(f"faq={len(results.get('faq_matches', []))}")
+        rag_logger.info(f"tickets={len(results.get('ticket_matches', []))} ")
+        rag_logger.info(f"inferred={results.get('inferred')}")
+
     except Exception as e:
-        print(f"[RAG ERROR] {e}")
+        rag_logger.error(f"RAG ERROR {e}")
         return {
              **visit("give_solutions_node"),
-             "messages": [AIMessage(content="Fehler bei der Suche in der Wissensdatenbank.")], 
+             "messages": [AIMessage(content="Fehler bei der Suche in der Wissensdatenbank.")],
              "solutions": []}
 
     faq_matches = results.get("faq_matches", [])
@@ -590,7 +592,10 @@ def give_solutions(state: ChatbotState):
     for t in ticket_matches:
         solutions.append(
             {"title": f"Ähnliches Ticket ({t.get('category', 'unknown')})", "description": t.get("text", "")})
-    print(f"[Node: give_solutions] Solutions: {solutions}")
+    # Writing a truncated version of the solutions into the logs in the console
+    # while the actual solutions are kept intact
+    truncated_solutions_for_logs = [truncate_long_strings_in_dicts_for_logging(solution) for solution in solutions]
+    langgraph_logger.info(f"give_solutions node returned: {truncated_solutions_for_logs}")
 
     problem = state.get("issue_description", "")
     infos = state.get("additional_info", [])
@@ -653,15 +658,15 @@ def give_solutions(state: ChatbotState):
 
     ticket_id = state.get("ticket_id")
     try:
-        print(f"appending bot message to ticket {ticket_id}")
+        langgraph_logger.info(f"appending bot message to ticket {ticket_id}")
         ticket_service.append_message_to_ticket(
             ticket_id = ticket_id,
             body=f"[ZIM AI-AGENT]\n\n{final_message.content}",
             sender="Agent",
             internal = True
         )
-    except:
-        print("Could not append message to ticket (give solutions).")
+    except Exception as e:
+        langgraph_logger.error(f"give_solutions node: Could not append message to ticket.\nError: {e}")
 
 
     return {
@@ -706,15 +711,15 @@ def finish_ticket(state):
     ticket_id = result.get("ticket_id")
     try:
         bot_message_content = result["messages"][0].content
-        print(f"appending bot message {bot_message_content}")
+        langgraph_logger.info(f"appending bot message {bot_message_content}")
         ticket_service.append_message_to_ticket(
             ticket_id = ticket_id,
             body=f"[ZIM AI-AGENT]\n\n{bot_message_content}",
             sender="Agent",
             internal = True
         )
-    except:
-        print("Could not append message to ticket (give solutions).")
+    except Exception as e:
+        langgraph_logger.info(f"give_solution node: Could not append message to ticket.\nError: {e}")
 
     return {
         **visit("finish_node"),
@@ -734,6 +739,6 @@ def finish_ai_solved_ticket(state):
     state_with_category = {**state, "category": category}
     result = ticket_service.create_ai_solved_ticket(state_with_category)
     return {
-        **result, 
+        **result,
         "category": category
         }
