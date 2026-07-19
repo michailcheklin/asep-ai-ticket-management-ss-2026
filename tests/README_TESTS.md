@@ -51,31 +51,18 @@ If you are during regular development import code from other scripts, you need t
    * On Mac/Linux `pytest ./<name of test file> -s -v`
 4. The `-s -v` flag causes the normal application to print on the terminal
 
-**Exception — LLM benchmark test and RAG retrieval test:** These tests must be run from the project root, not from the `tests/` folder, because they import backend modules that require the project root to be on the Python path:
-   * LLM benchmark test:
-     * On Windows `set PYTHONPATH=. && pytest tests/test_llm_benchmark.py -v -s`
-     * On Mac `PYTHONPATH=. pytest tests/test_llm_benchmark.py -v -s`
+**Exception — LLM conversation benchmark test, LLM off-topic handling test and RAG retrieval test:** These tests must be run from the project root, not from the `tests/` folder, because they import backend modules that require the project root to be on the Python path:
+   * LLM conversation benchmark test:
+     * On Windows `set PYTHONPATH=. && pytest tests/test_llm_conversation_benchmark.py -v -s`
+     * On Mac `PYTHONPATH=. pytest tests/test_llm_conversation_benchmark.py -v -s`
+   * LLM off-topic request handling test:
+     * On Windows `set PYTHONPATH=. && pytest tests/test_llm_off_topic_reactions.py -v -s`
+     * On Mac `PYTHONPATH=. pytest tests/test_llm_off_topic_reactions.py -v -s`
    * RAG retrieval test:
      * On Windows `set PYTHONPATH=. && pytest tests/test_rag_retrieve.py -v -s`
      * On Mac `PYTHONPATH=. pytest tests/test_rag_retrieve.py -v -s`
 
 ## What is tested
-
-### Prompt security check
-**What does this test do:** 
-In this script, some inputs are sent to the function that checks the prompt for illegal topics, prompt injection and off-topic text. 
-
-**Why is this test done:** 
-To check if the prompt security algorithm is not too lax and not too strict.
-
-**How is the test done:** 
-For each prompt it is defined whether it is expected that the prompt is OK or not. The test checks if the prompt check correctly blocks or allows inputs and then calculates the accuracy, precision, recall and F1 score.
-
-**When is the test passed:** 
-Accuracy, Precision, Recall and F1 score must be above 75%. If any of the metrics falls below that limit, the test is failed. 
-
-**Additional notes:** 
-(Currently this feature is disabled due to causing bugs with the chatbot's generation, cf. https://gitlab.git.nrw/ude-sse/asep-sose26/team1-zim/ai-ticket-management/-/merge_requests/19#what-has-changed, the test stays for potential future implementations). 
 
 ### Chatbot connectivity
 **What does this test do:**
@@ -174,28 +161,9 @@ The test is passed if, for the three relevant queries, a FAQ match reaches `FAQ_
 **Additional notes:**
 The thresholds are imported directly from `backend/rag/retrieve_info.py` instead of being duplicated in the test, so the test always evaluates against the actual production values rather than a possibly stale copy. This test must be run from the project root with `PYTHONPATH=.` set (see exception above), since it imports `backend.rag.retrieve_info` via its full module path.
 
-### Chatbot conversation quality
+### LLM chat conversation Benchmark
 **What does this test do:**
-Here it is checked if the chatbot can properly react on the user. The following metrics are checked (also cf. https://deepeval.com/guides/guides-multi-turn-evaluation-metrics):
-* Conversation Completeness - Whether the chatbot does address all concerns of the user
-* Turn Relevancy - Whether the chatbot can provide relevant answers according to the context
-* Knowledge Retention - Whether the chatbot does not forget infos during the conversation.
-
-**Why is this test done:**
-This test is done to identify potential quality problems in the way the chatbot generates the responses to the user.
-
-**How is the test done:**
-In this script, a conversation between the user and the chatbot is simulated and then evaluated. 
-
-**When is the test passed:**
-The test is passed if all the three metrics return a score of over 50% (DeepEval default value).
-
-**Additional notes:**
-One test case uses around 30 SAIA prompts within 5-6 minutes, out of which around three quarters are for the metrics.
-
-### LLM Model Benchmark
-**What does this test do:**
-This script benchmarks multiple GWDG/SAIA LLMs by running them through realistic IT-support conversation scenarios and evaluating their response quality using DeepEval's `ConversationCompletenessMetric`. Results are saved to `tests/benchmark_results.json` and logged to LangSmith.
+This script benchmarks multiple GWDG/SAIA LLMs by running them through realistic IT-support conversation scenarios and evaluating their response quality using DeepEval's `ConversationCompletenessMetric`. Results are saved to `tests/benchmark_conversation_results.json` and logged to LangSmith.
 
 **Why is this test done:**
 To identify which LLM performs best as the chatbot's underlying model for the ZIM ticket management use case, and to document the strengths and weaknesses of each evaluated model.
@@ -254,3 +222,106 @@ This change was done to give the option to do these tests only when our applicat
 * * In the CI/CD pipeline, view the console output to view the results after the test has finished.
 * If the test hangs for a long time, it is most likely due to server overload on SAIA's side
 * To add more models, add entries into the `MODEL_CONFIGS` dictionary in `test_llm_benchmark.py` in the following format: `"model_name_that_appears_on_console:":"saia_internal_model_name"`, e. g. `"llama-3.1-8b": "meta-llama-3.1-8b-instruct",`.
+
+
+
+### LLM off-topic reaction test
+**What does this test do:**
+This script runs multiple GWDG/SAIA LLMs by running them through off-topic requests using DeepEval's `ConversationalGEval` metric with a description of that the bot should politely reject an off-topic request . Results are saved to `tests/off_topic_reactions_results.json` and logged to LangSmith.
+
+**Why is this test done:**
+To identify which LLM complies the best to its agent.md file when rejecting off-topic requests
+
+**How is the test done:**
+For each model in `MODEL_CONFIGS`, the chatbot is patched to use that model. 3 off-topic messages are sent in separate chats to simulate how the user sends an off-topic message as the first message.
+
+Each scenario produces a `ConversationalTestCase` which is then evaluated by the judge model (Gemma-4-31B) using the `ConversationalGEval`. Results are collected and written to `off_topic_reactions_results.json`. All LLM calls are automatically traced in LangSmith via the LangChain integration.
+
+**When is the test passed:**
+The test always passes (it is a benchmarking script, not a pass/fail test). Results are stored for manual analysis.
+
+
+## How to add more LLM tests
+To add another LLM test that simulates a set of sequences of user messages, do the following steps:
+1. Add a new Python file in the `tests` folder
+2. Define the 2D array of strings called `SCENARIOS` to define the scenarios:
+   1. Each separate chat is a sub array in the 2D array
+   2. In each subarray each string represents a chat message the user types no matter what the bot responds to
+3. Define the models that are tested in a dict called `MODEL_CONFIGS`:
+   1. Each key (as string) is the name of the model displayed in the result file 
+   2. The value (as string) of each key is the full name of the model acc. to the SAIA API
+4. Define an array of DeepEval conversational metrics with the name `METRICS` to be used for evaluation:
+   1. Each item is either a `ConversationalGEval` with a custom conversation metric or any of the predefined conversational metric such as `ConversationCompleteness` (for a full list, cf. https://deepeval.com/guides/guides-multi-turn-evaluation-metrics)
+   2. For any custom conversational metric you need to provide for the instantiation of a `ConversationalGEval` these arguments:
+      1. `name`: The name of the metric as a string - Appears in the result JSON file and in console outputs
+      2. `criteria`: A natural language definition of the criteria that DeepEval shall evaluate the conversation against
+      3. `evaluation_params`: The parameters the DeepEval evaluation shall take into account. For chat-only tests, `MultiTurnParams.CONTENT` suffices so that only the chat messages are checked
+      4. `model=SAIA_JUDGE_MODEL`: Sets the judge model to a SAIA API model defined in `tests/setup.py`. Do not leave that empty, else DeepEval will try to use the API of `openai.com` and not the SAIA API
+      5. `async_mode=False` - Ensures the metric evaluates the chat messages sequentially
+5. Provide in the `BENCHMARK_FILE_PATH` the filepath of the test result's JSON file which serves as a test artifact
+6. In a method where the name starts with `test_` (so Pytest sees the code as a test), write this code:
+    ```
+    def test_your_name():
+        your_name_test = DeepEvalTestTemplate(
+            scenarios=SCENARIOS,
+            metrics=METRICS,
+            configs_of_models_to_test=MODEL_CONFIGS,
+            benchmark_file_path=BENCHMARK_FILE_PATH,
+        )
+        your_name_test.test_benchmark_all_models()
+    ```
+   The code does these things:
+    1. Defines a DeepEval test template object with the message sequences to test, the metrics, the models to evaluate and the file path of the result JSON file
+   2. Executes the test
+7. In `gitlab-ci.yml` add this code to integrate the new test as an optional and manual merge request pipeline in the CI/CD:
+   ```
+   run_deepeval_custom_tests:
+      stage: deepeval
+      # Merge request pipeline
+      rules:
+        - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+          # Making this manual to give the option to run this only once in an MR
+          # or not at all in MRs that do not affect the LLM generation
+          # rather than on every push from the point onwards an MR was created
+          # To give the option, this job shall not block pipelines.
+          when: manual
+          allow_failure: true
+      tags:
+        - dind
+        - ude-sse
+      artifacts:
+        paths:
+          - tests/deepeval_custom_tests_result_file_name.json
+      # Caching the Python dependencies per branch, or otherwise
+      # adding dependencies in one branch that cause a conflict
+      # would cause conflicts in all other branches
+      cache:
+        - key: ${CI_COMMIT_REF_SLUG}
+          paths:
+            - $PIP_CACHE_DIR
+            - $VENV_DIR/lib/python*/site-packages/
+          policy: pull
+        - key: hf-models
+          paths:
+            - .cache/huggingface/
+          policy: pull
+      script:
+        - python --version
+        - pip install --upgrade pip
+        - python -m venv $VENV_DIR
+        - source $VENV_DIR/bin/activate
+        - if [ -f tests/requirements.txt ]; then pip install -r tests/requirements.txt; fi
+        - echo "LANGSMITH_TRACING_V2=true" >> .env
+        - echo "LANGSMITH_API_KEY=$LANGSMITH_API_KEY" >> .env
+        - echo "LANGSMITH_ENDPOINT=https://eu.api.smith.langchain.com" >> .env
+        - echo "LANGCHAIN_PROJECT=ai-ticket-benchmark" >> .env
+        - echo "SAIA_API_KEY=$SAIA_API_KEY" >> .env
+        - echo "USE_SAIA_API=true" >> .env
+        - echo "AGENT=ZIM" >> .env
+        - echo "ZAMMAD_SERVER_ADDRESS=$ZAMMAD_SERVER_ADDRESS" >> .env
+        - PYTHONPATH=. pytest tests/test_deepeval_custom_tests.py -v -s
+   ```
+    Important notes for the CI file:
+   1. Use a descriptive name as the header of the job (here the name would be `run_deepeval_custom_tests`)
+   2. Make sure the correct artifact path is selected, where the result JSON is located (here it would be `tests/deepeval_custom_tests_result_file_name.json`)
+   3. In the last line after the installation of the requirements and the definition of environments, make sure to write the correct name of the test script (here it would be `pytest tests/test_deepeval_custom_tests.py`.
