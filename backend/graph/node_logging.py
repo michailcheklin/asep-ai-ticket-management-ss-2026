@@ -14,6 +14,12 @@ def log_node_entry(node_name:str, state):
     langgraph_logger.debug(f"Entered {node_name}")
     langgraph_logger.debug(f"Current state:\n{state}")
 
+    metadata_keys = ("display_name", "role", "faculty", "device", "os_name")
+    metadata = {k: state.get(k, "") for k in metadata_keys if state.get(k)}
+    if metadata:
+        langgraph_logger.debug(f"User metadata: {metadata}")
+
+
 def truncate_long_strings_in_dicts_for_logging(obj, max_length=200):
     """
     For logging:
