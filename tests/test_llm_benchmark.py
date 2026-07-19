@@ -21,7 +21,7 @@ load_dotenv()
 import re
 
 class ThinkStripChatOpenAI(ChatOpenAI):
-    """Wrapper für DeepSeek: entfernt <think>...</think> Tags vor dem JSON-Parsing."""
+    """Wrapper for DeepSeek: strip <think>...</think> tags before JSON parsing."""
     
     def invoke(self, input, config=None, **kwargs):
         result = super().invoke(input, config=config, **kwargs)
@@ -104,10 +104,10 @@ MODEL_CONFIGS = {
 
 def run_benchmark_for_model(model_name: str, model_id: str):
     print(f"\n{'='*60}")
-    print(f"Teste Modell: {model_name}")
+    print(f"Testing model: {model_name}")
     print(f"{'='*60}\n")
 
-    # Für DeepSeek: ThinkStripChatOpenAI, für alle anderen: normales ChatOpenAI
+    # DeepSeek: ThinkStripChatOpenAI; all others: standard ChatOpenAI
     llm_class = ThinkStripChatOpenAI if "deepseek" in model_id.lower() \
         else LlamaPatchForChatOpenAI if "llama" in model_id.lower() \
         else ChatOpenAI
@@ -188,12 +188,12 @@ def test_benchmark_all_models():
         json.dump(all_results, f, indent=2, ensure_ascii=False)
 
     print("\n" + "="*60)
-    print("BENCHMARK ABGESCHLOSSEN")
-    print("Ergebnisse gespeichert in tests/benchmark_results.json")
+    print("BENCHMARK COMPLETE")
+    print("Results saved to tests/benchmark_results.json")
     print("="*60)
 
 
-    # LangSmith: Ergebnisse loggen
+    # LangSmith: log results
     try:
         ls_client = LangSmithClient()
         for model_name, result_data in all_results.items():
@@ -204,6 +204,6 @@ def test_benchmark_all_models():
                 outputs={"result": str(result_data)},
                 project_name="ai-ticket-benchmark",
             )
-        print("\n✅ Ergebnisse in LangSmith geloggt.")
+        print("\n✅ Results logged to LangSmith.")
     except Exception as e:
-        print(f"\n⚠ LangSmith-Logging fehlgeschlagen: {e}")
+        print(f"\n⚠ LangSmith logging failed: {e}")

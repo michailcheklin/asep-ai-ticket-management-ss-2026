@@ -7,9 +7,9 @@ from ..api.zammad import (
     add_article_to_ticket,
     replace_tag_for_ticket,
     mark_ticket_as_closed,
-    update_ticket_kategorie,
+    update_ticket_category,
     update_ticket_title,
-    resolve_zammad_kategorie,
+    resolve_zammad_category,
     log_ticket_close_event,
 )
 
@@ -74,7 +74,7 @@ class TicketService:
            return
 
         if use_llm:
-            summary = state.get("full_conversation") or issue
+            summary = state.get("summary") or issue
             title = self.generate_title(summary, matrikelnummer)
         else:
             title = f"[{matrikelnummer or 'unknown'}] {issue}"
@@ -87,7 +87,7 @@ class TicketService:
         Updates category and title on the existing ticket once the
         conversation with the chatbot is finalized.
         """
-        update_ticket_kategorie(ticket_id, state.get("category"))
+        update_ticket_category(ticket_id, state.get("category"))
         self.update_ticket_title_from_state(state, ticket_id, use_llm=True)
         
     # -------------------------
@@ -118,7 +118,7 @@ class TicketService:
                 body=body,
                 priority=state["priority"],
                 internal=internal,
-                kategorie=state.get("category"),
+                category=state.get("category"),
             )
             success = self._success_message(title, state)
             success["ticket_id"] = ticket_id
@@ -209,9 +209,9 @@ class TicketService:
         
     def create_closed_tutorial_ticket(self, state):
         """
-        Erstellt fuer ein per Anleitung geloestes Anliegen ein Ticket, das sofort
-        geschlossen und mit dem AI-Solved-Tag versehen wird (Issue #161).
-        Dient dem Performance-Tracking des Chatbots in Zammad.
+        Creates a ticket for an issue resolved via a tutorial/guide, closes it
+        immediately, and tags it as AI-solved (Issue #161).
+        Used for chatbot performance tracking in Zammad.
         """
         user_messages = [m.content for m in state.get("messages", []) if isinstance(m, HumanMessage)]
         issue = state.get("issue_description") or (user_messages[0] if user_messages else "Anliegen per Chatbot geloest")
@@ -257,7 +257,7 @@ class TicketService:
             f"Matrikelnummer: {state['matrikelnummer']}\n"
             f"E-Mail: {state['user_email']}\n\n"
             f"Priorität: {'urgent' if state.get('priority') == 1 else 'normal'}\n"
-            f"Kategorie: {resolve_zammad_kategorie(state.get('category')) or state.get('category', 'Service Request')}\n"
+            f"Kategorie: {resolve_zammad_category(state.get('category')) or state.get('category', 'Service Request')}\n"
             f"Problem:\n{state['issue_description']}\n\n"
             f"Zusatzinfos:\n{self._format_additional_info(state.get('additional_info', []))}"
             f"{self._chat_history_and_solutions_section(state)}"
@@ -277,7 +277,7 @@ class TicketService:
             f"Matrikelnummer: {state['matrikelnummer']}\n"
             f"E-Mail: {state['user_email']}\n\n"
             f"Priorität: {'urgent' if state.get('priority') == 1 else 'normal'}\n"
-            f"Kategorie: {resolve_zammad_kategorie(state.get('category')) or state.get('category', 'Service Request')}\n"
+            f"Kategorie: {resolve_zammad_category(state.get('category')) or state.get('category', 'Service Request')}\n"
             f"Problem:\n{state['issue_description']}\n\n"
             f"Zusatzinfos:\n{self._format_additional_info(state.get('additional_info', []))}"
             f"\n\nStatus: Durch KI gelöst"
@@ -290,7 +290,7 @@ class TicketService:
         :param state: The current state of the chatbot
         :return: The formatted chat history and solutions
         """
-        summary = (state.get("full_conversation") or "").strip() or "(keine Zusammenfassung vorhanden)"
+        summary = (state.get("summary") or "").strip() or "(keine Zusammenfassung vorhanden)"
         addendum = (state.get("user_addendum") or "").strip()
         addendum_section = ""
         if addendum:

@@ -23,8 +23,8 @@ problem_service = ProblemService()
 
 
 def _format_faq_match_for_prompt(match: dict) -> str:
-    """Rendert einen faq_matches-Eintrag (dict mit id, text, similarity,
-    optional extracted_urls) als Prompt-Text."""
+    """Render a faq_matches entry (dict with id, text, similarity,
+    optional extracted_urls) as prompt text."""
     lines = [match.get("text", "")]
     for url_entry in match.get("extracted_urls", []):
         url = url_entry.get("url")
@@ -294,7 +294,7 @@ def extract_information(state: ChatbotState):
         Setze priority auf 1 bei dringenden Problemen wie gesperrtem Account,
         Login nicht möglich, Prüfungs-/Abgabeproblemen oder komplettem Ausfall.
         Setze priority auf 0 bei normalen oder weniger dringenden Problemen.
-        5. Zusammenfassung (full_conversation): Dieses Feld MUSS bei jeder Antwort neu gesetzt werden - auch wenn sich nur wenig geändert hat. Schreibe eine aktualisierte Zusammenfassung des gesamten bisherigen Gesprächs aus der Perspektive eines Support-Agenten, der einem Kollegen den Fall erklärt. Integriere alle bisher bekannten Informationen, einschließlich Antworten auf Rückfragen. Beispiel: "Der Student fragt nach einer kostenlosen Windows 10 Lizenz für sein universitätseigenes Gerät. Er hat bereits ein qualifizierendes Betriebssystem und benötigt eine Vollversion." Maximal 3 Sätze, keine Aufzählung.
+        5. Zusammenfassung (summary): Dieses Feld MUSS bei jeder Antwort neu gesetzt werden - auch wenn sich nur wenig geändert hat. Schreibe eine aktualisierte Zusammenfassung des gesamten bisherigen Gesprächs aus der Perspektive eines Support-Agenten, der einem Kollegen den Fall erklärt. Integriere alle bisher bekannten Informationen, einschließlich Antworten auf Rückfragen. Beispiel: "Der Student fragt nach einer kostenlosen Windows 10 Lizenz für sein universitätseigenes Gerät. Er hat bereits ein qualifizierendes Betriebssystem und benötigt eine Vollversion." Maximal 3 Sätze, keine Aufzählung.
         """.format(
         prior_issue=prior_issue or "noch nicht bekannt",
         prior_infos=", ".join(prior_infos) if prior_infos else "keine",
@@ -327,7 +327,7 @@ def extract_information(state: ChatbotState):
         new_infos = [info for info in extracted_data.additional_info if info not in current_infos]
         if new_infos:
             state_update["additional_info"] = new_infos
-    state_update["full_conversation"] = extracted_data.full_conversation or state.get("full_conversation", "")
+    state_update["summary"] = extracted_data.summary or state.get("summary", "")
 
     ticket_id = state.get("ticket_id")
     # If ticket already exists: append
@@ -351,7 +351,7 @@ def extract_information(state: ChatbotState):
             priority=extracted_data.priority if extracted_data.priority is not None else state["priority"],
             internal=True,
             state="new",
-            kategorie=state.get("category"),
+            category=state.get("category"),
         )
         state_update["ticket_id"] = result
         add_tag_to_ticket(result, "AI-Created")
@@ -451,7 +451,7 @@ def ask_for_additional_info(state: ChatbotState):
     ticket_matches = rag_results.get("ticket_matches", [])
 
     if not faq_matches and not ticket_matches:
-        print("[DEBUG] RAG lieferte keine Ergebnisse. Überspringe Rückfrage.")
+        print("[DEBUG] RAG returned no results. Skipping follow-up question.")
         return {"needs_additional_info": False}
 
     faq_context = "\n".join([f"- {_format_faq_match_for_prompt(match)}" for match in faq_matches])

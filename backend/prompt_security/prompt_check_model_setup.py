@@ -21,34 +21,34 @@ DANGEROUS_PATTERNS = [
 ]
 
 
-# Quelle: https://www.uni-due.de/zim/hilfecenter/faqs.php
-# Versuchen, eine kleinstmögliche Liste von Labels zu definieren,
-# da je mehr Labels geprüft werden, desto länger dauert die Prüfung,
-# ob die Nachricht themenfremd ist
+# Source: https://www.uni-due.de/zim/hilfecenter/faqs.php
+# Keep the on-topic label list as small as possible: more labels increase
+# the time needed to decide whether a message is off-topic.
 ON_TOPIC_TOPICS:list[str] = ["computer problem", "network", "email", "moodle", "media technology", "system management"]
 ON_TOPIC_DETECTION_THRESHOLD:float = 0.5
+# Keyword strings include German product terms used for matching user input;
+# they are detection data, not code identifiers.
 ZIM_KEYWORDS = [
         "wlan", "moodle", "account", "login", "einloggen",
         "register", "anmelden", "passwort", "password", "e-mail", "email",
         "matrikelnummer", "matrictlation number", "printer", "drucker",
         "vpn", "exam", "prüfung"
 ]
-# Wenn der 
-# Text als nicht Prompt Injection gesehen wird, aber die
-# Confidence unter dieser Schwelle liegt, soll der Text trotzdem abgelehnt werden
+# If the text is not classified as prompt injection but confidence is below
+# this threshold, reject the text anyway.
 PROMPT_INJECTION_BLOCK_THRESHOLD:float = 0.7
 
-# Auswahl der Device (GPU falls vorhanden, sonst CPU) für die Generierung der Übersetzung
+# Device selection (GPU if available, otherwise CPU) for translation generation
 device:str = "cuda" if torch.cuda.is_available() else "cpu"
 
-# Themenklassifizierer
+# Topic classifier
 topic_classifier = pipeline(
     task="zero-shot-classification",
     model="MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli",
     cache_dir=huggingface_model_folder,
 )
 
-# Übersetzer (Deutsch -> Englisch)
+# Translator (German -> English)
 translator_model_id = "Helsinki-NLP/opus-mt-de-en"
 translator_tokenizer = MarianTokenizer.from_pretrained(
     translator_model_id,
@@ -59,7 +59,7 @@ translator = MarianMTModel.from_pretrained(
     cache_dir=huggingface_model_folder,
 ).to(device).eval()
 
-# Prompt Injection-Erkenner
+# Prompt-injection detector
 prompt_injection_detector = pipeline(
     task="text-classification",
     model="deepset/deberta-v3-base-injection",

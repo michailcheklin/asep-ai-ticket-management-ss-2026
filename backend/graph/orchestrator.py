@@ -46,7 +46,7 @@ def __execute_langchain_workflow(state: ChatbotState):
 
     print("\n===== FINAL UPDATED STATE =====")
     print(f"Email:       {updated_state.get('user_email')}")
-    print(f"Matrikelnr.:    {updated_state.get('matrikelnummer')}")
+    print(f"Matriculation no.: {updated_state.get('matrikelnummer')}")
     print(f"Problem:     {updated_state.get('issue_description')}")
     print(f"Additional Info: {updated_state.get('additional_info')}")
     print("==============================================\n")
@@ -65,7 +65,7 @@ def __execute_langchain_workflow(state: ChatbotState):
         "solutions": updated_state.get("solutions", []),
         "additional_info_attempts": updated_state.get("additional_info_attempts", 0),
         "ask_issue_attempts": updated_state.get("ask_issue_attempts", 0),
-        "full_conversation": updated_state.get("full_conversation", ""),
+        "summary": updated_state.get("summary", ""),
         "intent": updated_state.get("intent", ""),
         "tutorial_attempts": updated_state.get("tutorial_attempts", 0),
     }

@@ -121,7 +121,7 @@ Note: `ask_for_additional_info` builds its structured-output LLM inline (`llm.wi
 * `test_ticket_category.py`
   * `test_returns_valid_category_from_llm` — a mocked `"Incident"` decision results in `classify_ticket_category(...) == "Incident"`.
   * `test_falls_back_when_llm_returns_unknown_category` — a mocked out-of-schema category (`"Netzwerk"`) falls back to `"Service Request"`.
-  * `test_prompt_includes_full_conversation_context` — the prompt contains all prior user messages, not just the latest one.
+  * `test_prompt_includes_summary_context` — the prompt contains all prior user messages, not just the latest one.
   * `test_moodle_login_classified_as_incident` / `test_wlan_classified_as_incident` — representative Moodle-login and WLAN cases both classify as `"Incident"`.
   * `test_extract_information_does_not_set_category` — `extract_information` returns the extracted `issue_description` but never sets a `"category"` key.
   * `test_extract_prompt_does_not_include_category_rules` — the extraction prompt contains neither `"4. Kategorie"` nor `"ITSM-Ticket-Typ"`.

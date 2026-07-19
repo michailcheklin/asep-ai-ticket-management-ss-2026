@@ -44,12 +44,12 @@ def _normalize_messages(messages: Any) -> str:
 
 
 def build_ticket_rag_document(state: dict[str, Any]) -> str:
-    full_conversation = (state.get("full_conversation") or "").strip()
+    summary = (state.get("summary") or state.get("full_conversation") or "").strip()
     ticket_id = str(state.get("ticket_id") or "").strip()
 
     parts = []
-    if full_conversation:
-        parts.append(f"full_conversation: {full_conversation}")
+    if summary:
+        parts.append(f"summary: {summary}")
     if ticket_id:
         parts.append(f"ticket_id: {ticket_id}")
 

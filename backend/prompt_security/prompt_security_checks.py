@@ -19,7 +19,7 @@ from backend.prompt_security.prompt_check_model_setup import (
 
 def evaluate_prompt_injection(text: str) -> dict:
     """
-    Bewertet einen Prompt auf Prompt Injection und gibt eine erklärbare Entscheidung zurück.
+    Evaluate a prompt for prompt injection and return an explainable decision.
     """
     text = __translate_from_german_into_english(text)
     output = prompt_injection_detector(text)[0]
@@ -62,9 +62,9 @@ def evaluate_prompt_injection(text: str) -> dict:
 
 def evaluate_legality(text:str) -> dict:
     """
-    Diese Methode prüft den Prompt auf illegale Themen
-    :param text: Der zu prüfende Text (auf Englisch)
-    :return: True, falls illegale Themen angesprochen wurden, sonst False
+    Check the prompt for illegal topics.
+    :param text: The text to check (in English after translation)
+    :return: Result dict; ``allowed`` is False if illegal topics were detected
     """
     text = __translate_from_german_into_english(text)
 
@@ -72,11 +72,10 @@ def evaluate_legality(text:str) -> dict:
     topics_and_scores = list(zip(output["labels"], output["scores"]))
     topics_and_scores = sorted(topics_and_scores, key=lambda x: x[1], reverse=True)
     most_relevant_topic, most_relevant_score = topics_and_scores[0]
-    # Die Keyword-Erkennung dient aktuell nur als Übergangslösung,
-    # um False Positives bei legitimen ZIM-Anfragen zu reduzieren.
-    # Diese Logik muss später durch eine robustere Bewertung ersetzt werden,
-    # da Keywords allein keine sichere Unterscheidung zwischen normalen
-    # Supportanfragen und gemischten/gefährlichen Anfragen garantieren.
+    # Keyword matching is currently a temporary safeguard to reduce false
+    # positives on legitimate ZIM requests. This should later be replaced by
+    # a more robust assessment, because keywords alone cannot reliably
+    # distinguish normal support requests from mixed/dangerous ones.
 
 
 
@@ -110,9 +109,9 @@ def evaluate_legality(text:str) -> dict:
 
 def evaluate_off_topic(text:str) -> dict:
     """
-    Diese Methode prüft, ob ein Prompt nichts mit dem ZIM zu tun hat
-    :param text: Der zu prüfende Text (auf Englisch)
-    :return: True, falls der Prompt nichts mit dem Thema zu tun hat, sonst False
+    Check whether a prompt is unrelated to ZIM topics.
+    :param text: The text to check (in English after translation)
+    :return: Result dict; ``allowed`` is False if the prompt is off-topic
     """
 
     text = __translate_from_german_into_english(text)
@@ -129,8 +128,8 @@ def evaluate_off_topic(text:str) -> dict:
         "allowed": not blocked,
         "reason": "Off-Topic" if blocked else None,
         "model_label": "Off-Topic" if blocked else None,
-        # Je niedriger im Falle von "Off-topic" die höchste Punktzahl der Themen,
-        # ist, desto mehr "off-topic" ist der Text
+        # For off-topic decisions: the lower the highest topic score,
+        # the more off-topic the text is considered.
         "risk_score": round(1-most_relevant_score, 3),
         "checked_text": text,
         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -149,17 +148,17 @@ def evaluate_off_topic(text:str) -> dict:
 
 def __translate_from_german_into_english(text: str) -> str:
     """
-    Diese Methode übersetzt einen Text von Deutsch nach Englisch, da der Classifier mit englischsprachigen
-    Texten trainiert wurde.
-    :param text: Die deutschsprachige Eingabe
-    :return: Die englischsprachige Übersetzung
+    Translate text from German to English because the classifier was trained
+    on English text.
+    :param text: German input text
+    :return: English translation
     """
-    # Quelle: https://discuss.huggingface.co/t/issue-with-summarization-and-translation-pipeline/173919/4#p-252057-translation-example-marian-12
+    # Source: https://discuss.huggingface.co/t/issue-with-summarization-and-translation-pipeline/173919/4#p-252057-translation-example-marian-12
     inputs = translator_tokenizer(text, return_tensors="pt", truncation=True).to(device)
 
     with torch.no_grad():
         out = translator.generate(**inputs)
 
     translation = translator_tokenizer.decode(out[0], skip_special_tokens=True)
-    print(f"Englische Übersetzung: '{translation}'")
+    print(f"English translation: '{translation}'")
     return translation

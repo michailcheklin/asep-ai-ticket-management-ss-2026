@@ -64,7 +64,7 @@ class ClassifyTicketCategoryTests(unittest.TestCase):
         self.assertEqual(result, "Service Request")
 
     @patch("backend.graph.nodes.category_llm")
-    def test_prompt_includes_full_conversation_context(self, mock_category_llm):
+    def test_prompt_includes_summary_context(self, mock_category_llm):
         mock_category_llm.invoke.return_value = category_decision("Incident")
 
         classify_ticket_category(

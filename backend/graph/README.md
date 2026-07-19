@@ -79,14 +79,14 @@ graph TD
     End(((END)))
 
 
-     %% --- KLASSIFIKATION & ZWEI PFADE  ---
+     %% --- CLASSIFICATION & TWO PATHS ---
     classify_intent_node[classify_intent_node <br> classify_intent]
     ask_intent_node[ask_intent_node <br> ask_intent]
     give_tutorial_node[give_tutorial_node <br> give_tutorial]
     finish_tutorial_node[finish_tutorial_node <br> finish_tutorial]
     escalate_incidents_node[escalate_incidents_node <br> escalate issue]
 
-    %% --- ALLE REGISTRIERTEN NODES ---
+    %% --- ALL REGISTERED NODES ---
     extractor_node[extractor_node <br> extract_information]
     ask_email_node[ask_email_node <br> ask_for_email]
     ask_issue_node[ask_issue_node <br> ask_for_issue]
@@ -95,18 +95,18 @@ graph TD
     give_solutions_node[give_solutions_node <br> give_solutions]
     finish_node[finish_node <br> finish_ticket]
 
-    %% --- ROUTER (CONDITIONAL EDGES) ---
+    %% --- ROUTERS (CONDITIONAL EDGES) ---
     route_after_intent{route_after_intent}
     route_based_on_state{route_based_on_state}
     route_after_evaluator{route_after_evaluator}
     route_after_solutions{route_after_solutions}
 
-    %% --- VERBINDUNGEN NACH CODE-LOGIK ---
+    %% --- EDGES PER CODE LOGIC ---
     
     %% Entry Point
     Start --> classify_intent_node
     
-    %% Erster Conditional Router
+    %% First conditional router
     classify_intent_node --> route_after_intent
     
     route_after_intent -->|not user_email| ask_email_node
@@ -117,12 +117,12 @@ graph TD
     route_after_intent -->|else / unclear| ask_intent_node
 
 
-    %% --- Tutorial-Pfad endet und wartet auf Nutzer ---
+    %% --- Tutorial path ends; wait for user ---
     give_tutorial_node --> End
     ask_intent_node --> End
     finish_tutorial_node --> End
 
-    %% --- Ticket-Pfad: Vollstaendigkeit pruefen ---
+    %% --- Ticket path: completeness check ---
     extractor_node --> route_based_on_state
     route_based_on_state -->|not user_email| ask_email_node
     route_based_on_state -->|not issue & attempts < 3| ask_issue_node
@@ -132,7 +132,7 @@ graph TD
     ask_email_node --> End
     ask_issue_node --> End
 
-    %% --- Zusatzinfos auswerten ---
+    %% --- Evaluate additional info ---
     ask_for_additional_info --> route_after_evaluator
     route_after_evaluator -->|needs_additional_info == True| classify_ticket_node
     route_after_evaluator -->|else| End
@@ -140,7 +140,7 @@ graph TD
     classify_ticket_node --> escalate_incidents_node
     escalate_incidents_node --> give_solutions_node
 
-    %% --- Loesungen anbieten ---
+    %% --- Offer solutions ---
     give_solutions_node --> route_after_solutions
     route_after_solutions -->|solutions & is_complete| finish_node
     route_after_solutions -->|solutions & not is_complete| End

@@ -6,12 +6,13 @@ LOG_FILE = "./backend/blocked_prompts.log"
 
 def log_blocked_prompt(prompt: str, reason: str, risk_score: float | None = None) -> None:
     """
-    Diese Methode schreibt einen Log-Eintrag, wenn ein Prompt aus dem Chatbot blockiert wurde.
-    In den Logs wird neben dem blockierten Prompt und dem Grund, warum der Prompt blockiert wurde, auch vermerkt,
-    von wem (E-Mail + Matr.-Nr.) und wann (Zeit) der Prompt geschickt wurde, vermerkt.
-    :param prompt: Der Prompt, der geprüft wurde
-    :param reason: Der Grund, warum ein Prompt blockiert wurde
-    :param risk_score: Die vom Modell bestimmte Wahrscheinlichkeit, dass der Blockiergrund erfüllt wurde
+    Write a log entry when a chatbot prompt was blocked.
+
+    Each entry records the blocked prompt, the block reason, the model risk
+    score, and a timestamp.
+    :param prompt: The prompt that was checked
+    :param reason: Why the prompt was blocked
+    :param risk_score: Model-estimated probability that the block reason applies
     """
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 

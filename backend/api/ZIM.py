@@ -61,7 +61,7 @@ def _history_to_langchain_messages(history: list[dict]) -> list:
 def root():
     """Root endpoint of the backend API."""
     return {
-        "message": "AI Ticket Management Backend läuft"
+        "message": "AI Ticket Management Backend is running"
     }
 
 
@@ -130,7 +130,7 @@ async def chat_endpoint(request: ChatRequest):
         "additional_info_attempts": request.additional_info_attempts,
         "ask_issue_attempts": request.ask_issue_attempts,
         "ticket_id": request.ticket_id,
-        "full_conversation": request.full_conversation,
+        "summary": request.summary,
         "intent": request.intent,
         "tutorial_attempts": request.tutorial_attempts,
     }
@@ -247,7 +247,7 @@ async def zammad_ticket_closed(payload: dict):
     ticket_summary, full_text, agent_messages = build_ticket_summary_and_conversation(articles)
 
     rag_state = {
-        "full_conversation": ticket_summary,
+        "summary": ticket_summary,
         "ticket_id": ticket_id,
         "messages": agent_messages,
     }
@@ -292,7 +292,7 @@ async def solution_feedback(request: ChatRequest):
         "ask_issue_attempts": request.ask_issue_attempts,
         "additional_info_attempts": request.additional_info_attempts,
         "ticket_id": request.ticket_id,
-        "full_conversation": request.full_conversation,
+        "summary": request.summary,
         "user_addendum": request.user_addendum,
         "intent": request.intent,
         "tutorial_attempts": request.tutorial_attempts,
@@ -367,7 +367,7 @@ def run_local_chat():
         "category": "",
         "solutions": [],
         "ticket_id": None,
-        "full_conversation": "",
+        "summary": "",
         "intent": "",
         "tutorial_attempts": 0,
         "needs_additional_info": False,
