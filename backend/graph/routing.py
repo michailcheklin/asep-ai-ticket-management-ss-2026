@@ -15,7 +15,7 @@ def route_based_on_state(state: ChatbotState):
     if not state.get("issue_description"):
         print(f"[DEBUG]: Attempts for ask_for_issue node: {state.get('ask_issue_attempts')}")
         if state.get("ask_issue_attempts", 0) >= 3:
-            return "finish_node"
+            return "finish_ai_created_ticket_node"
         else:
             return "ask_issue_node"
 
@@ -76,11 +76,11 @@ def route_after_solutions(state: ChatbotState):
     """
     if state.get("solutions"):
         if state.get("is_complete"):
-            return "finish_node"
+            return "finish_ai_created_ticket_node"
         else:
             return END
     else:
-        return "finish_node"
+        return "finish_ai_created_ticket_node"
 
 def route_after_classification(state: ChatbotState):
     """

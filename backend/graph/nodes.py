@@ -153,6 +153,8 @@ def classify_intent(state: ChatbotState):
 
     # 1)
     user_messages = [msg.content for msg in state["messages"] if isinstance(msg, HumanMessage)]
+    ai_messages = [msg.content for msg in state["messages"] if isinstance(msg, AIMessage)]
+    last_bot_message = ai_messages[-1][-400:] if ai_messages else "(keine)"
     conversation = "\n".join(f"- {m}" for m in user_messages) if user_messages else "(keine)"
     previous_intent = state.get("intent") or "(noch keiner)"
 
@@ -179,7 +181,15 @@ REGELN FUER DEN WECHSEL:
   dass der Support uebernimmt (z. B. "erstell mir ein Ticket", "leite es bitte an
   einen Mitarbeiter weiter", "ich will mit einem Menschen sprechen").
 - Eine reine Zwischenantwort (E-Mail-Adresse, Ja/Nein, Detailangabe) ist KEIN Wechsel.
+- AUSNAHME: Endet die LETZTE BOT-NACHRICHT mit der Frage, ob das Problem
+  geloest ist, und antwortet der Nutzer darauf zustimmend (z. B. "Ja", "jo",
+  "passt", "danke"), dann waehle "solved".
+- Ein zustimmendes "Ja" auf eine ANDERE Rueckfrage (z. B. nach Geraet,
+  Standort oder Betriebssystem) bleibt eine Zwischenantwort und ist KEIN Wechsel.
 - Entscheide nach der Hauptabsicht, nicht nach einzelnen Schluesselwoertern.
+
+LETZTE BOT-NACHRICHT (Ende):
+{last_bot_message}
 
 CHATVERLAUF (User-Nachrichten):
 {conversation}""")
@@ -406,6 +416,21 @@ def ask_for_issue(state: ChatbotState):
     """
     log_node_entry("ask_for_issue", state)
     attempts = state.get("ask_issue_attempts", 0) + 1
+
+    if attempts >= 3:
+        final_message = (
+            "Ich kann dein Anliegen leider nicht weiter als ZIM-IT-Support bearbeiten, "
+            "da keine eindeutige IT-/ZIM-bezogene Problemstellung erkannt wurde.\n\n"
+            "Falls du später ein IT-Problem rund um Dienste der Universität hast "
+            "(z. B. WLAN, VPN, E-Mail, Moodle oder Account-Probleme), helfe ich dir gerne weiter."
+        )
+        return {
+            **visit("ask_issue_node"),
+            "messages": [AIMessage(content=final_message)],
+            "ask_issue_attempts": attempts,
+            "is_complete": True
+        }
+
     metadata_context = _build_metadata_context(state)
     system_prompt = SystemMessage(content=(
         AGENT_PROMPT + metadata_context + "\n\n" +
@@ -416,19 +441,12 @@ def ask_for_issue(state: ChatbotState):
     full_messages = [system_prompt] + state["messages"]
     response = llm.invoke(full_messages)
 
-    if attempts >= 3:
-        return {
-            **visit("ask_issue_node"),
-            "messages": [response],
-            "ask_issue_attempts": attempts,
-            "is_complete": True
-        }
-
     return {
         **visit("ask_issue_node"),
         "messages": [response],
         "ask_issue_attempts": attempts
     }
+
 
 @traceable
 def ask_for_additional_info(state: ChatbotState):
@@ -731,12 +749,12 @@ def give_solutions(state: ChatbotState):
     }
 
 @traceable
-def finish_ticket(state):
+def finish_ai_created_ticket(state):
     """
     Finalizes the ticket creation process by generating a concise title
     and preparing the payload for the Zammad API.
     """
-    log_node_entry("finish_ticket", state)
+    log_node_entry("finish_ai_created_ticket", state)
     # If the issue was asked three times, and no problem could be extracted,
     # say instead that the off-topic issue cannot be processed by support
     attempts = state.get("ask_issue_attempts", 0)
@@ -748,7 +766,7 @@ def finish_ticket(state):
             "(z. B. WLAN, VPN, E-Mail, Moodle oder Account-Probleme), helfe ich dir gerne weiter."
         )
         return {
-            **visit("finish_node"),
+            **visit("finish_ai_created_ticket_node"),
             "messages": [AIMessage(content=final_message)],
             "is_complete": True
         }
@@ -771,7 +789,7 @@ def finish_ticket(state):
         langgraph_logger.info(f"give_solution node: Could not append message to ticket.\nError: {e}")
 
     return {
-        **visit("finish_node"),
+        **visit("finish_ai_created_ticket_node"),
         **result,
         "category": category
         }

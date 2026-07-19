@@ -33,6 +33,7 @@ INITIAL_STATES = {
     "intent": "",
     "tutorial_attempts": 0,
     "graph_runs": 0,
+    "is_complete": False,
     # ── Q&A widget state (frontend-only, never sent to the backend) ──────────
     "pending_questions": [],   # list of {text: str, options: list[str] | None}
     "current_question_idx": 0,
@@ -378,6 +379,8 @@ def apply_response_to_session(user_input: str, res_json: dict) -> None:
     st.session_state.intent = res_json.get("intent", "")
     st.session_state.tutorial_attempts = res_json.get("tutorial_attempts", 0)
     st.session_state.graph_runs = res_json.get("graph_runs", 0)
+    st.session_state.is_complete = res_json.get("is_complete", False)
+    
     
     if "ticket_id" in res_json:
         st.session_state.ticket_id = res_json.get("ticket_id")
@@ -441,6 +444,7 @@ def process_solution_feedback(
     # For "Yes" response, parse the JSON response
     res_json = client.send_feedback(payload)
     message["solutions"] = []
+    st.session_state.is_complete = True
     return res_json.get("bot_response", "")
 
 
@@ -757,10 +761,13 @@ def run_app(client: ChatClient, *, mock_mode: bool = False) -> None:
             or not are_form_fields_valid()
             or has_pending_solutions
             or st.session_state.pending_ticket_confirmation is not None
+            or st.session_state.is_complete
         )
         if user_input := st.chat_input(
             placeholder=(
-                "Bitte E-Mail-Adresse und Matrikelnummer eingeben"
+                "Das Gespräch ist abgeschlossen — bitte über 'Neu starten' ein neues Anliegen beginnen."
+                if st.session_state.is_complete
+                else "Bitte E-Mail-Adresse und Matrikelnummer eingeben"
                 if not are_form_fields_valid()
                 else "Beschreibe dein Anliegen..."
             ),
