@@ -65,6 +65,36 @@ download_hugging_face_models:
     - dind
     - ude-sse
 
+download_pii_anonymizer_models:
+  stage:
+    prepare_downloads_for_tests
+  script:
+    - python --version
+    - pip install --upgrade pip
+    - python -m venv $VENV_DIR
+    - source $VENV_DIR/bin/activate
+    - if [ -f tests/requirements.txt ]; then pip install -r tests/requirements.txt; fi
+    - PYTHONPATH=. python -c "import backend.rag.pii_anonymizer"
+  cache:
+    - key: ${CI_COMMIT_REF_SLUG}
+      paths:
+        - $PIP_CACHE_DIR
+        - $VENV_DIR/lib/python*/site-packages/
+      policy: pull
+    - key: hf-models
+      paths:
+        - $HF_HOME
+      policy: push
+  # Redownload the Piiranha/flair-DE models only if the anonymizer module
+  # itself changed, e. g. to choose a different model
+  rules:
+    - changes:
+        paths:
+          - backend/rag/pii_anonymizer.py
+  tags:
+    - dind
+    - ude-sse
+
 run_test_ticket_escalation:
   stage: before_deepeval
   cache:
@@ -149,7 +179,6 @@ run_test_graph_nodes:
     - echo "AGENT=ZIM" >> .env
     - PYTHONPATH=. pytest tests/test_intent_classification.py tests/test_ticket_category.py tests/test_ask_for_additional_info.py tests/test_give_solutions.py -v -s
 
-
 run_test_ticket_confirmation:
   stage: before_deepeval
   cache:
@@ -198,6 +227,30 @@ run_rag_retrieve:
     - source $VENV_DIR/bin/activate
     - if [ -f tests/requirements.txt ]; then pip install -r tests/requirements.txt; fi
     - PYTHONPATH=. pytest tests/test_rag_retrieve.py -v -s
+
+run_pii_anonymizer:
+  stage: before_deepeval
+  tags:
+    - dind
+    - ude-sse
+  cache:
+    - key: ${CI_COMMIT_REF_SLUG}
+      paths:
+        - $PIP_CACHE_DIR
+        - $VENV_DIR/lib/python*/site-packages/
+      policy: pull
+    - key: hf-models
+      paths:
+        - .cache/huggingface/
+      policy: pull
+  script:
+    - export HF_HOME=$HF_HOME
+    - python --version
+    - pip install --upgrade pip
+    - python -m venv $VENV_DIR
+    - source $VENV_DIR/bin/activate
+    - if [ -f tests/requirements.txt ]; then pip install -r tests/requirements.txt; fi
+    - PYTHONPATH=. pytest tests/test_anonymiser.py -v -s
 
 run_test_ticket_category_live:
   stage: before_deepeval

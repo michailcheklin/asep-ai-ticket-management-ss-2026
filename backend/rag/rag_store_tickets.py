@@ -6,6 +6,8 @@ from typing import Any
 import chromadb
 from sentence_transformers import SentenceTransformer
 
+from .pii_anonymizer import anonymize_ticket_fields
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TICKET_DB_PATH = os.path.join(BASE_DIR, "ticket_db")
 TICKET_COLLECTION_NAME = "tickets"
@@ -71,9 +73,26 @@ def store_ticket_state_to_rag(
     if resolved_ticket_id.startswith("ticket_") and resolved_ticket_id.count("_") == 1:
         resolved_ticket_id = resolved_ticket_id.replace("ticket_", "ticket_0", 1)
 
-    document = build_ticket_rag_document(state)
+    raw_full_conversation = (state.get("full_conversation") or "").strip()
+    raw_messages = _normalize_messages(state.get("messages"))
+
+    anon_full_conversation, anon_messages = anonymize_ticket_fields(
+        raw_full_conversation, raw_messages, ticket_id=resolved_ticket_id
+    )
+
+    # >>> TEMP DEBUG: BEFORE/AFTER ANONYMIZATION — DELETE BEFORE COMMIT >>>
+    print(f"[DEBUG-ANON] {resolved_ticket_id} BEFORE full_conversation:\n{raw_full_conversation}\n")
+    print(f"[DEBUG-ANON] {resolved_ticket_id} AFTER  full_conversation:\n{anon_full_conversation}\n")
+    print(f"[DEBUG-ANON] {resolved_ticket_id} BEFORE messages:\n{raw_messages}\n")
+    print(f"[DEBUG-ANON] {resolved_ticket_id} AFTER  messages:\n{anon_messages}\n")
+    # <<< END TEMP DEBUG — DELETE BEFORE COMMIT <<<
+
+    anonymized_state = dict(state)
+    anonymized_state["full_conversation"] = anon_full_conversation
+
+    document = build_ticket_rag_document(anonymized_state)
     metadata = {
-        "messages": _normalize_messages(state.get("messages")),
+        "messages": anon_messages,
     }
     print(f"[RAG] Persisting closed ticket to RAG DB: {resolved_ticket_id}")
     print(f"[RAG] Document preview: {document[:400]}")
@@ -120,11 +139,29 @@ def load_and_store_tickets(
 
     for idx, ticket_entry in enumerate(tickets, start=1):
         ticket_id = f"ticket_{idx:03d}"
-        ticket_text = build_ticket_rag_document(ticket_entry)
+
+        raw_full_conversation = (ticket_entry.get("full_conversation") or "").strip()
+        raw_messages = _normalize_messages(ticket_entry.get("messages"))
+
+        anon_full_conversation, anon_messages = anonymize_ticket_fields(
+            raw_full_conversation, raw_messages, ticket_id=ticket_id
+        )
+
+        # >>> TEMP DEBUG: BEFORE/AFTER ANONYMIZATION — DELETE BEFORE COMMIT >>>
+        print(f"[DEBUG-ANON] {ticket_id} BEFORE full_conversation:\n{raw_full_conversation}\n")
+        print(f"[DEBUG-ANON] {ticket_id} AFTER  full_conversation:\n{anon_full_conversation}\n")
+        print(f"[DEBUG-ANON] {ticket_id} BEFORE messages:\n{raw_messages}\n")
+        print(f"[DEBUG-ANON] {ticket_id} AFTER  messages:\n{anon_messages}\n")
+        # <<< END TEMP DEBUG — DELETE BEFORE COMMIT <<<
+
+        anonymized_entry = dict(ticket_entry)
+        anonymized_entry["full_conversation"] = anon_full_conversation
+
+        ticket_text = build_ticket_rag_document(anonymized_entry)
         embedding = embedder.encode(ticket_text, normalize_embeddings=True).tolist()
         metadata = {
             "category": (ticket_entry.get("category") or "").strip(),
-            "messages": _normalize_messages(ticket_entry.get("messages")),
+            "messages": anon_messages,
         }
         collection.add(
             ids=[ticket_id],
@@ -133,7 +170,7 @@ def load_and_store_tickets(
             metadatas=[metadata],
         )
         print(f"  [STORED] {ticket_id} | category: {ticket_entry.get('category', 'N/A')}")
-
+        
     print(f"\n[INFO] Done. {len(tickets)} tickets stored.\n")
 
 
