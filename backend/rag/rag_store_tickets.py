@@ -80,12 +80,12 @@ def store_ticket_state_to_rag(
         raw_full_conversation, raw_messages, ticket_id=resolved_ticket_id
     )
 
-    # >>> TEMP DEBUG: BEFORE/AFTER ANONYMIZATION — DELETE BEFORE COMMIT >>>
+    # Debug info for demo purposes, can be removed later
     print(f"[DEBUG-ANON] {resolved_ticket_id} BEFORE full_conversation:\n{raw_full_conversation}\n")
     print(f"[DEBUG-ANON] {resolved_ticket_id} AFTER  full_conversation:\n{anon_full_conversation}\n")
     print(f"[DEBUG-ANON] {resolved_ticket_id} BEFORE messages:\n{raw_messages}\n")
     print(f"[DEBUG-ANON] {resolved_ticket_id} AFTER  messages:\n{anon_messages}\n")
-    # <<< END TEMP DEBUG — DELETE BEFORE COMMIT <<<
+    # End debug
 
     anonymized_state = dict(state)
     anonymized_state["full_conversation"] = anon_full_conversation
@@ -147,12 +147,12 @@ def load_and_store_tickets(
             raw_full_conversation, raw_messages, ticket_id=ticket_id
         )
 
-        # >>> TEMP DEBUG: BEFORE/AFTER ANONYMIZATION — DELETE BEFORE COMMIT >>>
+        # Debug info for demo purposes, can be removed later
         print(f"[DEBUG-ANON] {ticket_id} BEFORE full_conversation:\n{raw_full_conversation}\n")
         print(f"[DEBUG-ANON] {ticket_id} AFTER  full_conversation:\n{anon_full_conversation}\n")
         print(f"[DEBUG-ANON] {ticket_id} BEFORE messages:\n{raw_messages}\n")
         print(f"[DEBUG-ANON] {ticket_id} AFTER  messages:\n{anon_messages}\n")
-        # <<< END TEMP DEBUG — DELETE BEFORE COMMIT <<<
+        # End debug
 
         anonymized_entry = dict(ticket_entry)
         anonymized_entry["full_conversation"] = anon_full_conversation

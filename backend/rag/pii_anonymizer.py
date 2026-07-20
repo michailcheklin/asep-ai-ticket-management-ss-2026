@@ -8,7 +8,6 @@ module (directly or transitively via rag_store_tickets.py) during backend
 startup so the models are warm before the first ticket-closed webhook
 arrives.
 
-This implements "variant D" from the anonymization prototyping notebook:
 Piiranha for structured PII (emails, phone numbers, IBANs, etc.) + flair-DE
 for person names (avoids Piiranha's subword fragmentation issue on German
 names), followed by a regex safety net for structured identifiers models
@@ -44,7 +43,7 @@ anon_logger.setLevel(logging.INFO)
 anon_logger.propagate = False
 
 # ----------------------------------------------------------------------
-# Tunable parameters (carried over from notebook prototyping)
+# Tunable parameters
 # ----------------------------------------------------------------------
 SCORE_THRESHOLD = 0.5
 MIN_WORD_LABEL_AGREEMENT = 0.5
@@ -118,7 +117,7 @@ anon_logger.info("[Anonymizer] Ready (variant D: piiranha + flair-DE + regex).\n
 
 
 # ----------------------------------------------------------------------
-# Shared span-detection utilities (ported from notebook Cell 1)
+# Shared span-detection utilities
 # ----------------------------------------------------------------------
 def _clean_label(raw_label: str) -> str:
     return raw_label[2:].upper() if raw_label.startswith(("B-", "I-")) else raw_label.upper()
@@ -230,7 +229,7 @@ def find_spans_flair_names(text, name_label="PERSON"):
 
 
 # ----------------------------------------------------------------------
-# Regex safety net (ported from notebook Cell 3)
+# Regex safety net
 # ----------------------------------------------------------------------
 def _matriculation_matches(text):
     matches = []
@@ -279,7 +278,7 @@ def anonymize_with_regex(text, mask_format="[{label}]"):
 
 
 # ----------------------------------------------------------------------
-# Variant D pipeline (piiranha structured PII + flair-DE names + regex)
+# Anonymize (piiranha structured PII + flair-DE names + regex)
 # ----------------------------------------------------------------------
 def _anonymize_text_variant_d(text: str) -> tuple[str, dict[str, int]]:
     if not text or not text.strip():
@@ -328,7 +327,7 @@ def _log_anonymization_summary(
 # Public API
 # ----------------------------------------------------------------------
 def anonymize_ticket_text(text: str) -> tuple[str, dict[str, int]]:
-    """Anonymize a single piece of text using variant D. Returns (anonymized_text, label_counts)."""
+    """Anonymize a single piece of text. Returns (anonymized_text, label_counts)."""
     return _anonymize_text_variant_d(text)
 
 
