@@ -100,7 +100,7 @@ INCIDENT_SIMILARITY_THRESHOLD=0.55
 ## Function Call
 
 ```python
-from retrieve_info import retrieve_relevant_entries
+from backend.rag.retrieve_info import retrieve_relevant_entries
 
 results = retrieve_relevant_entries(query, n_results=5)
 ```
@@ -166,6 +166,32 @@ All internal RAG logs are prefixed with `[RAG]` to distinguish them from applica
 ```
 
 ---
+
+## PII Anonymization (Ticket Storage)
+
+Before a solved ticket is written to `ticket_db`, both the embedded text
+(`full_conversation`) and the stored metadata (`messages`) are anonymized to
+remove personally identifiable information (names, emails, phone numbers,
+IBANs, matriculation numbers, IPs/MACs, addresses, dates of birth, etc.).
+
+This happens in `backend/rag/pii_anonymizer.py`, which is imported by
+`rag_store_tickets.py` before any ticket is embedded/stored — retrieval
+itself is unaffected, since by the time a ticket is in the database it is
+already anonymized.
+
+**Pipeline:**
+
+1. **Piiranha** (`iiiorg/piiranha-v1-detect-personal-information`) — detects structured PII (emails, phone numbers, IBANs, credit cards, addresses, DOB, etc.)
+2. **flair-DE** (`flair/ner-german-large`) — detects person names only, chosen specifically because it avoids the subword-fragmentation issues transformer models have on German names/compounds
+3. **Regex safety net** — catches structured identifiers models tend to miss (matriculation numbers, IPs, MACs, IBANs, phone numbers)
+
+City/country are deliberately **not** masked, to preserve useful context (e.g. "the printer in the Essen campus library").
+
+Like the retrieval models, both models are **loaded once at import time** (see `[Anonymizer]`-prefixed startup logs), so they're warm before the first ticket-closed webhook arrives.
+
+**Known limitations** (documented, non-blocking): a small number of edge cases are not reliably caught (e.g. passwords that are sent in the support ticket). These are tracked as accepted risk since any password shared with a support agent (although not the norm) must be changed. Even if this is not the case, the username and email address are reliably anonymized so the password alone is not a security threat.
+
+A CI test file, `tests/test_anonymiser.py`, checks anonymization quality on a hand-crafted dataset with known ground truth, enforces zero-tolerance on a list of "critical" PII types (passwords, emails, IBANs, etc.), and prints a full precision/recall + false-positive/negative report.
 
 ## Additional Notes
 
