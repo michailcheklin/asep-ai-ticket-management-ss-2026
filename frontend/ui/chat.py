@@ -129,6 +129,15 @@ def reset_session_state() -> None:
         st.session_state[key] = copy.deepcopy(value)
     st.session_state["email_input"] = ""
     st.session_state["matrikelnummer_input"] = ""
+    # Delete the ticket ID out of the frontend's session state completely
+    # so that after the click on the "Neu starten" button the backend does not think
+    # that a ticket still exists.
+    #
+    # Just setting the ticket ID to None or -1 would not have sufficed,
+    # because the backend would think a ticket with ID None or -1 exists and then
+    # try to do things with non-existant tickets,
+    # instead of knowing that for the current conversation a ticket does not exist yet.
+    st.session_state.pop('ticket_id', None)
 
 
 def bot_starting_thinking() -> None:
