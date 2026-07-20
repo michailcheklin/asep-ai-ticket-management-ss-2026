@@ -594,14 +594,17 @@ def give_solutions(state: ChatbotState):
     ticket_matches = results.get("ticket_matches", [])
     inferred = results.get("inferred", {})
 
-    # Build up to 2 solutions (FAQ first)
+    # Build up to 2 solutions (FAQ first, then ticket matches as filler)
     solutions = []
     for m in faq_matches[:2]:
         solutions.append({"title": f"FAQ: {m['id']}", "description": _format_faq_match_for_prompt(m)})
     for t in ticket_matches:
+        if len(solutions) >= 2:
+            break
+        description = t.get("text") or t.get("messages") or ""
         solutions.append(
-            {"title": f"Ähnliches Ticket ({t.get('category', 'unknown')})", "description": t.get("messages", "")})
-    print(f"[Node: give_solutions] Solutions: {solutions}")
+            {"title": f"Ähnliches Ticket ({t.get('category', 'unknown')})", "description": description}
+        )
 
     problem = state.get("issue_description", "")
     infos = state.get("additional_info", [])
