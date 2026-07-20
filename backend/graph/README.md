@@ -89,7 +89,7 @@ graph TD
     classify_ticket_node[classify_ticket_node <br> classify_ticket]
     escalate_incidents_node[escalate_incidents_node <br> escalate_incidents]
     give_solutions_node[give_solutions_node <br> give_solutions]
-    finish_node[finish_node <br> finish_ticket]
+    finish_ai_created_ticket_node[finish_node <br> finish_ai_created_ticket]
 
     %% --- ROUTER (CONDITIONAL EDGES) ---
     route_based_on_state{route_based_on_state}
@@ -103,7 +103,7 @@ graph TD
 
     %% --- Router nach Extraktion (E-Mail kommt aus der Login-Session, kein ask_email_node mehr) ---
     extractor_node --> route_based_on_state
-    route_based_on_state -->|not issue & attempts >= 3| finish_node
+    route_based_on_state -->|not issue & attempts >= 3| finish_ai_created_ticket
     route_based_on_state -->|not issue & attempts < 3| ask_issue_node
     route_based_on_state -->|else| classify_intent_node
 
@@ -129,16 +129,16 @@ graph TD
     %% --- Problem-Pfad ---
     escalate_incidents_node --> give_solutions_node
     give_solutions_node --> route_after_solutions
-    route_after_solutions -->|solutions & is_complete| finish_node
+    route_after_solutions -->|solutions & is_complete| finish_ai_created_ticket
     route_after_solutions -->|solutions & not is_complete| End
-    route_after_solutions -->|not solutions| finish_node
+    route_after_solutions -->|not solutions| finish_ai_created_ticket
 
     %% --- Enden (unbedingte Kanten zu END) ---
     ask_issue_node --> End
     ask_intent_node --> End
     give_tutorial_node --> End
     finish_tutorial_node --> End
-    finish_node --> End
+    finish_ai_created_ticket --> End
 
     %% --- STYLING ---
     style Start fill:#dcedc8,stroke:#689f38
@@ -153,7 +153,7 @@ graph TD
     style classify_ticket_node fill:#bbdefb,stroke:#1976d2
     style give_solutions_node fill:#bbdefb,stroke:#1976d2
     style escalate_incidents_node fill:#bbdefb,stroke:#1976d2
-    style finish_node fill:#bbdefb,stroke:#1976d2
+    style finish_ai_created_ticket fill:#bbdefb,stroke:#1976d2
 
     style ask_issue_node fill:#ffecb3,stroke:#ff8f00
     style ask_for_additional_info fill:#ffecb3,stroke:#ff8f00

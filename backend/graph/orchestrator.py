@@ -14,7 +14,7 @@ from .nodes import (
     classify_ticket,
     escalate_incidents,
     give_solutions,
-    finish_ticket,
+    finish_ai_created_ticket,
     classify_intent,
     ask_intent,
     give_tutorial,
@@ -115,7 +115,7 @@ workflow.add_node("ask_for_additional_info", ask_for_additional_info)
 workflow.add_node("classify_ticket_node", classify_ticket)
 workflow.add_node("escalate_incidents_node", escalate_incidents)
 workflow.add_node("give_solutions_node", give_solutions)
-workflow.add_node("finish_node", finish_ticket)
+workflow.add_node("finish_ai_created_ticket_node", finish_ai_created_ticket)
 workflow.add_node("classify_intent_node", classify_intent)
 workflow.add_node("ask_intent_node", ask_intent)
 workflow.add_node("give_tutorial_node", give_tutorial)
@@ -139,7 +139,7 @@ workflow.add_conditional_edges(
     source="extractor_node",
     path=route_based_on_state,
     path_map=build_pathmap_from_nodes_list_for_visualisation(
-        ["ask_issue_node", "finish_node", "classify_intent_node"]
+        ["ask_issue_node", "finish_ai_created_ticket_node", "classify_intent_node"]
     )
 )
 
@@ -168,14 +168,14 @@ workflow.add_conditional_edges(
     source="give_solutions_node",
     path=route_after_solutions,
     path_map=build_pathmap_from_nodes_list_for_visualisation(
-        ["finish_node", "__end__"]
+        ["finish_ai_created_ticket_node", "__end__"]
     )
 )
 
 
 # End the workflow after the information collection nodes.
 workflow.add_edge("ask_issue_node", END)
-workflow.add_edge("finish_node", END)
+workflow.add_edge("finish_ai_created_ticket_node", END)
 workflow.add_edge("ask_intent_node", END)
 workflow.add_edge("give_tutorial_node", END)
 workflow.add_edge("finish_tutorial_node", END)
