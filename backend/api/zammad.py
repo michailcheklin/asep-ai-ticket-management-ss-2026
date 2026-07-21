@@ -34,8 +34,12 @@ priority_number_to_zammad_priority_id_map = {
     1: 3  # high / urgent
 }
 
-def resolve_zammad_kategorie(category: str | None) -> str | None:
-    """Return a category value that is valid for the Zammad select field."""
+def resolve_zammad_category(category: str | None) -> str | None:
+    """Return a category value that is valid for the Zammad select field.
+
+    Note: The Zammad custom attribute API key remains ``"kategorie"`` (German);
+    this helper only validates the value before it is sent.
+    """
     value = (category or "").strip()
     if value in TICKET_CATEGORIES:
         return value
@@ -51,7 +55,7 @@ def create_ticket_by_user_email(
         article_type: str = "web",
         internal: bool = False,
         state: str = "new",
-        kategorie: str | None = None,
+        category: str | None = None,
 ):
     """
     Creates a ticket in the Zammad system via the REST API.
@@ -66,7 +70,7 @@ def create_ticket_by_user_email(
         see https://docs.zammad.org/en/latest/api/ticket/articles.html#general-information-about-ticket-articles) (typically note)
     :arg internal: Defaults to False. If True, the ticket is only visible to helpdesk staff
     :arg state: Zammad ticket state, e.g. "new" or "closed"
-    :arg kategorie: Value for the Zammad custom field "Kategorie" (custom select attribute)
+    :arg category: Value for the Zammad custom field ``kategorie`` (external API name; do not rename)
     """
 
     json_body_for_ticket = {
@@ -83,9 +87,10 @@ def create_ticket_by_user_email(
         "state": state,
     }
 
-    resolved_kategorie = resolve_zammad_kategorie(kategorie)
-    if resolved_kategorie:
-        json_body_for_ticket["kategorie"] = resolved_kategorie
+    # Zammad custom select attribute — external field name must stay "kategorie"
+    resolved_category = resolve_zammad_category(category)
+    if resolved_category:
+        json_body_for_ticket["kategorie"] = resolved_category
 
     try:
         server_response = requests.post(url=f"{server_address}/api/v1/tickets",
@@ -107,26 +112,27 @@ def create_ticket_by_user_email(
         return -1
 
 
-def update_ticket_kategorie(ticket_id: int, kategorie: str | None) -> None:
-    """Set the Zammad custom field 'kategorie' on an existing ticket."""
-    resolved_kategorie = resolve_zammad_kategorie(kategorie)
-    if not resolved_kategorie:
+def update_ticket_category(ticket_id: int, category: str | None) -> None:
+    """Set the Zammad custom field ``kategorie`` on an existing ticket."""
+    resolved_category = resolve_zammad_category(category)
+    if not resolved_category:
         return
 
     try:
         response = requests.put(
             url=f"{server_address}/api/v1/tickets/{ticket_id}",
-            json={"kategorie": resolved_kategorie},
+            # External Zammad attribute name — must remain "kategorie"
+            json={"kategorie": resolved_category},
             headers=headers,
             timeout=GENERAL_TIMEOUT,
         )
-        zammad_logger.info(f"HTTP {response.status_code}: Category '{resolved_kategorie}' set on ticket {ticket_id}")
+        zammad_logger.info(f"HTTP {response.status_code}: Category '{resolved_category}' set on ticket {ticket_id}")
     except ConnectionError:
-        zammad_logger.error("Connection error: Could not reach Zammad to update ticket kategorie")
+        zammad_logger.error("Connection error: Could not reach Zammad to update ticket category")
     except MissingSchema:
-        zammad_logger.error("Invalid URL for Zammad provided: Could not update ticket kategorie")
+        zammad_logger.error("Invalid URL for Zammad provided: Could not update ticket category")
     except Exception as e:
-        zammad_logger.error(f"Other error occured during kategorie update: {e}")
+        zammad_logger.error(f"Other error occured during category update: {e}")
 
 def update_ticket_title(ticket_id: int, title:str) -> None: 
     """ Overwrite the title of an existing Zammad ticket identifed by its ticket ID """ 

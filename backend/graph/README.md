@@ -78,7 +78,7 @@ graph TD
     Start(((START)))
     End(((END)))
 
-    %% --- ALLE REGISTRIERTEN NODES ---
+    %% --- ALL REGISTERED NODES ---
     extractor_node[extractor_node <br> extract_information]
     classify_intent_node[classify_intent_node <br> classify_intent]
     ask_intent_node[ask_intent_node <br> ask_intent]
@@ -101,13 +101,13 @@ graph TD
     %% --- Entry Point ---
     Start --> extractor_node
 
-    %% --- Router nach Extraktion (E-Mail kommt aus der Login-Session, kein ask_email_node mehr) ---
+    %% --- Router after extraction (email address is extracted from the login data, so no more ask_email_node) ---
     extractor_node --> route_based_on_state
     route_based_on_state -->|not issue & attempts >= 3| finish_ai_created_ticket
     route_based_on_state -->|not issue & attempts < 3| ask_issue_node
     route_based_on_state -->|else| classify_intent_node
 
-    %% --- Router nach Intent-Klassifikation ---
+    %% --- Router after intent classification ---
     classify_intent_node --> route_after_intent
     route_after_intent -->|solved & tutorial_attempts > 0| classify_ticket_node
     route_after_intent -->|tutorial & tutorial_attempts <= 3| give_tutorial_node
@@ -115,25 +115,25 @@ graph TD
     route_after_intent -->|tutorial oder problem| ask_for_additional_info
     route_after_intent -->|else / unclear| ask_intent_node
 
-    %% --- Zusatzinfos auswerten ---
+    %% --- Evaluate additional info ---
     ask_for_additional_info --> route_after_evaluator
     route_after_evaluator -->|needs_additional_info == True| End
     route_after_evaluator -->|tutorial & tutorial_attempts <= 3| give_tutorial_node
     route_after_evaluator -->|else| classify_ticket_node
 
-    %% --- Tutorial-Exit-Routing (Issue #178) ---
+    %% --- Tutorial exit routing (Issue #178) ---
     classify_ticket_node --> route_after_classification
     route_after_classification -->|intent solved| finish_tutorial_node
     route_after_classification -->|else| escalate_incidents_node
 
-    %% --- Problem-Pfad ---
+    %% --- Problem path ---
     escalate_incidents_node --> give_solutions_node
     give_solutions_node --> route_after_solutions
     route_after_solutions -->|solutions & is_complete| finish_ai_created_ticket
     route_after_solutions -->|solutions & not is_complete| End
     route_after_solutions -->|not solutions| finish_ai_created_ticket
 
-    %% --- Enden (unbedingte Kanten zu END) ---
+    %% --- Langgraph workflow endings (unconditional edges to the END node) ---
     ask_issue_node --> End
     ask_intent_node --> End
     give_tutorial_node --> End

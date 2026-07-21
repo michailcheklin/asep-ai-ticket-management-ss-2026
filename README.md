@@ -33,6 +33,8 @@ docker-compose -f docker-compose.yml -f zammad/docker-compose.yml -f zammad/scen
 
 ## Getting started
 
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the source-code language convention (English for code and technical docs; German for intentional user-facing product text).
+
 After the containers are set up, you can go on `localhost:8080` and register as an `admin` and create your Zammad Workspace.  
 Then, you need to restart the container. Only then your Email SMTP server (here: Mailpit) can automatically connect to your Zammad Workspace.  
 

@@ -20,7 +20,7 @@ class TicketConfirmationBodyTests(unittest.TestCase):
             "category": "Incident",
             "issue_description": "WLAN funktioniert nicht",
             "additional_info": ["Gebäude LF"],
-            "full_conversation": "Der Student hat ein WLAN-Problem im Gebäude LF.",
+            "summary": "Der Student hat ein WLAN-Problem im Gebäude LF.",
             "solutions": [],
         }
 

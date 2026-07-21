@@ -1,7 +1,7 @@
-"""Zentrale, konfigurierbare Einstellungen für die Incident-zu-Problem-Eskalation.
+"""Central, configurable settings for incident-to-problem escalation.
 
-Alle Werte lassen sich über Umgebungsvariablen (bzw. die .env-Datei) überschreiben,
-damit Schwellenwerte ohne Code-Änderung angepasst werden können.
+All values can be overridden via environment variables (or the .env file)
+so thresholds can be adjusted without changing code.
 """
 import os
 
@@ -12,10 +12,10 @@ load_dotenv()
 
 def _get_int(name: str, default: int) -> int:
     """
-    Konvertiert eine Umgebungsvariable in eine Zahl als Python-int
-    :param name: Die Umgebungsvariable
-    :param default: Der Default-Wert
-    :return: Die Zahl als int
+    Convert an environment variable to a Python int.
+    :param name: Environment variable name
+    :param default: Default value if unset or invalid
+    :return: The value as int
     """
     try:
         return int(os.getenv(name, str(default)))
@@ -25,10 +25,10 @@ def _get_int(name: str, default: int) -> int:
 
 def _get_float(name: str, default: float) -> float:
     """
-    Konvertiert eine Umgebungsvariable in eine Zahl als Python-float
-    :param name: Die Umgebungsvariable
-    :param default: Der Default-Wert
-    :return: Die Zahl als float
+    Convert an environment variable to a Python float.
+    :param name: Environment variable name
+    :param default: Default value if unset or invalid
+    :return: The value as float
     """
     try:
         return float(os.getenv(name, str(default)))
@@ -36,24 +36,24 @@ def _get_float(name: str, default: float) -> float:
         return default
 
 
-# Anzahl thematisch gleicher offener Incidents (inkl. dem neuen), ab der ein
-# Problem-Ticket erzeugt wird.
+# Minimum number of thematically identical open incidents (including the new one)
+# required before a problem ticket is created.
 INCIDENT_ESCALATION_MIN_COUNT: int = _get_int("INCIDENT_ESCALATION_MIN_COUNT", 5)
 
-# Zeitfenster in Stunden, innerhalb dessen Incidents als "recent" gelten.
+# Time window in hours within which incidents are considered "recent".
 INCIDENT_RECENCY_WINDOW_HOURS: float = _get_float("INCIDENT_RECENCY_WINDOW_HOURS", 8.0)
 
-# Similarity-Schwelle (Cosine) für die semantische Ähnlichkeit zweier Incidents.
+# Similarity threshold (cosine) for semantic similarity between two incidents.
 INCIDENT_SIMILARITY_THRESHOLD: float = _get_float("INCIDENT_SIMILARITY_THRESHOLD", 0.55)
 
-# Absender-/Kunden-E-Mail für automatisch erzeugte Problem-Tickets.
+# Sender/customer email for automatically created problem tickets.
 PROBLEM_TICKET_AUTHOR_EMAIL: str = os.getenv(
     "PROBLEM_TICKET_AUTHOR_EMAIL",
     os.getenv("ZAMMAD_SUPPORT_EMAIL", "support@localhost"),
 )
 
-# Öffentlich erreichbare Zammad-Basis-URL für klickbare Ticket-Links im Body.
-# Fällt auf die interne URL zurück, falls nicht separat gesetzt.
+# Publicly reachable Zammad base URL for clickable ticket links in the body.
+# Falls back to the internal URL if not set separately.
 ZAMMAD_PUBLIC_URL: str = (
     os.getenv("ZAMMAD_PUBLIC_URL")
     or os.getenv("ZAMMAD_INTERNAL_URL", "")
