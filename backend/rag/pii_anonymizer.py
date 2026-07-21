@@ -30,17 +30,12 @@ import torch
 from flair.data import Sentence
 from flair.models import SequenceTagger
 from transformers import AutoModelForTokenClassification, AutoTokenizer
-
+from .rag_logging import anon_logger
 # ----------------------------------------------------------------------
 # Logging — kept quiet/compact on purpose (see _log_anonymization_summary)
+# Using the logging method that was implemented in issue 177
 # ----------------------------------------------------------------------
-anon_logger = logging.getLogger("pii_anonymizer")
-if not anon_logger.handlers:
-    _handler = logging.StreamHandler()
-    _handler.setFormatter(logging.Formatter("%(message)s"))
-    anon_logger.addHandler(_handler)
-anon_logger.setLevel(logging.INFO)
-anon_logger.propagate = False
+
 
 # ----------------------------------------------------------------------
 # Tunable parameters
@@ -105,15 +100,15 @@ WORD_RE = re.compile(r"\S+")
 # ----------------------------------------------------------------------
 # Model loading — runs ONCE at import time
 # ----------------------------------------------------------------------
-anon_logger.info("[Anonymizer] Loading Piiranha PII model...")
+anon_logger.info("Loading Piiranha PII model...")
 _piiranha_tokenizer = AutoTokenizer.from_pretrained(PIIRANHA_MODEL_NAME, use_fast=True)
 _piiranha_model = AutoModelForTokenClassification.from_pretrained(PIIRANHA_MODEL_NAME).eval()
 _piiranha_id2label = _piiranha_model.config.id2label
 
-anon_logger.info("[Anonymizer] Loading flair German NER model (names)...")
+anon_logger.info("Loading flair German NER model (names)...")
 _flair_tagger = SequenceTagger.load(FLAIR_MODEL_NAME)
 
-anon_logger.info("[Anonymizer] Ready (variant D: piiranha + flair-DE + regex).\n")
+anon_logger.info("Ready (variant D: piiranha + flair-DE + regex).\n")
 
 
 # ----------------------------------------------------------------------
@@ -314,12 +309,8 @@ def _log_anonymization_summary(
     fc_total = sum(fc_counts.values())
     msg_total = sum(msg_counts.values())
     anon_logger.info(
-        "[Anonymizer] %s | full_conversation: %d masked (%s) | messages: %d masked (%s)",
-        ticket_id or "unknown",
-        fc_total,
-        _format_label_counts(fc_counts),
-        msg_total,
-        _format_label_counts(msg_counts),
+        f"{ticket_id or "unknown"} | full_conversation: {fc_total} masked ({_format_label_counts(fc_counts)}) |"
+        f" messages: {msg_total} masked ({_format_label_counts(msg_counts)})",
     )
 
 

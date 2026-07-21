@@ -7,6 +7,7 @@ import chromadb
 from sentence_transformers import SentenceTransformer
 
 from .pii_anonymizer import anonymize_ticket_fields
+from .rag_logging import anon_logger, rag_logger
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TICKET_DB_PATH = os.path.join(BASE_DIR, "ticket_db")
@@ -81,10 +82,10 @@ def store_ticket_state_to_rag(
     )
 
     # Debug info for demo purposes, can be removed later
-    print(f"[DEBUG-ANON] {resolved_ticket_id} BEFORE full_conversation:\n{raw_full_conversation}\n")
-    print(f"[DEBUG-ANON] {resolved_ticket_id} AFTER  full_conversation:\n{anon_full_conversation}\n")
-    print(f"[DEBUG-ANON] {resolved_ticket_id} BEFORE messages:\n{raw_messages}\n")
-    print(f"[DEBUG-ANON] {resolved_ticket_id} AFTER  messages:\n{anon_messages}\n")
+    anon_logger.debug(f"{resolved_ticket_id} BEFORE full_conversation:\n{raw_full_conversation}\n")
+    anon_logger.debug(f"{resolved_ticket_id} AFTER  full_conversation:\n{anon_full_conversation}\n")
+    anon_logger.debug(f"{resolved_ticket_id} BEFORE messages:\n{raw_messages}\n")
+    anon_logger.debug(f"{resolved_ticket_id} AFTER  messages:\n{anon_messages}\n")
     # End debug
 
     anonymized_state = dict(state)
@@ -94,8 +95,8 @@ def store_ticket_state_to_rag(
     metadata = {
         "messages": anon_messages,
     }
-    print(f"[RAG] Persisting closed ticket to RAG DB: {resolved_ticket_id}")
-    print(f"[RAG] Document preview: {document[:400]}")
+    rag_logger.info(f"Persisting closed ticket to RAG DB: {resolved_ticket_id}")
+    rag_logger.info(f"Document preview: {document[:400]}")
 
     try:
         embedding_result = embedder.encode(document, normalize_embeddings=True)
@@ -107,10 +108,10 @@ def store_ticket_state_to_rag(
             documents=[document],
             metadatas=[metadata],
         )
-        print(f"[RAG] Stored closed ticket in RAG DB: {resolved_ticket_id}")
+        rag_logger.info(f"Stored closed ticket in RAG DB: {resolved_ticket_id}")
         return resolved_ticket_id
     except Exception as exc:
-        print(f"[RAG] Failed to persist closed ticket in RAG DB: {resolved_ticket_id}: {exc}")
+        rag_logger.error(f"Failed to persist closed ticket in RAG DB: {resolved_ticket_id}: {exc}")
         raise
 
 
