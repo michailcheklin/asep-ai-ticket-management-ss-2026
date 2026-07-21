@@ -147,7 +147,7 @@ run_test_graph_nodes:
     - source $VENV_DIR/bin/activate
     - if [ -f tests/requirements.txt ]; then pip install -r tests/requirements.txt; fi
     - echo "AGENT=ZIM" >> .env
-    - PYTHONPATH=. pytest tests/test_intent_classification.py tests/test_ticket_category.py tests/test_ask_for_additional_info.py tests/test_give_solutions.py -v -s
+    - PYTHONPATH=. pytest tests/test_intent_classification.py tests/test_ticket_category.py tests/test_ask_for_additional_info.py tests/test_give_solutions.py tests/test_question_back_navigation.py -v -s
 
 
 run_test_ticket_confirmation:

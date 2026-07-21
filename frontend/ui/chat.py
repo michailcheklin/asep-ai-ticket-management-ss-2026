@@ -8,6 +8,16 @@ import streamlit as st
 from streamlit.components.v1 import html
 
 from frontend.clients.base import ChatClient
+from frontend.ui.qa_navigation import (
+    apply_question_answer,
+    can_go_back,
+    contains_nested_bullets,
+    format_answers_as_message,
+    is_other_option,
+    navigate_back,
+    parse_questions_from_message,
+    split_stored_mcq_answer,
+)
 
 IDP_BASE_URL = os.getenv("IDP_BASE_URL", "http://localhost:4999")
 
@@ -39,6 +49,7 @@ INITIAL_STATES = {
     "current_question_idx": 0,
     "question_answers": [],    # answers collected so far in the current round
     "_ready_to_send": None,    # combined message text waiting to be dispatched
+    "_qa_navigating": False,   # disables Q&A buttons during back/forward navigation
     "scroll_target": None,     # anchor id to scroll to after rerun
     "user_metadata": None,      # dict from IdP + browser UA, or None if not logged in
     "metadata_confirmed": False,   # True after user confirms browser-detected device/OS
@@ -204,62 +215,14 @@ def are_form_fields_valid() -> bool:
     return is_email_valid and is_matrikelnummer_valid
 
 
-# ── Question parsing & formatting ────────────────────────────────────────────
-
-def parse_questions_from_message(content: str) -> list[dict]:
-    """Extract top-level bullet-point questions from a bot message.
-
-    Supports two formats:
-      MCQ:   "* Question? (options: A, B, C)"
-      Open:  "* Question?"
-
-    Nested answer bullets (for example lines indented under a question) are
-    ignored so they remain visible in the rendered markdown.
-    """
-    questions: list[dict] = []
-    bullet_pattern = re.compile(r"^\s*[\*\-]\s+")
-
-    for line in content.splitlines():
-        if not bullet_pattern.match(line):
-            continue
-
-        q_text = bullet_pattern.sub("", line).strip()
-        options_match = re.search(r"\s*\(options:\s*(.+?)\)\s*$", q_text)
-        if options_match:
-            options = [o.strip().strip("[]") for o in options_match.group(1).split(",")]
-            q_clean = q_text[: options_match.start()].strip()
-            questions.append({"text": q_clean, "options": options})
-        else:
-            questions.append({"text": q_text, "options": None})
-    return questions
+# ── Question parsing & formatting (see frontend.ui.qa_navigation) ─────────────
 
 
-def contains_nested_bullets(content: str) -> bool:
-    """Return True when the message contains indented bullet points."""
-    return any(re.match(r"^\s+[\*\-]\s+", line) for line in content.splitlines())
-
-
-def format_answers_as_message(questions: list[dict], answers: list[str]) -> str:
-    """Combine collected Q&A pairs into the backend-expected plain-text format.
-
-    Example output:
-        * Which OS are you using?
-            * Windows
-        * In which room are you?
-            * Others: R11
-    """
-    return "\n".join(
-        f"* {q['text']}\n    * {option}: {detail}" if ": " in a and (option := a.split(": ", 1)[0]) and (detail := a.split(": ", 1)[1])
-        else f"* {q['text']}\n    * {a}"
-        for q, a in zip(questions, answers)
-    )
-
-
-def _is_other_option(option: str) -> bool:
-    """Return True when the chosen option is an open-ended 'other' variant."""
-    return bool(
-        re.search(r"\b(other|others|andere[sr]?|sonstige[sr]?)\b", option, re.IGNORECASE)
-    )
+def clear_question_widget_keys(start_idx: int, total: int) -> None:
+    """Drop Streamlit widget keys for questions at/after *start_idx*."""
+    for i in range(start_idx, total):
+        for prefix in ("mcq_", "other_detail_", "open_"):
+            st.session_state.pop(f"{prefix}{i}", None)
 
 
 # ── Payload builders ─────────────────────────────────────────────────────────
@@ -397,6 +360,7 @@ def apply_response_to_session(user_input: str, res_json: dict) -> None:
             st.session_state.pending_questions = questions
             st.session_state.current_question_idx = 0
             st.session_state.question_answers = []
+            st.session_state["_qa_navigating"] = False
             st.session_state["scroll_target"] = "question_widget_anchor"
 
 
@@ -622,6 +586,10 @@ def render_question_widget(client: ChatClient) -> None:
       - MCQ  → radio buttons; selecting an "other" variant reveals a free-text field.
       - Open → text area.
 
+    Users can step back to earlier questions (except the first) to correct an
+    answer. Changing an answer clears dependent later answers; leaving it
+    unchanged keeps them.
+
     On the final question the user presses 'Senden'; all answers are then
     combined into a single message and queued for dispatch to the backend.
     The actual API call happens at the top level of run_app (via _ready_to_send)
@@ -629,6 +597,7 @@ def render_question_widget(client: ChatClient) -> None:
     """
     questions: list[dict] = st.session_state.pending_questions
     idx: int = st.session_state.current_question_idx
+    answers: list[str] = st.session_state.question_answers
 
     if idx >= len(questions):
         return
@@ -636,6 +605,8 @@ def render_question_widget(client: ChatClient) -> None:
     question = questions[idx]
     is_last = idx == len(questions) - 1
     total = len(questions)
+    show_back = can_go_back(idx)
+    stored_answer = answers[idx] if idx < len(answers) else None
 
     st.progress((idx + 1) / total, text=f"Frage {idx + 1} von {total}")
 
@@ -648,41 +619,102 @@ def render_question_widget(client: ChatClient) -> None:
         answer: str | None = None
 
         if question["options"]:
+            radio_key = f"mcq_{idx}"
+            detail_key = f"other_detail_{idx}"
+            selected_option, other_detail_default = split_stored_mcq_answer(
+                stored_answer, question["options"]
+            )
+            # Seed widget state so a revisited question shows the prior choice.
+            if selected_option is not None and radio_key not in st.session_state:
+                st.session_state[radio_key] = selected_option
+            if other_detail_default and detail_key not in st.session_state:
+                st.session_state[detail_key] = other_detail_default
+
             selected: str | None = st.radio(
                 "Bitte eine Option wählen :",
                 question["options"],
-                key=f"mcq_{idx}",
+                key=radio_key,
                 index=None,
             )
             other_detail = ""
-            if selected and _is_other_option(selected):
+            if selected and is_other_option(selected):
                 other_detail = st.text_input(
                     "Bitte genauer angeben:",
-                    key=f"other_detail_{idx}",
+                    key=detail_key,
                 )
             if selected is not None:
                 answer = f"{selected}: {other_detail}" if other_detail else selected
         else:
+            open_key = f"open_{idx}"
+            if stored_answer is not None and open_key not in st.session_state:
+                st.session_state[open_key] = stored_answer
+
             open_text: str = st.text_area("Antwort:", key=f"open_{idx}")
             if open_text and open_text.strip():
                 answer = open_text.strip()
 
         btn_label = "Senden ✓" if is_last else "Weiter →"
-        if st.button(btn_label, key=f"next_btn_{idx}", use_container_width=True):
+        if show_back:
+            back_col, next_col = st.columns(2)
+            with back_col:
+                back_clicked = st.button(
+                    "← Zurück",
+                    key=f"back_btn_{idx}",
+                    use_container_width=True,
+                    type="secondary",
+                    disabled=bool(st.session_state.get("_qa_navigating")),
+                )
+            with next_col:
+                next_clicked = st.button(
+                    btn_label,
+                    key=f"next_btn_{idx}",
+                    use_container_width=True,
+                    disabled=bool(st.session_state.get("_qa_navigating")),
+                )
+        else:
+            back_clicked = False
+            next_clicked = st.button(
+                btn_label,
+                key=f"next_btn_{idx}",
+                use_container_width=True,
+                disabled=bool(st.session_state.get("_qa_navigating")),
+            )
+
+        # Prefer Back over Weiter if both somehow fire in one run.
+        if back_clicked and show_back and not st.session_state.get("_qa_navigating"):
+            st.session_state["_qa_navigating"] = True
+            new_idx, new_answers = navigate_back(idx, answers)
+            st.session_state.current_question_idx = new_idx
+            st.session_state.question_answers = new_answers
+            st.session_state["scroll_target"] = "question_widget_anchor"
+            st.session_state["_qa_navigating"] = False
+            st.rerun()
+        elif next_clicked and not st.session_state.get("_qa_navigating"):
             if answer is None:
                 st.error("Bitte die Frage beantworten, bevor es weitergeht.")
             else:
-                st.session_state.question_answers.append(answer)
-                if is_last:
-                    # Assemble the combined message and hand off to the send loop
+                st.session_state["_qa_navigating"] = True
+                answer_changed = not (idx < len(answers) and answers[idx] == answer)
+                new_idx, new_answers, is_complete = apply_question_answer(
+                    idx, answers, answer, is_last=is_last
+                )
+                if answer_changed:
+                    clear_question_widget_keys(idx + 1, total)
+
+                if is_complete:
                     st.session_state["_ready_to_send"] = format_answers_as_message(
-                        questions, st.session_state.question_answers
+                        questions, new_answers
                     )
                     st.session_state.pending_questions = []
                     st.session_state.current_question_idx = 0
                     st.session_state.question_answers = []
+                    clear_question_widget_keys(0, total)
                 else:
-                    st.session_state.current_question_idx += 1
+                    st.session_state.current_question_idx = new_idx
+                    st.session_state.question_answers = new_answers
+                    st.session_state["scroll_target"] = "question_widget_anchor"
+
+                st.session_state["_qa_navigating"] = False
                 st.rerun()
 
 
