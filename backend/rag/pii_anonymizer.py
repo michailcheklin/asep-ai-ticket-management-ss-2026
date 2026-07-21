@@ -309,7 +309,7 @@ def _log_anonymization_summary(
     fc_total = sum(fc_counts.values())
     msg_total = sum(msg_counts.values())
     anon_logger.info(
-        f"{ticket_id or "unknown"} | full_conversation: {fc_total} masked ({_format_label_counts(fc_counts)}) |"
+        f"{ticket_id or 'unknown'} | full_conversation: {fc_total} masked ({_format_label_counts(fc_counts)}) |"
         f" messages: {msg_total} masked ({_format_label_counts(msg_counts)})",
     )
 
