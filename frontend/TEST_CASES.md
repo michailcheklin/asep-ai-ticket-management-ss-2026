@@ -66,6 +66,21 @@ Oder per Docker: `docker compose up frontend_clone`
 
 ---
 
+## Multiple-Choice Zurück-Navigation (Live / Q&A-Widget)
+
+Voraussetzung: Bot-Antwort mit mehreren `* Frage? (options: …)`-Bullets (Live-Backend). Automatisierte Abdeckung: `tests/test_question_back_navigation.py`.
+
+| ID | Testfall | Schritte | Erwartetes Ergebnis |
+|----|----------|----------|---------------------|
+| **QB-01** | Kein Zurück bei Frage 1 | Erste MCQ-Frage anzeigen | Button „← Zurück“ nicht sichtbar |
+| **QB-02** | Zurück zur vorherigen Frage | Frage 1 beantworten → Weiter → „← Zurück“ | Frage 1 wird wieder angezeigt |
+| **QB-03** | Auswahl wiederhergestellt | Zurück nach Auswahl | Zuvor gewählte Option ist vorausgewählt |
+| **QB-04** | Antwort ändern | Zurück → andere Option → Weiter | Neue Antwort ersetzt die alte; spätere Antworten der Runde entfallen |
+| **QB-05** | Mehrere Schritte zurück | Mehrere Fragen beantworten, mehrfach „← Zurück“ | Schrittweise Rückkehr ohne neue Tickets/Doppel-Nachrichten |
+| **QB-06** | Ohne Zurück unverändert | Fragen nur mit Weiter/Senden beantworten | Bisheriger Ablauf unverändert |
+
+---
+
 ## Neu starten (Reset)
 
 | ID | Testfall | Schritte | Erwartetes Ergebnis |
