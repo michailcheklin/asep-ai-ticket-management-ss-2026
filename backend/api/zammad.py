@@ -4,6 +4,9 @@ import requests
 from requests.exceptions import ConnectionError, MissingSchema
 
 from ..graph.models.TicketCategoryDecision import TICKET_CATEGORIES
+from ..services.BackendLoggingService import BackendLogger
+
+zammad_logger = BackendLogger("Zammad")
 
 load_dotenv()
 
@@ -95,18 +98,17 @@ def create_ticket_by_user_email(
                                         headers=headers,
                                         timeout=GENERAL_TIMEOUT)
 
-        print(server_response.status_code)
-        print(server_response.text)
+        zammad_logger.info(f"Zammad ticket successfully created: {server_response.text}")
         return server_response.json().get("id")
     except ConnectionError:
         # Return the ticket id -1 if no connection could be built
-        print(f"Connection error: Could not reach Zammad to create ticket")
+        zammad_logger.error("Connection error: Could not reach Zammad to create ticket")
         return -1
     except MissingSchema:
-        print(f"Invalid URL for Zammad provided: Could not reach Zammad to create ticket")
+        zammad_logger.error("Invalid URL for Zammad provided: Could not reach Zammad to create ticket")
         return -1
     except Exception as e:
-        print(f"Other error occured: {e}")
+        zammad_logger.error(f"Other error occured: {e}")
         return -1
 
 
@@ -124,16 +126,13 @@ def update_ticket_category(ticket_id: int, category: str | None) -> None:
             headers=headers,
             timeout=GENERAL_TIMEOUT,
         )
-        print(
-            f"Category '{resolved_category}' set on ticket {ticket_id}: "
-            f"{response.status_code}"
-        )
+        zammad_logger.info(f"HTTP {response.status_code}: Category '{resolved_category}' set on ticket {ticket_id}")
     except ConnectionError:
-        print("Connection error: Could not reach Zammad to update ticket category")
+        zammad_logger.error("Connection error: Could not reach Zammad to update ticket category")
     except MissingSchema:
-        print("Invalid URL for Zammad provided: Could not update ticket category")
+        zammad_logger.error("Invalid URL for Zammad provided: Could not update ticket category")
     except Exception as e:
-        print(f"Other error occured during category update: {e}")
+        zammad_logger.error(f"Other error occured during category update: {e}")
 
 def update_ticket_title(ticket_id: int, title:str) -> None: 
     """ Overwrite the title of an existing Zammad ticket identifed by its ticket ID """ 
@@ -148,16 +147,13 @@ def update_ticket_title(ticket_id: int, title:str) -> None:
             headers=headers,
             timeout=GENERAL_TIMEOUT,
         )
-        print(
-            f"Title '{title}' set on ticket {ticket_id}: "
-            f"{response.status_code}"
-        )
+        zammad_logger.info(f"HTTP {response.status_code}: Title '{title}' set on ticket {ticket_id}")
     except ConnectionError:
-        print("Connection error: Could not reach Zammad to update ticket title")
+        zammad_logger.error("Connection error: Could not reach Zammad to update ticket title")
     except MissingSchema:
-        print("Invalid URL for Zammad provided: Could not update ticket title")
+        zammad_logger.error("Invalid URL for Zammad provided: Could not update ticket title")
     except Exception as e:
-        print(f"Other error occured during title update: {e}")
+        zammad_logger.error(f"Other error occured during title update: {e}")
 
 
 
@@ -181,7 +177,7 @@ def add_article_to_ticket(ticket_id: int, body: str, sender: str = "Agent",
         headers=headers,
         timeout=GENERAL_TIMEOUT
     )
-    print(f"Article added to ticket {ticket_id}: {response.status_code}")
+    zammad_logger.info(f"Article added to ticket {ticket_id}")
     return response
 
 def get_ticket_state(ticket_id: int) -> str:
@@ -198,7 +194,7 @@ def get_ticket_state(ticket_id: int) -> str:
             timeout=GENERAL_TIMEOUT,
         )
         if response.status_code != 200:
-            print(f"Could not read ticket {ticket_id}: {response.status_code}")
+            zammad_logger.error(f"Could not read ticket {ticket_id}")
             return ""
         state_id = response.json().get("state_id")
 
@@ -212,13 +208,13 @@ def get_ticket_state(ticket_id: int) -> str:
             return state_response.json().get("name", "")
         return ""
     except ConnectionError:
-        print("Connection error: Could not reach Zammad to read ticket state")
+        zammad_logger.error("Connection error: Could not reach Zammad to read ticket state")
         return ""
     except MissingSchema:
-        print("Invalid URL for Zammad provided: Could not read ticket state")
+        zammad_logger.error("Invalid URL for Zammad provided: Could not read ticket state")
         return ""
     except Exception as e:
-        print(f"Other error occured while reading ticket state: {e}")
+        zammad_logger.error(f"Other error occured while reading ticket state: {e}")
         return ""
 
 
@@ -269,13 +265,13 @@ def add_tag_to_ticket(ticket_id: int, tag: str):
             headers=headers,
             timeout=GENERAL_TIMEOUT
         )
-        print(f"Tag '{tag}' added to ticket {ticket_id}: {response.status_code}")
+        zammad_logger.info(f"HTTP {response.status_code}: Tag '{tag}' added to ticket {ticket_id}")
     except ConnectionError:
-        print(f"Connection error: Could not reach Zammad to add tag to ticket")
+        zammad_logger.error("Connection error: Could not reach Zammad to add tag to ticket")
     except MissingSchema:
-        print(f"Invalid URL for Zammad provided: Could not reach Zammad to add tag to ticket")
+        zammad_logger.error("Invalid URL for Zammad provided: Could not reach Zammad to add tag to ticket")
     except Exception as e:
-        print(f"Other error occured during tag addition: {e}")
+        zammad_logger.error(f"Other error occured during tag addition: {e}")
 
 
 def replace_tag_for_ticket(ticket_id: int, old_tag: str, new_tag: str):
@@ -288,7 +284,7 @@ def replace_tag_for_ticket(ticket_id: int, old_tag: str, new_tag: str):
             headers=headers,
             timeout=GENERAL_TIMEOUT
         )
-        print(f"Tag '{old_tag}' removed from ticket {ticket_id}: {response.status_code}")
+        zammad_logger.info(f"Tag '{old_tag}' removed from ticket {ticket_id}")
 
         response = requests.post(
             url=f"{server_address}/api/v1/tags/add",
@@ -296,13 +292,13 @@ def replace_tag_for_ticket(ticket_id: int, old_tag: str, new_tag: str):
             headers=headers,
             timeout=GENERAL_TIMEOUT
         )
-        print(f"Tag '{new_tag}' added to ticket {ticket_id}: {response.status_code}")
+        zammad_logger.info(f"HTTP {response.status_code}: Tag '{new_tag}' added to ticket {ticket_id}")
     except ConnectionError:
-        print(f"Connection error: Could not reach Zammad to replace tag on ticket")
+        zammad_logger.error("Connection error: Could not reach Zammad to replace tag on ticket")
     except MissingSchema:
-        print(f"Invalid URL for Zammad provided: Could not reach Zammad to replace tag on ticket")
+        zammad_logger.error("Invalid URL for Zammad provided: Could not reach Zammad to replace tag on ticket")
     except Exception as e:
-        print(f"Other error occured during tag replacement: {e}")
+        zammad_logger.error(f"Other error occured during tag replacement: {e}")
 
 def log_ticket_close_event(ticket_id: int | None, source: str = "manual", metadata: dict | None = None):
     """
@@ -314,17 +310,18 @@ def log_ticket_close_event(ticket_id: int | None, source: str = "manual", metada
     metadata = metadata or {}
     closure_source = "chatbot-API" if source in {"chatbot_api", "chatbot", "api"} else "ZIM-staff"
 
-    print("[ZAMMAD CLOSE EVENT]")
-    print(f"  source: {closure_source}")
-    print(f"  ticket_id: {ticket_id}")
+    log_entry_for_ticket_close_event = f"Zammad close event detected:\nTicket #{ticket_id} closed by: {closure_source}\n"
+
 
 
     if metadata.get("ticket_number"):
-        print(f"  ticket_number: {metadata['ticket_number']}")
+        log_entry_for_ticket_close_event += f"ticket_number: {metadata['ticket_number']}\n"
     if metadata.get("title"):
-        print(f"  title: {metadata['title']}")
+        log_entry_for_ticket_close_event += f"title: {metadata['title']}\n"
     if metadata.get("state"):
-        print(f"  state: {metadata['state']}")
+        log_entry_for_ticket_close_event += f"state: {metadata['state']}\n"
+
+    zammad_logger.info(log_entry_for_ticket_close_event)
 
 def mark_ticket_as_closed(ticket_id:int):
     """
@@ -341,13 +338,13 @@ def mark_ticket_as_closed(ticket_id:int):
             timeout=GENERAL_TIMEOUT
         )
 
-        print(f"Ticket {ticket_id} marked as closed.")
+        zammad_logger.info(f"Ticket {ticket_id} marked as closed.")
     except ConnectionError:
-        print(f"Connection error: Could not reach Zammad to add mark ticket as closed")
+        zammad_logger.error(f"Connection error: Could not reach Zammad to mark ticket {ticket_id} as closed")
     except MissingSchema:
-        print(f"Invalid URL for Zammad provided: Could not reach Zammad to mark ticket as closed")
+        zammad_logger.error(f"Invalid URL for Zammad provided: Could not reach Zammad to mark ticket {ticket_id} as closed")
     except Exception as e:
-        print(f"Other error occured during marking ticket as closed: {e}")
+        zammad_logger.error(f"Other error occured during marking ticket as closed: {e}")
 
 def get_ticket_tags(ticket_id: int) -> list[str]:
     """
@@ -365,13 +362,13 @@ def get_ticket_tags(ticket_id: int) -> list[str]:
         response.raise_for_status()
         return response.json().get("tags", [])
     except ConnectionError:
-        print(f"Connection error: Could not reach Zammad to fetch tags for ticket {ticket_id}")
+        zammad_logger.error(f"Connection error: Could not reach Zammad to fetch tags for ticket {ticket_id}")
         return []
     except MissingSchema:
-        print(f"Invalid URL for Zammad provided: Could not reach Zammad to fetch tags for ticket {ticket_id}")
+        zammad_logger.error(f"Invalid URL for Zammad provided: Could not reach Zammad to fetch tags for ticket {ticket_id}")
         return []
     except Exception as e:
-        print(f"Other error occurred while fetching tags for ticket {ticket_id}: {e}")
+        zammad_logger.error(f"Other error occurred while fetching tags for ticket {ticket_id}: {e}")
         return []
 
 
@@ -401,11 +398,11 @@ def get_ticket_article_bodies(ticket_id: int | None, article_ids: list[int] | No
             ]
         return []
     except ConnectionError:
-        print(f"Connection error: Could not reach Zammad to fetch articles for ticket {ticket_id}")
+        zammad_logger.error(f"Connection error: Could not reach Zammad to fetch articles for ticket {ticket_id}")
         return []
     except MissingSchema:
-        print(f"Invalid URL for Zammad provided: Could not fetch ticket articles for {ticket_id}")
+        zammad_logger.error(f"Invalid URL for Zammad provided: Could not fetch ticket articles for {ticket_id}")
         return []
     except Exception as e:
-        print(f"Other error occurred while fetching ticket articles for {ticket_id}: {e}")
+        zammad_logger.error(f"Other error occurred while fetching ticket articles for {ticket_id}: {e}")
         return []

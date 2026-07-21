@@ -13,7 +13,9 @@ from ..services.TicketService import TicketService
 from ..rag import recent_incidents
 from ..api.zammad import log_ticket_close_event, get_ticket_tags, get_ticket_article_bodies
 from ..rag.rag_store_tickets import store_ticket_state_to_rag
+from ..services.BackendLoggingService import BackendLogger
 
+zim_logger = BackendLogger("ZIM")
 ticket_service = TicketService()
 
 # Create FastAPI application instance
@@ -94,6 +96,7 @@ async def chat_endpoint(request: ChatRequest):
     :return: Updated conversation state
     """
 
+    zim_logger.info(f"Received request to the chat endpoint\n{request}")
     """
     complete_evaluation = __check_prompt(request.user_message)
 
@@ -133,6 +136,12 @@ async def chat_endpoint(request: ChatRequest):
         "summary": request.summary,
         "intent": request.intent,
         "tutorial_attempts": request.tutorial_attempts,
+        "display_name": request.display_name,
+        "role": request.role,
+        "faculty": request.faculty,
+        "device": request.device,
+        "os_name": request.os_name,
+        "graph_runs": request.graph_runs,
     }
     return __execute_langchain_workflow(current_state)
 
@@ -230,7 +239,7 @@ async def zammad_ticket_closed(payload: dict):
     tags = get_ticket_tags(ticket_id) if ticket_id else []
     matched_tags = EXCLUDE_FROM_TRAINING_TAGS.intersection(tags)
     if matched_tags:
-        print(f"[RAG] Ticket {ticket_id} excluded from training: {matched_tags}")
+        zim_logger.info(f"Ticket {ticket_id} excluded from AI training due to tag: {matched_tags}")
         return {
             "status": "ignored",
             "reason": f"excluded_from_training:{','.join(matched_tags)}",
@@ -251,10 +260,10 @@ async def zammad_ticket_closed(payload: dict):
         "ticket_id": ticket_id,
         "messages": agent_messages,
     }
-    print(f"\n\nDEBUG: RAG STATE= {rag_state}\n\n")
+    zim_logger.debug(f"RAG STATE= {rag_state}")
 
     if ticket_id:
-        print(f"[RAG] Close webhook received for ticket {ticket_id}")
+        zim_logger.info(f"Close webhook received for ticket {ticket_id}")
         store_ticket_state_to_rag(rag_state, ticket_id=ticket_id)
 
     log_ticket_close_event(ticket_id=ticket_id, source="manual", metadata=metadata)
@@ -296,21 +305,30 @@ async def solution_feedback(request: ChatRequest):
         "user_addendum": request.user_addendum,
         "intent": request.intent,
         "tutorial_attempts": request.tutorial_attempts,
+        "display_name": request.display_name,
+        "role": request.role,
+        "faculty": request.faculty,
+        "device": request.device,
+        "os_name": request.os_name,
+        "graph_runs": request.graph_runs,
     }
 
     current_state["category"] = _resolve_ticket_category(current_state)
+    first_name = current_state.get("display_name", "").split()[0] if current_state.get("display_name") else ""
 
     if request.helpful:
         ticket_service.create_ai_solved_ticket(current_state)
+        greeting = f"Super, {first_name}, das freut mich!" if first_name else "Super, das freut mich!"
         return {
-            "bot_response": "Super, das freut mich! Wenn du in Zukunft weitere Fragen hast, stehe ich gerne zur Verfügung. Hab einen schönen Tag!",
+            "bot_response": f"{greeting} Wenn du in Zukunft weitere Fragen hast, stehe ich gerne zur Verfügung. Hab einen schönen Tag!",
             "category": current_state.get("category", "")
         }
 
     else:
         ticket_service.append_support_ticket_context(current_state, request.ticket_id)
+        greeting = f"Danke, {first_name}!" if first_name else "Danke!"
         return {
-            "bot_response": "Ihr Ticket wurde an den Support weitergeleitet.",
+            "bot_response": f"{greeting} Dein Ticket wurde an den Support weitergeleitet.",
             "category": current_state.get("category", "")
         }
 
@@ -339,7 +357,7 @@ async def ticket_closed(payload: dict):
         recent_incidents.mark_incident_closed(int(ticket_id))
         return {"ok": True, "removed_ticket_id": int(ticket_id)}
     except Exception as e:
-        print(f"[/webhook/ticket-closed] failed for {ticket_id}: {e}")
+        zim_logger.error(f"Ticket close webhook failed for {ticket_id}: {e}")
         return {"ok": False, "error": str(e)}
 
 

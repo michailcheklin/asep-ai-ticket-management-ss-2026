@@ -66,6 +66,20 @@ Or via Docker: `docker compose up frontend_clone`
 
 ---
 
+## Multiple-Choice Navigation with the "Back" button (Live / Q&A Widget)
+
+Prerequisite: Bot response with multiple `* Question? (options: …)` bullets (Live backend). Automated coverage: `tests/test_question_back_navigation.py`.
+
+| ID | Test Case | Steps | Expected Result |
+|----|----------|----------|---------------------|
+| **QB-01** | No “Back” option for Question 1 | Display first MCQ question | “← Back” button not visible |
+| **QB-02** | Back to the previous question | Answer Question 1 → Next → “← Back” | Question 1 is displayed again |
+| **QB-03** | Selection restored | Back to selection | Previously selected option is preselected |
+| **QB-04** | Change answer | Back → different option → Next | New answer replaces the old one; subsequent answers in the round are omitted |
+| **QB-05** | Go back multiple steps | Answer multiple questions, click “← Back” multiple times | Step-by-step return without new tickets/duplicate messages |
+| **QB-06** | No changes without going back | Answer questions only with Next/Submit | Previous flow remains unchanged |
+---
+
 ## Restart (Reset)
 
 | ID | Test Case | Steps | Expected Result |

@@ -14,8 +14,9 @@ from ..api.zammad import (
 )
 
 from ..llm.llm import llm
-from ..rag.rag_store_tickets import store_ticket_state_to_rag
+from .BackendLoggingService import BackendLogger
 
+ticketservice_logger = BackendLogger("Ticket Service")
 
 class TicketService:
     """
@@ -122,11 +123,11 @@ class TicketService:
             )
             success = self._success_message(title, state)
             success["ticket_id"] = ticket_id
-            print(f"Successfully created ticket with ID: {ticket_id}")
+            ticketservice_logger.info(f"Successfully created ticket with ID: {ticket_id}")
             return success
 
         except Exception as e:
-            print(f"[TicketService ERROR] {e}")
+            ticketservice_logger.error(f"Error happened while creating support ticket:\nError: {e}")
             return self._error_message()
         
     def append_support_ticket_context(self, state, ticket_id, internal=True):
@@ -137,20 +138,31 @@ class TicketService:
         :param ticket_id: The ID of the existing ticket to append to.
         :param internal: Whether the message should be internal.
         """
-        body = self._build_open_body(state)
-        full_body = f"Das Gespräch mit dem Chatbot wurde abgeschlossen. Folgende Informationen wurden erfasst:\n\n{body}"
+
+        solution_body = self._build_solution_body(state)
+        chat_info_body = f"Das Gespräch mit dem Chatbot wurde abgeschlossen. Folgende Informationen wurden erfasst:\n\n{self._build_open_body(state)}"
         
         try:
+            # Internal article with the chat history formatted for the ZIM team
             self._finalize_ticket_metadata(state, ticket_id)
             self.append_message_to_ticket(
                 ticket_id=ticket_id,
-                body=full_body,
+                body=chat_info_body,
                 sender="Agent",
                 internal=internal
             )
-            print(f"Successfully appended context to ticket {ticket_id}")
+
+            # Public article with the solutions
+            self.append_message_to_ticket(
+                ticket_id=ticket_id,
+                body=solution_body,
+                sender="Agent",
+                internal=False
+            )
+
+            ticketservice_logger.info(f"Successfully appended context to ticket {ticket_id}")
         except Exception as e:
-            print(f"[TicketService ERROR] Failed to append context: {e}")
+            ticketservice_logger.error(f"Error while appending context: {e}")
 
     def append_message_to_ticket(self, ticket_id: int, body: str, sender: str = "Agent", internal: bool = True) -> None:
         """
@@ -160,7 +172,7 @@ class TicketService:
         try:
             add_article_to_ticket(ticket_id=ticket_id, body=body, sender=sender, internal=internal)
         except Exception as e:
-            print(f"[TicketService ERROR] Failed to append article: {e}")
+            ticketservice_logger.error(f"Failed to append article: {e}")
 
     def create_ai_solved_ticket(self, state):
         """
@@ -199,7 +211,7 @@ class TicketService:
             }
 
         except Exception as e:
-            print(f"[TicketService ERROR] {e}")
+            ticketservice_logger.error(f"AI solved ticket could not be created\nError: {e}")
             return {
                 "messages": [
                     AIMessage(content="Fehler beim Abschließen des Tickets.")
@@ -237,7 +249,7 @@ class TicketService:
             add_tag_to_ticket(ticket_id, "AI-Solved")
             return {"ticket_id": ticket_id, "is_complete": True}
         except Exception as e:
-            print(f"[TicketService ERROR] {e}")
+            ticketservice_logger.error(f"Failed to close tutorial ticket\nError: {e}")
             return {"is_complete": True}
 
     # -------------------------
@@ -260,8 +272,17 @@ class TicketService:
             f"Kategorie: {resolve_zammad_category(state.get('category')) or state.get('category', 'Service Request')}\n"
             f"Problem:\n{state['issue_description']}\n\n"
             f"Zusatzinfos:\n{self._format_additional_info(state.get('additional_info', []))}"
-            f"{self._chat_history_and_solutions_section(state)}"
+            f"{self._chat_history_section(state)}"
         )
+
+    def _build_solution_body(self, state):
+        """
+        Builds the body for the public article with the solutions that the bot offered.
+        :param state: Current chatbot state.
+        :return: Formatted solution body as plain text.
+        """
+        return self._solutions_section(state)
+
 
     def _build_ai_body(self, state):
         """
@@ -281,14 +302,14 @@ class TicketService:
             f"Problem:\n{state['issue_description']}\n\n"
             f"Zusatzinfos:\n{self._format_additional_info(state.get('additional_info', []))}"
             f"\n\nStatus: Durch KI gelöst"
-            f"{self._chat_history_and_solutions_section(state)}"
+            f"{self._chat_history_section(state)}"
         )
 
-    def _chat_history_and_solutions_section(self, state) -> str:
+    def _chat_history_section(self, state) -> str:
         """
-        Returns the chat history and solutions selection formatted into Zammad ticket format based on the state
+        Returns the chat history formatted into Zammad ticket format based on the state
         :param state: The current state of the chatbot
-        :return: The formatted chat history and solutions
+        :return: The formatted chat history
         """
         summary = (state.get("summary") or "").strip() or "(keine Zusammenfassung vorhanden)"
         addendum = (state.get("user_addendum") or "").strip()
@@ -306,6 +327,15 @@ class TicketService:
             f"{'=' * 40}\n\n"
             f"{summary}"
             f"{addendum_section}\n\n"
+        )
+
+    def _solutions_section(self, state) -> str:
+        """
+        Returns the solutions formatted into Zammad ticket format based on the state
+        :param state: The current state of the chatbot
+        :return: The formatted solutions offered by the chatbot
+        """
+        return (
             f"{'=' * 40}\n"
             f"VOM BOT ANGEBOTENE LÖSUNGEN\n"
             f"{'=' * 40}\n\n"
@@ -408,10 +438,12 @@ class TicketService:
         :param state: Current chatbot state.
         :return: State update containing the confirmation message.
         """
+        first_name = state.get("display_name", "").split()[0] if state.get("display_name") else ""
+        greeting = f"Perfekt, {first_name}!" if first_name else "Perfekt!"
         return {
             "messages": [
                 AIMessage(content=(
-                    "Perfekt! Dein Ticket wurde erfolgreich erstellt.\n\n"
+                    f"{greeting} Dein Ticket wurde erfolgreich erstellt.\n\n"
                     "Ein Support-Mitarbeiter meldet sich so bald wie möglich bei dir.\n\n"
                     "**Ticketübersicht**\n\n"
                     f"**Betreff:** {title}\n\n"

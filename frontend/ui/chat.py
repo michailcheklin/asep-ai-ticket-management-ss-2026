@@ -1,11 +1,25 @@
 """Shared Streamlit chat UI used by the live app and the mock clone."""
 import copy
+import os
 import re
 
+import requests
 import streamlit as st
 from streamlit.components.v1 import html
 
 from frontend.clients.base import ChatClient
+from frontend.ui.qa_navigation import (
+    apply_question_answer,
+    can_go_back,
+    contains_nested_bullets,
+    format_answers_as_message,
+    is_other_option,
+    navigate_back,
+    parse_questions_from_message,
+    split_stored_mcq_answer,
+)
+
+IDP_BASE_URL = os.getenv("IDP_BASE_URL", "http://localhost:4999")
 
 INITIAL_STATES = {
     "messages": [
@@ -28,15 +42,88 @@ INITIAL_STATES = {
     "show_ticket_addendum_form": False,
     "intent": "",
     "tutorial_attempts": 0,
+    "graph_runs": 0,
+    "is_complete": False,
     # ── Q&A widget state (frontend-only, never sent to the backend) ──────────
     "pending_questions": [],   # list of {text: str, options: list[str] | None}
     "current_question_idx": 0,
     "question_answers": [],    # answers collected so far in the current round
     "_ready_to_send": None,    # combined message text waiting to be dispatched
+    "_qa_navigating": False,   # disables Q&A buttons during back/forward navigation
     "scroll_target": None,     # anchor id to scroll to after rerun
+    "user_metadata": None,      # dict from IdP + browser UA, or None if not logged in
+    "metadata_confirmed": False,   # True after user confirms browser-detected device/OS
+    "_pending_first_message": None, # first user message held until metadata is confirmed
 }
 
 WAITING_MESSAGE = '*:color[Bitte warten. Antwort wird generiert...]{foreground="#888888"}*'
+
+
+# ── User-Agent parsing ──────────────────────────────────────────────────────
+
+def _parse_device_from_ua(ua: str) -> str:
+    """Classify device type (Tablet/Mobile/Desktop) from User-Agent substrings."""
+    ua_lower = ua.lower()
+    if "ipad" in ua_lower or "tablet" in ua_lower:
+        return "Tablet"
+    if "iphone" in ua_lower or "mobi" in ua_lower or ("android" in ua_lower and "tablet" not in ua_lower):
+        return "Mobile"
+    return "Desktop"
+
+
+def _parse_os_from_ua(ua: str) -> str:
+    """Classify OS from User-Agent substrings; falls back to "Unbekannt" if unrecognized."""
+    if "iPhone" in ua or "iPad" in ua:
+        return "iOS"
+    if "Windows" in ua:
+        return "Windows"
+    if "Android" in ua:
+        return "Android"
+    if "Macintosh" in ua or "Mac OS" in ua:
+        return "macOS"
+    if "Linux" in ua:
+        return "Linux"
+    return "Unbekannt"
+
+
+def _fetch_and_store_metadata() -> None:
+    """Fetch user metadata from the IdP API and enrich with browser info."""
+    # Only fetch once per session; Shibboleth login already ran before the chat page loaded.
+    if st.session_state.get("user_metadata") is not None:
+        return
+
+    # No token means the user reached this page outside the Shibboleth login flow.
+    token = st.query_params.get("session_token")
+    if not token:
+        return
+
+    try:
+        resp = requests.get(f"{IDP_BASE_URL}/api/userinfo", params={"token": token}, timeout=3)
+        if resp.status_code != 200:
+            return
+        metadata = resp.json()
+    except Exception:
+        return
+
+    # Device/OS aren't provided by the IdP, so derive them client-side from the request headers.
+    ua = st.context.headers.get("User-Agent", "")
+    metadata["device"] = _parse_device_from_ua(ua)
+    metadata["os_name"] = _parse_os_from_ua(ua)
+
+    st.session_state["user_metadata"] = metadata
+
+    # Pre-fill the (still-required) form fields so the user doesn't retype known IdP data.
+    if metadata.get("email"):
+        st.session_state["email_input"] = metadata["email"]
+    if metadata.get("matrikelnummer"):
+        st.session_state["matrikelnummer_input"] = metadata["matrikelnummer"]
+
+    # Personalize the greeting with the user's first name, but only if the chat hasn't started yet.
+    name = metadata.get("display_name", "").split()[0] if metadata.get("display_name") else ""
+    if name and "messages" not in st.session_state:
+        st.session_state["messages"] = [
+            {"role": "assistant", "content": f"Hallo {name}! Ich bin ZIM Helper. Erzähl mir bitte von deinem Anliegen."}
+        ]
 
 
 # ── Session state helpers ────────────────────────────────────────────────────
@@ -119,71 +206,38 @@ def are_form_fields_valid() -> bool:
             string=st.session_state["email_input"],
         )
     )
+    metadata = st.session_state.get("user_metadata")
+    if metadata and metadata.get("role") != "student":
+        return is_email_valid
     is_matrikelnummer_valid = bool(
         re.fullmatch(pattern=r"[0-9]+", string=st.session_state["matrikelnummer_input"])
     )
     return is_email_valid and is_matrikelnummer_valid
 
 
-# ── Question parsing & formatting ────────────────────────────────────────────
-
-def parse_questions_from_message(content: str) -> list[dict]:
-    """Extract top-level bullet-point questions from a bot message.
-
-    Supports two formats:
-      MCQ:   "* Question? (options: A, B, C)"
-      Open:  "* Question?"
-
-    Nested answer bullets (for example lines indented under a question) are
-    ignored so they remain visible in the rendered markdown.
-    """
-    questions: list[dict] = []
-    bullet_pattern = re.compile(r"^\s*[\*\-]\s+")
-
-    for line in content.splitlines():
-        if not bullet_pattern.match(line):
-            continue
-
-        q_text = bullet_pattern.sub("", line).strip()
-        options_match = re.search(r"\s*\(options:\s*(.+?)\)\s*$", q_text)
-        if options_match:
-            options = [o.strip().strip("[]") for o in options_match.group(1).split(",")]
-            q_clean = q_text[: options_match.start()].strip()
-            questions.append({"text": q_clean, "options": options})
-        else:
-            questions.append({"text": q_text, "options": None})
-    return questions
+# ── Question parsing & formatting (see frontend.ui.qa_navigation) ─────────────
 
 
-def contains_nested_bullets(content: str) -> bool:
-    """Return True when the message contains indented bullet points."""
-    return any(re.match(r"^\s+[\*\-]\s+", line) for line in content.splitlines())
-
-
-def format_answers_as_message(questions: list[dict], answers: list[str]) -> str:
-    """Combine collected Q&A pairs into the backend-expected plain-text format.
-
-    Example output:
-        * Which OS are you using?
-            * Windows
-        * In which room are you?
-            * Others: R11
-    """
-    return "\n".join(
-        f"* {q['text']}\n    * {option}: {detail}" if ": " in a and (option := a.split(": ", 1)[0]) and (detail := a.split(": ", 1)[1])
-        else f"* {q['text']}\n    * {a}"
-        for q, a in zip(questions, answers)
-    )
-
-
-def _is_other_option(option: str) -> bool:
-    """Return True when the chosen option is an open-ended 'other' variant."""
-    return bool(
-        re.search(r"\b(other|others|andere[sr]?|sonstige[sr]?)\b", option, re.IGNORECASE)
-    )
+def clear_question_widget_keys(start_idx: int, total: int) -> None:
+    """Drop Streamlit widget keys for questions at/after *start_idx*."""
+    for i in range(start_idx, total):
+        for prefix in ("mcq_", "other_detail_", "open_"):
+            st.session_state.pop(f"{prefix}{i}", None)
 
 
 # ── Payload builders ─────────────────────────────────────────────────────────
+
+def _metadata_fields() -> dict:
+    """Extract the fixed subset of client metadata sent to the backend on every request."""
+    metadata = st.session_state.get("user_metadata") or {}
+    return {
+        "display_name": metadata.get("display_name", ""),
+        "role": metadata.get("role", ""),
+        "faculty": metadata.get("faculty", ""),
+        "device": metadata.get("device", ""),
+        "os_name": metadata.get("os_name", ""),
+    }
+
 
 def build_chat_payload(user_input: str) -> dict:
     return {
@@ -199,8 +253,10 @@ def build_chat_payload(user_input: str) -> dict:
         "ask_issue_attempts": st.session_state.ask_issue_attempts,
         "intent": st.session_state.intent,
         "tutorial_attempts": st.session_state.tutorial_attempts,
+        "graph_runs": st.session_state.graph_runs,
         "ticket_id": st.session_state.get("ticket_id"),
         "summary": st.session_state.summary,
+        **_metadata_fields(),
     }
 
 
@@ -223,6 +279,7 @@ def build_feedback_payload(message_index: int, helpful: bool, user_addendum: str
         "ticket_id": st.session_state.get("ticket_id"),
         "summary": st.session_state.summary,
         "user_addendum": user_addendum,
+        **_metadata_fields(),
     }
 
 
@@ -284,6 +341,10 @@ def apply_response_to_session(user_input: str, res_json: dict) -> None:
     st.session_state.summary = res_json.get("summary", "")
     st.session_state.intent = res_json.get("intent", "")
     st.session_state.tutorial_attempts = res_json.get("tutorial_attempts", 0)
+    st.session_state.graph_runs = res_json.get("graph_runs", 0)
+    st.session_state.is_complete = res_json.get("is_complete", False)
+
+
     if "ticket_id" in res_json:
         st.session_state.ticket_id = res_json.get("ticket_id")
 
@@ -299,6 +360,7 @@ def apply_response_to_session(user_input: str, res_json: dict) -> None:
             st.session_state.pending_questions = questions
             st.session_state.current_question_idx = 0
             st.session_state.question_answers = []
+            st.session_state["_qa_navigating"] = False
             st.session_state["scroll_target"] = "question_widget_anchor"
 
 
@@ -338,11 +400,15 @@ def process_solution_feedback(
         st.session_state.pending_ticket_confirmation = None
         st.session_state.show_ticket_addendum_form = False
         st.session_state["scroll_target"] = None
-        return "Ich habe dein Feedback notiert und ein Support-Ticket erstellt. Ein Agent wird sich bald um dein Anliegen kümmern."
+        metadata = st.session_state.get("user_metadata") or {}
+        first_name = metadata.get("display_name", "").split()[0] if metadata.get("display_name") else ""
+        greeting = f"Danke, {first_name}!" if first_name else "Danke!"
+        return f"{greeting} Ich habe dein Feedback notiert und ein Support-Ticket erstellt. Ein Agent wird sich bald um dein Anliegen kümmern."
 
     # For "Yes" response, parse the JSON response
     res_json = client.send_feedback(payload)
     message["solutions"] = []
+    st.session_state.is_complete = True
     return res_json.get("bot_response", "")
 
 
@@ -458,12 +524,71 @@ def render_chat_history(client: ChatClient) -> None:
             render_message_extras(message, i, client)
 
 
+def render_metadata_confirmation() -> None:
+    """Let the user confirm or correct browser-detected device and OS.
+
+    Shown after the first message is sent. On confirmation the held
+    message is released for dispatch to the backend.
+    """
+    metadata = st.session_state.get("user_metadata")
+    if not metadata:
+        return
+
+    with st.container(border=True):
+        st.markdown("**Erkannte Geräteinformationen**\n")
+        st.markdown("Dein Browser hat uns diese Informationen automatisch bereitgestellt. Dadurch können wir besser nachvollziehen, unter welchen Bedingungen dein Problem auftritt.")
+
+        device_correct = st.radio(
+            f"Bezieht sich dein Anliegen auf ein **{metadata.get('device', 'Unbekannt')}**-Gerät?",
+            ["Ja", "Nein"],
+            key="confirm_device",
+            index=None,
+        )
+        custom_device = ""
+        if device_correct == "Nein":
+            custom_device = st.text_input("Welches Gerät verwendest du?", key="custom_device_input")
+
+        os_correct = st.radio(
+            f"Bezieht sich dein Anliegen auf **{metadata.get('os_name', 'Unbekannt')}**?",
+            ["Ja", "Nein"],
+            key="confirm_os",
+            index=None,
+        )
+        custom_os = ""
+        if os_correct == "Nein":
+            custom_os = st.text_input("Welches Betriebssystem verwendest du?", key="custom_os_input")
+
+        if st.button("Bestätigen", key="confirm_metadata_btn", use_container_width=True):
+            if device_correct is None or os_correct is None:
+                st.error("Bitte beantworte beide Fragen.")
+                return
+            if device_correct == "Nein" and not custom_device.strip():
+                st.error("Bitte gib dein Gerät an.")
+                return
+            if os_correct == "Nein" and not custom_os.strip():
+                st.error("Bitte gib dein Betriebssystem an.")
+                return
+
+            if device_correct == "Nein":
+                metadata["device"] = custom_device.strip()
+            if os_correct == "Nein":
+                metadata["os_name"] = custom_os.strip()
+
+            st.session_state["metadata_confirmed"] = True
+            st.session_state["_ready_to_send"] = st.session_state.pop("_pending_first_message", None)
+            st.rerun()
+
+
 def render_question_widget(client: ChatClient) -> None:
     """Step-by-step Q&A widget for pending bullet-point questions.
 
     Shows one question at a time:
       - MCQ  → radio buttons; selecting an "other" variant reveals a free-text field.
       - Open → text area.
+
+    Users can step back to earlier questions (except the first) to correct an
+    answer. Changing an answer clears dependent later answers; leaving it
+    unchanged keeps them.
 
     On the final question the user presses 'Senden'; all answers are then
     combined into a single message and queued for dispatch to the backend.
@@ -472,6 +597,7 @@ def render_question_widget(client: ChatClient) -> None:
     """
     questions: list[dict] = st.session_state.pending_questions
     idx: int = st.session_state.current_question_idx
+    answers: list[str] = st.session_state.question_answers
 
     if idx >= len(questions):
         return
@@ -479,6 +605,8 @@ def render_question_widget(client: ChatClient) -> None:
     question = questions[idx]
     is_last = idx == len(questions) - 1
     total = len(questions)
+    show_back = can_go_back(idx)
+    stored_answer = answers[idx] if idx < len(answers) else None
 
     st.progress((idx + 1) / total, text=f"Frage {idx + 1} von {total}")
 
@@ -491,49 +619,119 @@ def render_question_widget(client: ChatClient) -> None:
         answer: str | None = None
 
         if question["options"]:
+            radio_key = f"mcq_{idx}"
+            detail_key = f"other_detail_{idx}"
+            selected_option, other_detail_default = split_stored_mcq_answer(
+                stored_answer, question["options"]
+            )
+            # Seed widget state so a revisited question shows the prior choice.
+            if selected_option is not None and radio_key not in st.session_state:
+                st.session_state[radio_key] = selected_option
+            if other_detail_default and detail_key not in st.session_state:
+                st.session_state[detail_key] = other_detail_default
+
             selected: str | None = st.radio(
                 "Wähle eine Option:",
                 question["options"],
-                key=f"mcq_{idx}",
+                key=radio_key,
                 index=None,
             )
             other_detail = ""
-            if selected and _is_other_option(selected):
+            if selected and is_other_option(selected):
                 other_detail = st.text_input(
                     "Bitte genauer angeben:",
-                    key=f"other_detail_{idx}",
+                    key=detail_key,
                 )
             if selected is not None:
                 answer = f"{selected}: {other_detail}" if other_detail else selected
         else:
-            open_text: str = st.text_area("Deine Antwort:", key=f"open_{idx}")
+            open_key = f"open_{idx}"
+            if stored_answer is not None and open_key not in st.session_state:
+                st.session_state[open_key] = stored_answer
+            open_text: str = st.text_area("Deine Antwort:", key=open_key)
             if open_text and open_text.strip():
                 answer = open_text.strip()
 
         btn_label = "Senden ✓" if is_last else "Weiter →"
-        if st.button(btn_label, key=f"next_btn_{idx}", use_container_width=True):
+        if show_back:
+            back_col, next_col = st.columns(2)
+            with back_col:
+                back_clicked = st.button(
+                    "← Zurück",
+                    key=f"back_btn_{idx}",
+                    use_container_width=True,
+                    type="secondary",
+                    disabled=bool(st.session_state.get("_qa_navigating")),
+                )
+            with next_col:
+                next_clicked = st.button(
+                    btn_label,
+                    key=f"next_btn_{idx}",
+                    use_container_width=True,
+                    disabled=bool(st.session_state.get("_qa_navigating")),
+                )
+        else:
+            back_clicked = False
+            next_clicked = st.button(
+                btn_label,
+                key=f"next_btn_{idx}",
+                use_container_width=True,
+                disabled=bool(st.session_state.get("_qa_navigating")),
+            )
+
+        # Prefer Back over Weiter if both somehow fire in one run.
+        if back_clicked and show_back and not st.session_state.get("_qa_navigating"):
+            st.session_state["_qa_navigating"] = True
+            new_idx, new_answers = navigate_back(idx, answers)
+            st.session_state.current_question_idx = new_idx
+            st.session_state.question_answers = new_answers
+            st.session_state["scroll_target"] = "question_widget_anchor"
+            st.session_state["_qa_navigating"] = False
+            st.rerun()
+        elif next_clicked and not st.session_state.get("_qa_navigating"):
             if answer is None:
                 st.error("Bitte beantworte die Frage, bevor du fortfährst.")
             else:
-                st.session_state.question_answers.append(answer)
-                if is_last:
-                    # Assemble the combined message and hand off to the send loop
+                st.session_state["_qa_navigating"] = True
+                answer_changed = not (idx < len(answers) and answers[idx] == answer)
+                new_idx, new_answers, is_complete = apply_question_answer(
+                    idx, answers, answer, is_last=is_last
+                )
+                if answer_changed:
+                    clear_question_widget_keys(idx + 1, total)
+
+                if is_complete:
                     st.session_state["_ready_to_send"] = format_answers_as_message(
-                        questions, st.session_state.question_answers
+                        questions, new_answers
                     )
                     st.session_state.pending_questions = []
                     st.session_state.current_question_idx = 0
                     st.session_state.question_answers = []
+                    clear_question_widget_keys(0, total)
                 else:
-                    st.session_state.current_question_idx += 1
+                    st.session_state.current_question_idx = new_idx
+                    st.session_state.question_answers = new_answers
+                    st.session_state["scroll_target"] = "question_widget_anchor"
+
+                st.session_state["_qa_navigating"] = False
                 st.rerun()
 
 
 def run_app(client: ChatClient, *, mock_mode: bool = False) -> None:
     st.set_page_config(page_title="Support-Annahme über ZIM Helper", layout="centered")
 
+    _fetch_and_store_metadata()
+
+    metadata = st.session_state.get("user_metadata")
+
     with st.sidebar:
         st.header("Einstellungen")
+        if metadata:
+            role_label = "Student" if metadata.get("role") == "student" else "Mitarbeiter"
+            st.markdown(f"**Eingeloggt als:** {metadata.get('display_name', '')}")
+            st.caption(f"{role_label} · {metadata.get('faculty', '')}")
+            if metadata.get("device") or metadata.get("os_name"):
+                st.caption(f"{metadata.get('device', '')} · {metadata.get('os_name', '')}")
         if st.button("Neu starten", type="secondary"):
             reset_session_state()
             st.rerun()
@@ -544,18 +742,25 @@ def run_app(client: ChatClient, *, mock_mode: bool = False) -> None:
         st.caption("Mock-Modus: keine Backend- oder KI-Aufrufe.")
 
     st.subheader("Deine Kontaktdaten")
-    st.text_input("E-Mail-Adresse *", key="email_input")
-    st.text_input("Matrikelnummer *", key="matrikelnummer_input")
+    is_logged_in = metadata is not None
+    st.text_input("E-Mail-Adresse *", key="email_input", disabled=is_logged_in)
+    if not metadata or metadata.get("role") == "student":
+        st.text_input("Matrikelnummer *", key="matrikelnummer_input", disabled=is_logged_in)
     st.divider()
     st.header("ZIM Helper")
 
     init_session_state()
     render_chat_history(client)
 
-    # Priority 1: a finished Q&A round is ready — dispatch it to the backend.
-    # process_user_message is called here (top level) so the in-progress
-    # user/assistant messages render below the chat history, not inside the
-    # question widget's bordered container.
+    metadata_needs_confirm = metadata and not st.session_state.get("metadata_confirmed")
+
+    # Priority 0: first message sent — confirm metadata before dispatching to backend.
+    if metadata_needs_confirm and st.session_state.get("_pending_first_message"):
+        render_metadata_confirmation()
+        st.chat_input(placeholder="Bitte bestätige zuerst deine Geräteinformationen.", disabled=True)
+        return
+
+    # Priority 1: a finished Q&A round or released first message is ready.
     ready = st.session_state.get("_ready_to_send")
     if ready:
         st.session_state["_ready_to_send"] = None
@@ -587,16 +792,23 @@ def run_app(client: ChatClient, *, mock_mode: bool = False) -> None:
             or not are_form_fields_valid()
             or has_pending_solutions
             or st.session_state.pending_ticket_confirmation is not None
+            or st.session_state.is_complete
         )
         if user_input := st.chat_input(
             placeholder=(
-                "Bitte E-Mail-Adresse und Matrikelnummer eingeben"
+                "Das Gespräch ist abgeschlossen — bitte über 'Neu starten' ein neues Anliegen beginnen."
+                if st.session_state.is_complete
+                else "Bitte E-Mail-Adresse und Matrikelnummer eingeben"
                 if not are_form_fields_valid()
                 else "Beschreibe dein Anliegen..."
             ),
             disabled=chat_disabled,
             on_submit=bot_starting_thinking,
         ):
-            process_user_message(client, user_input)
-            st.session_state.bot_thinking = False
-            st.rerun()
+            if metadata_needs_confirm:
+                st.session_state["_pending_first_message"] = user_input
+                st.rerun()
+            else:
+                process_user_message(client, user_input)
+                st.session_state.bot_thinking = False
+                st.rerun()

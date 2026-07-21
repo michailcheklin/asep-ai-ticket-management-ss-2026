@@ -30,7 +30,7 @@ from backend.graph.nodes import (
     classify_ticket,
     classify_ticket_category,
     extract_information,
-    finish_ticket,
+    finish_ai_created_ticket,
     _resolve_ticket_category,
 )
 
@@ -147,7 +147,7 @@ class ExtractInformationTests(unittest.TestCase):
 
 
 class ClassifyTicketNodeTests(unittest.TestCase):
-    """Unit tests for classify_ticket workflow node and finish_ticket reuse."""
+    """Unit tests for classify_ticket workflow node and finish_ai_created_ticket reuse."""
 
     @patch("backend.graph.nodes.classify_ticket_category")
     def test_classify_ticket_node_sets_category(self, mock_classify):
@@ -177,7 +177,7 @@ class ClassifyTicketNodeTests(unittest.TestCase):
 
     @patch("backend.graph.nodes.classify_ticket_category")
     @patch("backend.graph.nodes.ticket_service.create_support_ticket")
-    def test_finish_ticket_reuses_category_without_reclassifying(
+    def test_finish_ai_created_ticket_reuses_category_without_reclassifying(
         self,
         mock_create_ticket,
         mock_classify,
@@ -187,7 +187,7 @@ class ClassifyTicketNodeTests(unittest.TestCase):
             "is_complete": True,
         }
 
-        result = finish_ticket({
+        result = finish_ai_created_ticket({
             "messages": [HumanMessage(content="WLAN geht nicht")],
             "user_email": "user@mail.com",
             "matrikelnummer": "1234567",
