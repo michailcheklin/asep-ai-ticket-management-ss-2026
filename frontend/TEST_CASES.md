@@ -1,153 +1,152 @@
-# Testfälle – Frontend Clone (Mock-Modus)
+# Test Cases – Frontend Clone (Mock Mode)
 
-Diese Testfälle prüfen `app_clone.py` auf Port **8502**. Voraussetzung: Clone läuft ohne Backend.
+These test cases verify `app_clone.py` on port **8502**. Prerequisite: Clone runs without backend.
 
 ```bash
 cd frontend
 streamlit run app_clone.py --server.port 8502
 ```
 
-Oder per Docker: `docker compose up frontend_clone`
+Or via Docker: `docker compose up frontend_clone`
 
 ---
 
 ## Acceptance Criteria (Issue)
 
-| ID | Testfall | Schritte | Erwartetes Ergebnis |
+| ID | Test Case | Steps | Expected Result |
+|----|-----------|-------|-----------------|
+| **AC-01** | Clone exists | Start `app_clone.py`, open browser | App loads on `http://localhost:8502`, caption „Mock-Modus: keine Backend- oder KI-Aufrufe.“ |
+| **AC-02** | Fixed responses | Enter email + student ID, send any message | Fixed mock response appears (no real AI text) |
+| **AC-03** | No AI calls | Open network tab, send multiple messages | No requests to `localhost:8000/chat` or `/solution-feedback` |
+| **AC-04** | FAQ keyword | Send message `FAQ` | Bot response + blue FAQ placeholder (`st.info`) with WLAN/Moodle/printer text |
+| **AC-05** | Ticket keyword | Send message `Ticket` | Bot response + button „Ticket erstellen“ (disabled) |
+| **AC-06** | Solution keyword | Send message `Lösung` | Bot response + buttons „Ja“ and „Nein“ |
+
+---
+
+## Form Validation
+
+| ID | Test Case | Steps | Expected Result |
+|----|-----------|-------|-----------------|
+| **FV-01** | Chat locked without contact details | Load page, leave fields empty | Chat input disabled, placeholder „Bitte E-Mail-Adresse und Matrikelnummer eingeben“ |
+| **FV-02** | Invalid email | Email `keine-email`, student ID `12345` | Chat input remains disabled |
+| **FV-03** | Invalid student ID | Email `test@uni.de`, student ID `abc123` | Chat input remains disabled |
+| **FV-04** | Valid contact details | Email `student@uni.de`, student ID `1234567` | Chat input active, placeholder „Beschreibe dein Anliegen...“ |
+| **FV-05** | Message after validation | Enter valid data, send `Hallo` | Message appears in chat, mock response follows |
+
+---
+
+## Mock Keywords (Case Sensitivity)
+
+| ID | Input | Expected `ui_flags` | Expected UI |
+|----|-------|----------------------|-------------|
+| **MK-01** | `FAQ` | `["show_faq"]` | FAQ placeholder visible |
+| **MK-02** | `faq` | `["show_faq"]` | FAQ placeholder visible (case-insensitive) |
+| **MK-03** | `Mein FAQ Problem` | `["show_faq"]` | FAQ placeholder (keyword in text) |
+| **MK-04** | `Ticket` | `["show_ticket_button"]` | Ticket button visible |
+| **MK-05** | `ticket` | `["show_ticket_button"]` | Ticket button visible |
+| **MK-06** | `Ich brauche ein Ticket` | `["show_ticket_button"]` | Ticket button visible |
+| **MK-07** | `Lösung` | `[]` | Two solution suggestions, Ja/Nein buttons |
+| **MK-08** | `solution` | `[]` | Two solution suggestions, Ja/Nein buttons |
+| **MK-09** | `Hallo Welt` | `[]` | Generic mock response, no extra UI |
+| **MK-10** | `WLAN-Verbindung` | `[]` | Generic mock response (no FAQ keyword) |
+
+**Priority for multiple matches:** `faq` is checked before `ticket` before `lösung`. Input `FAQ Ticket` → FAQ view.
+
+---
+
+## Solution Feedback (Yes/No)
+
+| ID | Test Case | Steps | Expected Result |
+|----|-----------|-------|-----------------|
+| **FB-01** | Yes – helpful | Send `Lösung` → click „Ja“ | Confirmation „Super, freut mich…“, Ja/Nein buttons disappear |
+| **FB-02** | No – Ticket Mock | Restart → `Lösung` → „Nein“ | Mock ticket message „Dein Support-Ticket wurde erstellt (Mock)…“ |
+| **FB-03** | Buttons only once | After Ja/Nein, scroll again | No second Ja/Nein buttons for the same message |
+| **FB-04** | Chat after feedback | After „Ja“ without reset | Chat input disabled (`bot_thinking = true`) |
+
+---
+
+## Multiple-Choice Navigation with the "Back" button (Live / Q&A Widget)
+
+Prerequisite: Bot response with multiple `* Question? (options: …)` bullets (Live backend). Automated coverage: `tests/test_question_back_navigation.py`.
+
+| ID | Test Case | Steps | Expected Result |
 |----|----------|----------|---------------------|
-| **AC-01** | Clone existiert | `app_clone.py` starten, Browser öffnen | App lädt auf `http://localhost:8502`, Caption „Mock-Modus: keine Backend- oder KI-Aufrufe.“ |
-| **AC-02** | Feste Antworten | E-Mail + Matrikelnummer eingeben, beliebige Nachricht senden | Feste Mock-Antwort erscheint (kein echter KI-Text) |
-| **AC-03** | Keine AI-Calls | Netzwerk-Tab öffnen, mehrere Nachrichten senden | Keine Requests an `localhost:8000/chat` oder `/solution-feedback` |
-| **AC-04** | FAQ-Keyword | Nachricht `FAQ` senden | Bot-Antwort + blauer FAQ-Platzhalter (`st.info`) mit WLAN/Moodle/Drucker-Text |
-| **AC-05** | Ticket-Keyword | Nachricht `Ticket` senden | Bot-Antwort + Button „Ticket erstellen“ (deaktiviert) |
-| **AC-06** | Lösung-Keyword | Nachricht `Lösung` senden | Bot-Antwort + Buttons „Ja“ und „Nein“ |
+| **QB-01** | No “Back” option for Question 1 | Display first MCQ question | “← Back” button not visible |
+| **QB-02** | Back to the previous question | Answer Question 1 → Next → “← Back” | Question 1 is displayed again |
+| **QB-03** | Selection restored | Back to selection | Previously selected option is preselected |
+| **QB-04** | Change answer | Back → different option → Next | New answer replaces the old one; subsequent answers in the round are omitted |
+| **QB-05** | Go back multiple steps | Answer multiple questions, click “← Back” multiple times | Step-by-step return without new tickets/duplicate messages |
+| **QB-06** | No changes without going back | Answer questions only with Next/Submit | Previous flow remains unchanged |
+---
+
+## Restart (Reset)
+
+| ID | Test Case | Steps | Expected Result |
+|----|-----------|-------|-----------------|
+| **RS-01** | Reset chat | Send multiple messages → sidebar „Neu starten“ | Only bot greeting message visible |
+| **RS-02** | Reset form | Enter contact details → „Neu starten“ | Email and student ID empty |
+| **RS-03** | Unlock input | `Lösung` → „Ja“ (input locked) → „Neu starten“ | Chat input active again (after valid contact details) |
+| **RS-04** | Page reload | F5 after reset | State remains reset (session preserved) |
+| **RS-05** | New tab | Close tab, reopen `localhost:8502` | Fresh start with greeting message |
 
 ---
 
-## Formular-Validierung
+## UI Layout & Appearance
 
-| ID | Testfall | Schritte | Erwartetes Ergebnis |
-|----|----------|----------|---------------------|
-| **FV-01** | Chat ohne Kontaktdaten gesperrt | Seite laden, Felder leer lassen | Chat-Input deaktiviert, Placeholder „Bitte E-Mail-Adresse und Matrikelnummer eingeben“ |
-| **FV-02** | Ungültige E-Mail | E-Mail `keine-email`, Matrikel `12345` | Chat-Input bleibt deaktiviert |
-| **FV-03** | Ungültige Matrikelnummer | E-Mail `test@uni.de`, Matrikel `abc123` | Chat-Input bleibt deaktiviert |
-| **FV-04** | Gültige Kontaktdaten | E-Mail `student@uni.de`, Matrikel `1234567` | Chat-Input aktiv, Placeholder „Beschreibe dein Anliegen...“ |
-| **FV-05** | Nachricht nach Validierung | Gültige Daten eingeben, `Hallo` senden | Nachricht erscheint im Chat, Mock-Antwort folgt |
-
----
-
-## Mock-Keywords (Groß-/Kleinschreibung)
-
-| ID | Eingabe | Erwartete `ui_flags` | Erwartete UI |
-|----|---------|----------------------|--------------|
-| **MK-01** | `FAQ` | `["show_faq"]` | FAQ-Platzhalter sichtbar |
-| **MK-02** | `faq` | `["show_faq"]` | FAQ-Platzhalter sichtbar (case-insensitive) |
-| **MK-03** | `Mein FAQ Problem` | `["show_faq"]` | FAQ-Platzhalter (Keyword im Text) |
-| **MK-04** | `Ticket` | `["show_ticket_button"]` | Ticket-Button sichtbar |
-| **MK-05** | `ticket` | `["show_ticket_button"]` | Ticket-Button sichtbar |
-| **MK-06** | `Ich brauche ein Ticket` | `["show_ticket_button"]` | Ticket-Button sichtbar |
-| **MK-07** | `Lösung` | `[]` | Zwei Lösungsvorschläge, Ja/Nein-Buttons |
-| **MK-08** | `solution` | `[]` | Zwei Lösungsvorschläge, Ja/Nein-Buttons |
-| **MK-09** | `Hallo Welt` | `[]` | Generische Mock-Antwort, keine Extra-UI |
-| **MK-10** | `WLAN-Verbindung` | `[]` | Generische Mock-Antwort (kein FAQ-Keyword) |
-
-**Priorität bei Mehrfach-Treffern:** `faq` wird vor `ticket` vor `lösung` geprüft. Eingabe `FAQ Ticket` → FAQ-Ansicht.
+| ID | Test Case | Steps | Expected Result |
+|----|-----------|-------|-----------------|
+| **UI-01** | Initial greeting | Fresh load of app | One assistant message: „Hallo! Ich bin ZIM Helper…“ |
+| **UI-02** | User/Assistant icons | Send message | User message with red icon, bot with orange icon |
+| **UI-03** | Waiting status | Send message (observe briefly) | Briefly „Bitte warten. Antwort wird generiert…“, then mock response |
+| **UI-04** | Ticket button not clickable | Send `Ticket` | Button visible but `disabled` (no action) |
+| **UI-05** | FAQ placeholder content | Send `FAQ` | Info box with „WLAN-Verbindung, Moodle-Login, Drucker im Poolraum“ |
+| **UI-06** | Sidebar visible | Load app | Sidebar with „Einstellungen“ and button „Neu starten“ |
 
 ---
 
-## Lösungs-Feedback (Ja/Nein)
+## Isolation from Backend
 
-| ID | Testfall | Schritte | Erwartetes Ergebnis |
-|----|----------|----------|---------------------|
-| **FB-01** | Ja – hilfreich | `Lösung` senden → „Ja“ klicken | Bestätigung „Super, freut mich…“, Ja/Nein-Buttons verschwinden |
-| **FB-02** | Nein – Ticket Mock | Neu starten → `Lösung` → „Nein“ | Mock-Ticket-Nachricht „Dein Support-Ticket wurde erstellt (Mock)…“ |
-| **FB-03** | Buttons nur einmal | Nach Ja/Nein erneut scrollen | Keine zweiten Ja/Nein-Buttons bei derselben Nachricht |
-| **FB-04** | Chat nach Feedback | Nach „Ja“ ohne Reset | Chat-Input deaktiviert (`bot_thinking = true`) |
-
----
-
-## Multiple-Choice Zurück-Navigation (Live / Q&A-Widget)
-
-Voraussetzung: Bot-Antwort mit mehreren `* Frage? (options: …)`-Bullets (Live-Backend). Automatisierte Abdeckung: `tests/test_question_back_navigation.py`.
-
-| ID | Testfall | Schritte | Erwartetes Ergebnis |
-|----|----------|----------|---------------------|
-| **QB-01** | Kein Zurück bei Frage 1 | Erste MCQ-Frage anzeigen | Button „← Zurück“ nicht sichtbar |
-| **QB-02** | Zurück zur vorherigen Frage | Frage 1 beantworten → Weiter → „← Zurück“ | Frage 1 wird wieder angezeigt |
-| **QB-03** | Auswahl wiederhergestellt | Zurück nach Auswahl | Zuvor gewählte Option ist vorausgewählt |
-| **QB-04** | Antwort ändern | Zurück → andere Option → Weiter | Neue Antwort ersetzt die alte; spätere Antworten der Runde entfallen |
-| **QB-05** | Mehrere Schritte zurück | Mehrere Fragen beantworten, mehrfach „← Zurück“ | Schrittweise Rückkehr ohne neue Tickets/Doppel-Nachrichten |
-| **QB-06** | Ohne Zurück unverändert | Fragen nur mit Weiter/Senden beantworten | Bisheriger Ablauf unverändert |
+| ID | Test Case | Steps | Expected Result |
+|----|-----------|-------|-----------------|
+| **ISO-01** | Clone without backend | Start only `frontend_clone`, backend stopped | App works normally |
+| **ISO-02** | Docker without depends_on | Check `docker compose config` | `frontend_clone` has no `depends_on: backend_app` |
+| **ISO-03** | Live vs. Clone separated | Both in parallel: 8501 + 8502 | Clone mocks, live frontend (8501) needs backend |
 
 ---
 
-## Neu starten (Reset)
+## Regression Live Frontend (`app.py`, Port 8501)
 
-| ID | Testfall | Schritte | Erwartetes Ergebnis |
-|----|----------|----------|---------------------|
-| **RS-01** | Chat zurücksetzen | Mehrere Nachrichten senden → Sidebar „Neu starten“ | Nur Begrüßungsnachricht des Bots sichtbar |
-| **RS-02** | Formular zurücksetzen | Kontaktdaten eingeben → „Neu starten“ | E-Mail und Matrikelnummer leer |
-| **RS-03** | Input entsperren | `Lösung` → „Ja“ (Input gesperrt) → „Neu starten“ | Chat-Input wieder aktiv (nach gültigen Kontaktdaten) |
-| **RS-04** | Seiten-Reload | F5 nach Reset | Zustand bleibt zurückgesetzt (Session erhalten) |
-| **RS-05** | Neuer Tab | Tab schließen, `localhost:8502` neu öffnen | Frischer Start mit Begrüßungsnachricht |
+| ID | Test Case | Steps | Expected Result |
+|----|-----------|-------|-----------------|
+| **LV-01** | Live starts | Backend + `frontend_app` running | App on 8501, **no** mock notice |
+| **LV-02** | Real chat | Valid data, send message | Request to `BACKEND_URL/chat`, real AI response |
+| **LV-03** | Reset also live | „Neu starten“ in sidebar | Chat and form reset |
 
 ---
 
-## UI-Layout & Darstellung
+## Quick Checklist (Smoke Test, ~5 Min.)
 
-| ID | Testfall | Schritte | Erwartetes Ergebnis |
-|----|----------|----------|---------------------|
-| **UI-01** | Initiale Begrüßung | App frisch laden | Eine Assistant-Nachricht: „Hallo! Ich bin ZIM Helper…“ |
-| **UI-02** | User/Assistant Icons | Nachricht senden | User-Nachricht mit rotem Icon, Bot mit orangem Icon |
-| **UI-03** | Warte-Status | Nachricht senden (kurz beobachten) | Kurz „Bitte warten. Antwort wird generiert…“, dann Mock-Antwort |
-| **UI-04** | Ticket-Button nicht klickbar | `Ticket` senden | Button sichtbar, aber `disabled` (keine Aktion) |
-| **UI-05** | FAQ-Platzhalter Inhalt | `FAQ` senden | Info-Box mit „WLAN-Verbindung, Moodle-Login, Drucker im Poolraum“ |
-| **UI-06** | Sidebar sichtbar | App laden | Sidebar mit „Einstellungen“ und Button „Neu starten“ |
-
----
-
-## Isolation vom Backend
-
-| ID | Testfall | Schritte | Erwartetes Ergebnis |
-|----|----------|----------|---------------------|
-| **ISO-01** | Clone ohne Backend | Nur `frontend_clone` starten, Backend gestoppt | App funktioniert normal |
-| **ISO-02** | Docker ohne depends_on | `docker compose config` prüfen | `frontend_clone` hat kein `depends_on: backend_app` |
-| **ISO-03** | Live vs. Clone getrennt | Beide parallel: 8501 + 8502 | Clone mockt, Live-Frontend (8501) braucht Backend |
+1. [ ] Open clone on 8502 → mock caption visible  
+2. [ ] Without contact details → chat locked  
+3. [ ] `student@uni.de` + `1234567` → chat unlocked  
+4. [ ] `FAQ` → FAQ placeholder  
+5. [ ] `Ticket` → ticket button (disabled)  
+6. [ ] `Lösung` → Ja/Nein → check both responses  
+7. [ ] „Neu starten“ → everything empty, greeting back  
+8. [ ] Network: no calls to port 8000  
 
 ---
 
-## Regression Live-Frontend (`app.py`, Port 8501)
+## Automatable Unit Tests (MockChatClient)
 
-| ID | Testfall | Schritte | Erwartetes Ergebnis |
-|----|----------|----------|---------------------|
-| **LV-01** | Live startet | Backend + `frontend_app` laufen | App auf 8501, **kein** Mock-Hinweis |
-| **LV-02** | Echter Chat | Gültige Daten, Nachricht senden | Request an `BACKEND_URL/chat`, echte KI-Antwort |
-| **LV-03** | Reset auch live | „Neu starten“ in Sidebar | Chat und Formular zurückgesetzt |
+This logic can be tested in Python without Streamlit:
 
----
-
-## Schnell-Checkliste (Smoke Test, ~5 Min.)
-
-1. [ ] Clone auf 8502 öffnen → Mock-Caption sichtbar  
-2. [ ] Ohne Kontaktdaten → Chat gesperrt  
-3. [ ] `student@uni.de` + `1234567` → Chat frei  
-4. [ ] `FAQ` → FAQ-Platzhalter  
-5. [ ] `Ticket` → Ticket-Button (disabled)  
-6. [ ] `Lösung` → Ja/Nein → beide Antworten prüfen  
-7. [ ] „Neu starten“ → alles leer, Begrüßung zurück  
-8. [ ] Netzwerk: keine Calls an Port 8000  
-
----
-
-## Automatisierbare Unit-Tests (MockChatClient)
-
-Diese Logik kann ohne Streamlit per Python getestet werden:
-
-| Funktion | Input | Erwartung |
-|----------|-------|-----------|
+| Function | Input | Expectation |
+|----------|-------|-------------|
 | `send_message` | `{"user_message": "FAQ"}` | `"show_faq" in ui_flags` |
 | `send_message` | `{"user_message": "Ticket"}` | `"show_ticket_button" in ui_flags` |
 | `send_message` | `{"user_message": "Lösung"}` | `len(solutions) == 2` |
-| `send_message` | `{"user_message": "Hallo"}` | `ui_flags == []`, generischer Text |
-| `send_feedback` | `{"helpful": True}` | Text enthält „Super“ |
-| `send_feedback` | `{"helpful": False}` | Text enthält „Mock“ |
+| `send_message` | `{"user_message": "Hallo"}` | `ui_flags == []`, generic text |
+| `send_feedback` | `{"helpful": True}` | Text contains „Super“ |
+| `send_feedback` | `{"helpful": False}` | Text contains „Mock“ |

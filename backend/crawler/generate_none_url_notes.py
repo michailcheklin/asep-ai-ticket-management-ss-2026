@@ -104,7 +104,7 @@ def main():
     with open(FAQ_SOURCE_PATH, "w", encoding="utf-8") as f:
         json.dump(faq_data, f, ensure_ascii=False, indent=2)
 
-    print(f"\nFertig! {generated}/{total} Notes generiert und in {FAQ_SOURCE_PATH.name} gespeichert.")
+    print(f"\nDone! {generated}/{total} notes generated and saved to {FAQ_SOURCE_PATH.name}.")
 
 
 if __name__ == "__main__":

@@ -9,16 +9,16 @@ def extract_urls_from_json(filepath):
     with open(filepath, 'r', encoding='utf-8') as f:
         data = json.load(f)
 
-    # Regex-Pattern für URLs (http:// und https://)
+    # Regex pattern for URLs (http:// and https://)
     url_pattern = re.compile(
-        r'https?://'  # http:// oder https://
-        r'[^\s$$\}\'"<>]+'  # alles außer Whitespace und bestimmten Sonderzeichen
-        r'(?<![.,;:])'  # kein Satzzeichen am Ende
+        r'https?://'  # http:// or https://
+        r'[^\s$$\}\'"<>]+'  # everything except whitespace and certain special chars
+        r'(?<![.,;:])'  # no trailing punctuation
     )
 
     results = []
 
-    # Durch alle FAQ-Einträge iterieren
+    # Iterate over all FAQ entries
     for entry in data.get('faq_entries', []):
         if not isinstance(entry, dict):
             continue
@@ -26,7 +26,7 @@ def extract_urls_from_json(filepath):
         solution = entry.get('solution', '')
         entry_id = entry.get('id', '')
 
-        # URLs im solution-Feld suchen
+        # Find URLs in the solution field
         found_urls = url_pattern.findall(solution)
 
         if found_urls:
@@ -39,12 +39,12 @@ def extract_urls_from_json(filepath):
 
 
 def main():
-    input_filepath = 'faq_extracted.json'  # Pfad zur JSON-Eingabedatei
-    output_filepath = 'faq_solution_urls.json'  # Pfad zur JSON-Ausgabedatei
+    input_filepath = 'faq_extracted.json'  # Path to JSON input file
+    output_filepath = 'faq_solution_urls.json'  # Path to JSON output file
 
     results = extract_urls_from_json(input_filepath)
 
-    # Ergebnisse in JSON-Datei speichern
+    # Save results to JSON file
     output_data = {
         'extracted_urls': results,
         'total_entries_with_urls': len(results),
@@ -54,9 +54,9 @@ def main():
     with open(output_filepath, 'w', encoding='utf-8') as f:
         json.dump(output_data, f, ensure_ascii=False, indent=2)
 
-    print(f"Fertig! Ergebnisse gespeichert in: {output_filepath}")
-    print(f"Einträge mit URLs: {output_data['total_entries_with_urls']}")
-    print(f"URLs gesamt: {output_data['total_urls']}")
+    print(f"Done! Results saved to: {output_filepath}")
+    print(f"Entries with URLs: {output_data['total_entries_with_urls']}")
+    print(f"Total URLs: {output_data['total_urls']}")
 
 
 if __name__ == "__main__":

@@ -44,8 +44,8 @@ def _build_metadata_context(state: dict) -> str:
 
 
 def _format_faq_match_for_prompt(match: dict) -> str:
-    """Rendert einen faq_matches-Eintrag (dict mit id, text, similarity,
-    optional extracted_urls) als Prompt-Text."""
+    """Render a faq_matches entry (dict with id, text, similarity,
+    optional extracted_urls) as prompt text."""
     lines = [match.get("text", "")]
     for url_entry in match.get("extracted_urls", []):
         url = url_entry.get("url")
@@ -338,8 +338,8 @@ def extract_information(state: ChatbotState):
         Setze priority auf 1 bei dringenden Problemen wie gesperrtem Account,
         Login nicht möglich, Prüfungs-/Abgabeproblemen oder komplettem Ausfall.
         Setze priority auf 0 bei normalen oder weniger dringenden Problemen.
-        5. Zusammenfassung (full_conversation): Dieses Feld MUSS bei jeder Antwort neu gesetzt werden - auch wenn sich nur wenig geändert hat. Schreibe eine aktualisierte Zusammenfassung des gesamten bisherigen Gesprächs aus der Perspektive eines Support-Agenten, der einem Kollegen den Fall erklärt. Integriere alle bisher bekannten Informationen, einschließlich Antworten auf Rückfragen. Beispiel: "Der Student fragt nach einer kostenlosen Windows 10 Lizenz für sein universitätseigenes Gerät. Er hat bereits ein qualifizierendes Betriebssystem und benötigt eine Vollversion." Maximal 3 Sätze, keine Aufzählung. Schreib die Zusamenfassung IMMER auf Deutsch.
-        6. Integriere in der Zusammenfassung (full_conversation) die Metadata des Users.
+        5. Zusammenfassung (summary): Dieses Feld MUSS bei jeder Antwort neu gesetzt werden - auch wenn sich nur wenig geändert hat. Schreibe eine aktualisierte Zusammenfassung des gesamten bisherigen Gesprächs aus der Perspektive eines Support-Agenten, der einem Kollegen den Fall erklärt. Integriere alle bisher bekannten Informationen, einschließlich Antworten auf Rückfragen. Beispiel: "Der Student fragt nach einer kostenlosen Windows 10 Lizenz für sein universitätseigenes Gerät. Er hat bereits ein qualifizierendes Betriebssystem und benötigt eine Vollversion." Maximal 3 Sätze, keine Aufzählung. Schreib die Zusamenfassung IMMER auf Deutsch.
+        6. Integriere in der Zusammenfassung (summary) die Metadata des Users.
 
         """.format(
         prior_issue=prior_issue or "noch nicht bekannt",
@@ -370,7 +370,7 @@ def extract_information(state: ChatbotState):
         new_infos = [info for info in extracted_data.additional_info if info not in current_infos]
         if new_infos:
             state_update["additional_info"] = new_infos
-    state_update["full_conversation"] = extracted_data.full_conversation or state.get("full_conversation", "")
+    state_update["summary"] = extracted_data.summary or state.get("summary", "")
 
     ticket_id = state.get("ticket_id")
     # If ticket already exists: append
@@ -394,7 +394,7 @@ def extract_information(state: ChatbotState):
             priority=extracted_data.priority if extracted_data.priority is not None else state["priority"],
             internal=True,
             state="new",
-            kategorie=state.get("category"),
+            category=state.get("category"),
         )
         state_update["ticket_id"] = result
         add_tag_to_ticket(result, "AI-Created")
@@ -420,10 +420,10 @@ def ask_for_issue(state: ChatbotState):
 
     if attempts >= 3:
         final_message = (
-            "Ich kann dein Anliegen leider nicht weiter als ZIM-IT-Support bearbeiten, "
+            "Das Anliegen kann leider nicht weiter als ZIM-IT-Support bearbeitet werden, "
             "da keine eindeutige IT-/ZIM-bezogene Problemstellung erkannt wurde.\n\n"
-            "Falls du später ein IT-Problem rund um Dienste der Universität hast "
-            "(z. B. WLAN, VPN, E-Mail, Moodle oder Account-Probleme), helfe ich dir gerne weiter."
+            "Bei einem späteren IT-Problem rund um Dienste der Universität "
+            "(z. B. WLAN, VPN, E-Mail, Moodle oder Account-Probleme) hilft der ZIM-IT-Support gerne weiter."
         )
         return {
             **visit("ask_issue_node"),
@@ -539,7 +539,7 @@ def ask_for_additional_info(state: ChatbotState):
         
         10. Jede Rückfrage darf nur eine einzige Information abfragen.
             Kombiniere niemals mehrere unabhängige Fragen oder Attribute in einer Frage
-            (z.B. nicht "Welches Gerät nutzt du und welche Fehlermeldung erscheint?").
+            (z.B. nicht "Welches Gerät wird genutzt und welche Fehlermeldung erscheint?").
         
         11. Wenn mehrere Informationen benötigt werden, erstelle mehrere separate Bullet-Fragen.
             Jede Frage muss genau ein Unterscheidungsmerkmal zwischen den möglichen Lösungen klären.
@@ -587,7 +587,7 @@ def ask_for_additional_info(state: ChatbotState):
     if known_parts:
         known_str = " Folgende Informationen liegen uns bereits vor: " + ", ".join(known_parts) + "."
 
-    llm_msg = f"Ich habe für dich gerade ein Support-Ticket erstellt.{known_str} Um dich optimal zu unterstützen, beantworte bitte folgende Fragen:\n{follow_up_question}"
+    llm_msg = f"Ich habe gerade ein Support-Ticket erstellt. Für eine optimale Bearbeitung bitte die folgenden Fragen beantworten:\n{follow_up_question}"
     ticket_id = state.get("ticket_id")
     try:
         ticket_service.append_message_to_ticket(
@@ -691,11 +691,11 @@ def give_solutions(state: ChatbotState):
             REGELN:
             1. Antworte in einem einzigen zusammenhängenden Fließtext, "...NICHT als Liste, Aufzählung oder mit Zwischenüberschriften. 
                Bei mehreren aufeinanderfolgenden Handlungsschritten nutze stattdessen Ordinalwörter im Fließtext
-               ('Öffne zunächst...', 'Klicke anschließend...', 'Bestätige abschließend...'), 
+               ('zunächst … öffnen', 'anschließend … klicken', 'abschließend … bestätigen'),
                um die Reihenfolge erkennbar zu machen, ohne Listenformat zu verwenden.
-            2. Formuliere die Lösung so, als würdest du dem Nutzer direkt sagen, was er jetzt tun soll – nicht 
-               "es gibt folgende Lösungsansätze", sondern konkret "Deaktiviere X, dann..." bzw. "Das Problem liegt 
-               an Y, daher solltest du Z tun".
+            2. Formuliere die Lösung als konkrete Handlungsanweisung – nicht 
+               "es gibt folgende Lösungsansätze", sondern konkret, was zu tun ist, z. B. "X deaktivieren, dann..." 
+               bzw. "Das Problem liegt an Y, daher sollte Z erfolgen".
             3. Wenn mehrere Lösungen im Kontext vorhanden sind, wähle die passensten Lösungen. 
                Die Lösungen darfst du nicht vermischen. Behandle sie seperat.
             4. Gib die Lösungen nie wörtlich aus dem Kontext wieder. Interpretiere sie und setze sie in Bezug zum 
@@ -722,7 +722,7 @@ def give_solutions(state: ChatbotState):
     message_text = llm.invoke([system_prompt, HumanMessage(content="Bitte fasse die Lösungen für den User zusammen.")])
 
 
-    final_message = AIMessage(content=message_text.content + "\n\n Konnte ich dir dabei helfen, dein Problem zu lösen?")
+    final_message = AIMessage(content=message_text.content + "\n\n Konnte das Problem damit gelöst werden?")
 
     ticket_id = state.get("ticket_id")
     try:
@@ -761,10 +761,10 @@ def finish_ai_created_ticket(state):
     attempts = state.get("ask_issue_attempts", 0)
     if attempts >= 3:
         final_message = (
-            "Ich kann dein Anliegen leider nicht weiter als ZIM-IT-Support bearbeiten, "
+            "Das Anliegen kann leider nicht weiter als ZIM-IT-Support bearbeitet werden, "
             "da keine eindeutige IT-/ZIM-bezogene Problemstellung erkannt wurde.\n\n"
-            "Falls du später ein IT-Problem rund um Dienste der Universität hast "
-            "(z. B. WLAN, VPN, E-Mail, Moodle oder Account-Probleme), helfe ich dir gerne weiter."
+            "Bei einem späteren IT-Problem rund um Dienste der Universität "
+            "(z. B. WLAN, VPN, E-Mail, Moodle oder Account-Probleme) hilft der ZIM-IT-Support gerne weiter."
         )
         return {
             **visit("finish_ai_created_ticket_node"),

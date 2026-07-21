@@ -63,7 +63,7 @@ def _history_to_langchain_messages(history: list[dict]) -> list:
 def root():
     """Root endpoint of the backend API."""
     return {
-        "message": "AI Ticket Management Backend läuft"
+        "message": "AI Ticket Management Backend is running"
     }
 
 
@@ -133,7 +133,7 @@ async def chat_endpoint(request: ChatRequest):
         "additional_info_attempts": request.additional_info_attempts,
         "ask_issue_attempts": request.ask_issue_attempts,
         "ticket_id": request.ticket_id,
-        "full_conversation": request.full_conversation,
+        "summary": request.summary,
         "intent": request.intent,
         "tutorial_attempts": request.tutorial_attempts,
         "display_name": request.display_name,
@@ -258,7 +258,7 @@ async def zammad_ticket_closed(payload: dict):
     ticket_summary, full_text, agent_messages = build_ticket_summary_and_conversation(articles)
 
     rag_state = {
-        "full_conversation": ticket_summary,
+        "summary": ticket_summary,
         "ticket_id": ticket_id,
         "messages": agent_messages,
     }
@@ -303,7 +303,7 @@ async def solution_feedback(request: ChatRequest):
         "ask_issue_attempts": request.ask_issue_attempts,
         "additional_info_attempts": request.additional_info_attempts,
         "ticket_id": request.ticket_id,
-        "full_conversation": request.full_conversation,
+        "summary": request.summary,
         "user_addendum": request.user_addendum,
         "intent": request.intent,
         "tutorial_attempts": request.tutorial_attempts,
@@ -322,7 +322,7 @@ async def solution_feedback(request: ChatRequest):
         ticket_service.create_ai_solved_ticket(current_state)
         greeting = f"Super, {first_name}, das freut mich!" if first_name else "Super, das freut mich!"
         return {
-            "bot_response": f"{greeting} Wenn du in Zukunft weitere Fragen hast, stehe ich gerne zur Verfügung. Hab einen schönen Tag!",
+            "bot_response": f"{greeting} Bei weiteren Fragen stehe ich jederzeit zur Verfügung. Einen schönen Tag noch!",
             "category": current_state.get("category", "")
         }
 
@@ -330,7 +330,7 @@ async def solution_feedback(request: ChatRequest):
         ticket_service.append_support_ticket_context(current_state, request.ticket_id)
         greeting = f"Danke, {first_name}!" if first_name else "Danke!"
         return {
-            "bot_response": f"{greeting} Dein Ticket wurde an den Support weitergeleitet.",
+            "bot_response": f"{greeting} Das Ticket wurde an den Support weitergeleitet.",
             "category": current_state.get("category", "")
         }
 
@@ -387,7 +387,7 @@ def run_local_chat():
         "category": "",
         "solutions": [],
         "ticket_id": None,
-        "full_conversation": "",
+        "summary": "",
         "intent": "",
         "tutorial_attempts": 0,
         "needs_additional_info": False,

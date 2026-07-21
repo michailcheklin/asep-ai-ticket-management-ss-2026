@@ -26,5 +26,5 @@ class ExtractedTicketData(BaseModel):
             "complete outage. Use 0 for normal or non-urgent issues."
         )
     )
-    full_conversation: Optional[str] = Field(None,
+    summary: Optional[str] = Field(None,
                                               description="Eine kurze Zusammenfassung des Problems basierend auf dem gesamten Chatverlauf. Diese Zusammenfassung sollte den Kontext und die wichtigsten Punkte des Problems in bis zu 3 Sätze erfassen.")

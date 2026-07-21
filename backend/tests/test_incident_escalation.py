@@ -74,7 +74,7 @@ def test_similarity_and_threshold() -> bool:
     Checks whether the similarity search correctly applies the threshold
     :return: The test result indicating whether the test passed, as a Boolean
     """
-    print("\n== Test 1: Ähnlichkeitssuche + Schwellenwert ==")
+    print("\n== Test 1: Similarity search + threshold ==")
     clear_collection()
     ok = True
 
@@ -87,9 +87,9 @@ def test_similarity_and_threshold() -> bool:
     similar = recent_incidents.find_similar_open_incidents(
         text=WLAN_TEXTS[4], exclude_ticket_id=105
     )
-    ok &= check("mind. 4 ähnliche WLAN-Incidents gefunden",
-                len(similar) >= 4, f"gefunden={len(similar)}")
-    ok &= check("Schwelle (>=5 inkl. neuem) erreicht",
+    ok &= check("at least 4 similar WLAN incidents found",
+                len(similar) >= 4, f"found={len(similar)}")
+    ok &= check("threshold (>=5 incl. new) reached",
                 len(similar) + 1 >= 5, f"count={len(similar) + 1}")
 
     # Incident with other topic: should NOT be escalated
@@ -97,8 +97,8 @@ def test_similarity_and_threshold() -> bool:
     other_similar = recent_incidents.find_similar_open_incidents(
         text=OTHER_TEXT, exclude_ticket_id=200
     )
-    ok &= check("andersartiger Incident findet keine WLAN-Treffer",
-                len(other_similar) == 0, f"gefunden={len(other_similar)}")
+    ok &= check("unrelated incident finds no WLAN matches",
+                len(other_similar) == 0, f"found={len(other_similar)}")
     return ok
 
 
@@ -107,7 +107,7 @@ def test_purge_stale() -> bool:
     Checks whether old issues are no longer incorrectly marked as “Recent incident”
     :return: The test result indicating whether the test passed, as a Boolean
     """
-    print("\n== Test 2: Zeitfenster-Purge (>8h) ==")
+    print("\n== Test 2: Time-window purge (>8h) ==")
     clear_collection()
     ok = True
 
@@ -118,11 +118,11 @@ def test_purge_stale() -> bool:
                                   created_at=now - 9 * 3600)
 
     removed = recent_incidents.purge_stale_incidents(now=now)
-    ok &= check("genau 1 veralteter Incident entfernt", removed == 1, f"removed={removed}")
+    ok &= check("exactly 1 stale incident removed", removed == 1, f"removed={removed}")
 
     remaining = recent_incidents.recent_incidents_collection.get().get("ids", [])
-    ok &= check("aktueller Incident bleibt erhalten", "301" in remaining, f"ids={remaining}")
-    ok &= check("veralteter Incident ist weg", "302" not in remaining, f"ids={remaining}")
+    ok &= check("current incident is kept", "301" in remaining, f"ids={remaining}")
+    ok &= check("stale incident is gone", "302" not in remaining, f"ids={remaining}")
     return ok
 
 
@@ -132,7 +132,7 @@ def test_dedup_existing_problem() -> bool:
     problem with the same subject matter
     :return: The test result indicating whether the test passed, as a Boolean
     """
-    print("\n== Test 3: Dedup – bestehendes Problem erkennen ==")
+    print("\n== Test 3: Dedup – detect existing problem ==")
     clear_collection()
     ok = True
 
@@ -143,7 +143,7 @@ def test_dedup_existing_problem() -> bool:
 
     similar = recent_incidents.find_similar_open_incidents(text=WLAN_TEXTS[0])
     existing = recent_incidents.find_existing_problem_id(similar)
-    ok &= check("bestehende problem_id wird erkannt", existing == 7777, f"gefunden={existing}")
+    ok &= check("existing problem_id is detected", existing == 7777, f"found={existing}")
     return ok
 
 
@@ -152,7 +152,7 @@ def test_problem_service_escalation() -> bool:
     Checks whether, when a problem needs to be escalated, this is done in ZIM as intended
     :return: The test result indicating whether the test passed, as a Boolean
     """
-    print("\n== Test 4: ProblemService – Eskalation (Zammad/LLM gemockt) ==")
+    print("\n== Test 4: ProblemService – escalation (Zammad/LLM mocked) ==")
     clear_collection()
     ok = True
 
@@ -198,13 +198,13 @@ def test_problem_service_escalation() -> bool:
         additional_info=["Gebäude LF", "eduroam"],
     )
 
-    ok &= check("eskaliert", result["escalated"] is True, str(result))
-    ok &= check("neues Problem erstellt", result["created"] is True, str(result))
+    ok &= check("escalated", result["escalated"] is True, str(result))
+    ok &= check("new problem created", result["created"] is True, str(result))
     ok &= check("problem_id == 9999", result["problem_id"] == 9999, str(result))
-    ok &= check("genau 1 Problem-Ticket angelegt", len(created_tickets) == 1)
-    ok &= check("Problem-Ticket hat hohe Priorität",
+    ok &= check("exactly 1 problem ticket created", len(created_tickets) == 1)
+    ok &= check("problem ticket has high priority",
                 created_tickets and created_tickets[0]["priority"] == 1)
-    ok &= check("alle 5 Incidents mit problem-Tag versehen",
+    ok &= check("all 5 incidents tagged with problem tag",
                 len([t for t in added_tags if t[1] == "problem:9999"]) == 5,
                 f"tags={added_tags}")
     return ok
@@ -215,7 +215,7 @@ def test_problem_service_attach_existing() -> bool:
     Checks whether an existing issue has been identified and whether other similar tickets are assigned to that issue
     :return:
     """
-    print("\n== Test 5: ProblemService – bestehendem Problem zuordnen ==")
+    print("\n== Test 5: ProblemService – attach to existing problem ==")
     clear_collection()
     ok = True
 
@@ -239,11 +239,11 @@ def test_problem_service_attach_existing() -> bool:
         additional_info=[],
     )
 
-    ok &= check("eskaliert", result["escalated"] is True, str(result))
-    ok &= check("KEIN neues Problem erstellt", result["created"] is False, str(result))
-    ok &= check("bestehende problem_id 5555 verwendet",
+    ok &= check("escalated", result["escalated"] is True, str(result))
+    ok &= check("NO new problem created", result["created"] is False, str(result))
+    ok &= check("existing problem_id 5555 used",
                 result["problem_id"] == 5555, str(result))
-    ok &= check("create_system_ticket NICHT aufgerufen", len(create_calls) == 0)
+    ok &= check("create_system_ticket NOT called", len(create_calls) == 0)
     return ok
 
 

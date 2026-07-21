@@ -25,7 +25,7 @@ INITIAL_STATES = {
     "messages": [
         {
             "role": "assistant",
-            "content": "Hallo! Ich bin ZIM Helper. Erzähl mir bitte von deinem Anliegen.",
+            "content": "Hallo! Ich bin ZIM Helper. Worum geht es? Bitte das Anliegen kurz beschreiben.",
         }
     ],
     "bot_thinking": False,
@@ -36,7 +36,7 @@ INITIAL_STATES = {
     "category": "",
     "additional_info_attempts": 0,
     "ask_issue_attempts": 0,
-    "full_conversation": "",
+    "summary": "",
     # ── Ticket confirmation (frontend-only, before finalising support ticket) ──
     "pending_ticket_confirmation": None,  # message index with unhelpful solution feedback
     "show_ticket_addendum_form": False,
@@ -122,7 +122,7 @@ def _fetch_and_store_metadata() -> None:
     name = metadata.get("display_name", "").split()[0] if metadata.get("display_name") else ""
     if name and "messages" not in st.session_state:
         st.session_state["messages"] = [
-            {"role": "assistant", "content": f"Hallo {name}! Ich bin ZIM Helper. Erzähl mir bitte von deinem Anliegen."}
+            {"role": "assistant", "content": f"Hallo {name}! Ich bin ZIM Helper. Worum geht es? Bitte das Anliegen kurz beschreiben."}
         ]
 
 
@@ -137,9 +137,21 @@ def init_session_state() -> None:
 def reset_session_state() -> None:
     """Clear chat history and unlock the input for a fresh start."""
     for key, value in INITIAL_STATES.items():
-        st.session_state[key] = copy.deepcopy(value)
+        if key == "messages":
+            st.session_state[key] = st.session_state[key][:1]
+        else:
+            st.session_state[key] = copy.deepcopy(value)
     st.session_state["email_input"] = ""
     st.session_state["matrikelnummer_input"] = ""
+    # Delete the ticket ID out of the frontend's session state completely
+    # so that after the click on the "Neu starten" button the backend does not think
+    # that a ticket still exists.
+    #
+    # Just setting the ticket ID to None or -1 would not have sufficed,
+    # because the backend would think a ticket with ID None or -1 exists and then
+    # try to do things with non-existant tickets,
+    # instead of knowing that for the current conversation a ticket does not exist yet.
+    st.session_state.pop('ticket_id', None)
 
 
 def bot_starting_thinking() -> None:
@@ -255,7 +267,7 @@ def build_chat_payload(user_input: str) -> dict:
         "tutorial_attempts": st.session_state.tutorial_attempts,
         "graph_runs": st.session_state.graph_runs,
         "ticket_id": st.session_state.get("ticket_id"),
-        "full_conversation": st.session_state.full_conversation,
+        "summary": st.session_state.summary,
         **_metadata_fields(),
     }
 
@@ -277,7 +289,7 @@ def build_feedback_payload(message_index: int, helpful: bool, user_addendum: str
         "additional_info_attempts": st.session_state.additional_info_attempts,
         "ask_issue_attempts": st.session_state.ask_issue_attempts,
         "ticket_id": st.session_state.get("ticket_id"),
-        "full_conversation": st.session_state.full_conversation,
+        "summary": st.session_state.summary,
         "user_addendum": user_addendum,
         **_metadata_fields(),
     }
@@ -285,7 +297,7 @@ def build_feedback_payload(message_index: int, helpful: bool, user_addendum: str
 
 def get_issue_summary() -> str:
     """Return the chatbot summary shown before ticket finalisation."""
-    summary = (st.session_state.full_conversation or "").strip()
+    summary = (st.session_state.summary or "").strip()
     if summary:
         return summary
     parts = []
@@ -299,8 +311,8 @@ def get_issue_summary() -> str:
 # ── Core message processing ───────────────────────────────────────────────────
 
 TICKET_INTRO = (
-    "Ich habe für Sie gerade ein Support-Ticket erstellt. "
-    "Um Sie optimal zu unterstützen, beantworten Sie bitte folgende Fragen:"
+    "Ich habe gerade ein Support-Ticket erstellt. "
+    "Für eine optimale Bearbeitung bitte die folgenden Fragen beantworten:"
 )
 
 def strip_redundant_ticket_intro(content: str) -> str:
@@ -338,13 +350,13 @@ def apply_response_to_session(user_input: str, res_json: dict) -> None:
     st.session_state.additional_info_attempts = res_json.get("additional_info_attempts", 0)
     st.session_state.ask_issue_attempts = res_json.get("ask_issue_attempts", 0)
     st.session_state.category = res_json.get("category", "")
-    st.session_state.full_conversation = res_json.get("full_conversation", "")
+    st.session_state.summary = res_json.get("summary", "")
     st.session_state.intent = res_json.get("intent", "")
     st.session_state.tutorial_attempts = res_json.get("tutorial_attempts", 0)
     st.session_state.graph_runs = res_json.get("graph_runs", 0)
     st.session_state.is_complete = res_json.get("is_complete", False)
-    
-    
+
+
     if "ticket_id" in res_json:
         st.session_state.ticket_id = res_json.get("ticket_id")
 
@@ -376,7 +388,7 @@ def process_user_message(client: ChatClient, user_input: str) -> None:
         res_json = client.send_message(req)
 
         if "security" in res_json:
-            placeholder.write("Deine Anfrage konnte aus Sicherheitsgründen nicht verarbeitet werden.")
+            placeholder.write("Die Anfrage konnte aus Sicherheitsgründen nicht verarbeitet werden.")
             return
 
         answer = res_json["bot_response"]
@@ -403,7 +415,7 @@ def process_solution_feedback(
         metadata = st.session_state.get("user_metadata") or {}
         first_name = metadata.get("display_name", "").split()[0] if metadata.get("display_name") else ""
         greeting = f"Danke, {first_name}!" if first_name else "Danke!"
-        return f"{greeting} Ich habe dein Feedback notiert und ein Support-Ticket erstellt. Ein Agent wird sich bald um dein Anliegen kümmern."
+        return f"{greeting} Das Feedback wurde notiert und ein Support-Ticket erstellt. Ein Agent kümmert sich bald um das Anliegen."
 
     # For "Yes" response, parse the JSON response
     res_json = client.send_feedback(payload)
@@ -455,7 +467,7 @@ def render_ticket_confirmation_widget(client: ChatClient) -> None:
         return
 
     with st.container(border=True):
-        st.markdown("**Zusammenfassung deines Anliegens**")
+        st.markdown("**Zusammenfassung des Anliegens**")
         st.info(get_issue_summary())
 
         if st.session_state.show_ticket_addendum_form:
@@ -465,13 +477,13 @@ def render_ticket_confirmation_widget(client: ChatClient) -> None:
             )
 
             addendum = st.text_area(
-                "Ergänze hier weitere Informationen zu deinem Anliegen:",
+                "Hier weitere Information zum Anliegen ergänzen:",
                 key="ticket_addendum_input",
                 height=120,
             )
             if st.button("Ticket absenden", key="ticket_submit_with_addendum", use_container_width=True):
                 if not addendum.strip():
-                    st.error("Bitte gib eine Ergänzung ein oder bestätige die Zusammenfassung ohne Änderungen.")
+                    st.error("Bitte eine Ergänzung ein oder die Zusammenfassung ohne Änderungen bestätigen.")
                 else:
                     st.session_state.messages.append({
                         "role": "assistant",
@@ -497,7 +509,7 @@ def render_ticket_confirmation_widget(client: ChatClient) -> None:
                     st.session_state["scroll_target"] = "ticket_addendum_anchor"
                     st.rerun()
 
-        # Anchor am Ende des Widgets: ermöglicht gezieltes Scrollen beim Auftauchen.
+        # Anchor at the end of the widget: enables targeted scrolling when it appears.
         st.markdown(
             '<div id="ticket_confirmation_anchor"></div>',
             unsafe_allow_html=True,
@@ -536,37 +548,37 @@ def render_metadata_confirmation() -> None:
 
     with st.container(border=True):
         st.markdown("**Erkannte Geräteinformationen**\n")
-        st.markdown("Dein Browser hat uns diese Informationen automatisch bereitgestellt. Dadurch können wir besser nachvollziehen, unter welchen Bedingungen dein Problem auftritt.")
+        st.markdown("Der Browser hat diese Informationen automatisch bereitgestellt. Dadurch lässt sich besser nachvollziehen, unter welchen Bedingungen das Problem auftritt.")
 
         device_correct = st.radio(
-            f"Bezieht sich dein Anliegen auf ein **{metadata.get('device', 'Unbekannt')}**-Gerät?",
+            f"Bezieht sich das Anliegen auf ein **{metadata.get('device', 'Unbekannt')}**-Gerät?",
             ["Ja", "Nein"],
             key="confirm_device",
             index=None,
         )
         custom_device = ""
         if device_correct == "Nein":
-            custom_device = st.text_input("Welches Gerät verwendest du?", key="custom_device_input")
+            custom_device = st.text_input("Welches Gerät wird verwendet?", key="custom_device_input")
 
         os_correct = st.radio(
-            f"Bezieht sich dein Anliegen auf **{metadata.get('os_name', 'Unbekannt')}**?",
+            f"Bezieht sich das Anliegen auf **{metadata.get('os_name', 'Unbekannt')}**?",
             ["Ja", "Nein"],
             key="confirm_os",
             index=None,
         )
         custom_os = ""
         if os_correct == "Nein":
-            custom_os = st.text_input("Welches Betriebssystem verwendest du?", key="custom_os_input")
+            custom_os = st.text_input("Welches Betriebssystem wird verwendet?", key="custom_os_input")
 
         if st.button("Bestätigen", key="confirm_metadata_btn", use_container_width=True):
             if device_correct is None or os_correct is None:
-                st.error("Bitte beantworte beide Fragen.")
+                st.error("Bitte beide Fragen beantworten.")
                 return
             if device_correct == "Nein" and not custom_device.strip():
-                st.error("Bitte gib dein Gerät an.")
+                st.error("Bitte das Gerät angeben.")
                 return
             if os_correct == "Nein" and not custom_os.strip():
-                st.error("Bitte gib dein Betriebssystem an.")
+                st.error("Bitte das Betriebssystem angeben.")
                 return
 
             if device_correct == "Nein":
@@ -631,7 +643,7 @@ def render_question_widget(client: ChatClient) -> None:
                 st.session_state[detail_key] = other_detail_default
 
             selected: str | None = st.radio(
-                "Wähle eine Option:",
+                "Bitte eine Option wählen :",
                 question["options"],
                 key=radio_key,
                 index=None,
@@ -648,7 +660,8 @@ def render_question_widget(client: ChatClient) -> None:
             open_key = f"open_{idx}"
             if stored_answer is not None and open_key not in st.session_state:
                 st.session_state[open_key] = stored_answer
-            open_text: str = st.text_area("Deine Antwort:", key=open_key)
+
+            open_text: str = st.text_area("Antwort:", key=f"open_{idx}")
             if open_text and open_text.strip():
                 answer = open_text.strip()
 
@@ -690,7 +703,7 @@ def render_question_widget(client: ChatClient) -> None:
             st.rerun()
         elif next_clicked and not st.session_state.get("_qa_navigating"):
             if answer is None:
-                st.error("Bitte beantworte die Frage, bevor du fortfährst.")
+                st.error("Bitte die Frage beantworten, bevor es weitergeht.")
             else:
                 st.session_state["_qa_navigating"] = True
                 answer_changed = not (idx < len(answers) and answers[idx] == answer)
@@ -737,11 +750,11 @@ def run_app(client: ChatClient, *, mock_mode: bool = False) -> None:
             st.rerun()
 
     st.title("Support-Annahme über ZIM Helper")
-    st.caption("Dein digitaler Assistent für Support-Anfragen")
+    st.caption("Digitaler Assistent für Support-Anfragen")
     if mock_mode:
         st.caption("Mock-Modus: keine Backend- oder KI-Aufrufe.")
 
-    st.subheader("Deine Kontaktdaten")
+    st.subheader("Kontaktdaten")
     is_logged_in = metadata is not None
     st.text_input("E-Mail-Adresse *", key="email_input", disabled=is_logged_in)
     if not metadata or metadata.get("role") == "student":
@@ -757,7 +770,7 @@ def run_app(client: ChatClient, *, mock_mode: bool = False) -> None:
     # Priority 0: first message sent — confirm metadata before dispatching to backend.
     if metadata_needs_confirm and st.session_state.get("_pending_first_message"):
         render_metadata_confirmation()
-        st.chat_input(placeholder="Bitte bestätige zuerst deine Geräteinformationen.", disabled=True)
+        st.chat_input(placeholder="Bitte zuerst die Geräteinformationen bestätigen.", disabled=True)
         return
 
     # Priority 1: a finished Q&A round or released first message is ready.
@@ -800,7 +813,7 @@ def run_app(client: ChatClient, *, mock_mode: bool = False) -> None:
                 if st.session_state.is_complete
                 else "Bitte E-Mail-Adresse und Matrikelnummer eingeben"
                 if not are_form_fields_valid()
-                else "Beschreibe dein Anliegen..."
+                else "Anliegen beschreiben..."
             ),
             disabled=chat_disabled,
             on_submit=bot_starting_thinking,
