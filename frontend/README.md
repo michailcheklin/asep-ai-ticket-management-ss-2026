@@ -15,6 +15,9 @@ After the bot has replied, the answer is written into the visible chat history a
 ## Further user workflow
 If a problem has been recognized, and the user gave enough info, then the bot gives solutions and asks if the solutions helped. If yes, the problem gets marked as resolved. If no, then the user gets a summary and may correct if they wish. The addendum gets added to the Zammad ticket.
 
+### Multiple-choice questions (Q&A widget)
+When the bot asks follow-up questions as markdown bullets with `(options: …)`, the frontend shows them one at a time. Users can go **← Zurück** to a previous question (hidden on the first question), change an answer, and continue. Changing an answer clears later answers in that round so dependent follow-ups are re-answered; leaving an answer unchanged keeps them. Only when the last answer is confirmed are all answers sent to the backend as a single message — going back never creates a new ticket or duplicates chat messages.
+
 ## Project structure
 
 | File | Purpose |
@@ -22,6 +25,7 @@ If a problem has been recognized, and the user gave enough info, then the bot gi
 | `app.py` | Live frontend (calls AI backend via `LiveChatClient`) |
 | `app_clone.py` | Mock frontend clone (no backend calls, via `MockChatClient`) |
 | `ui/chat.py` | Shared Streamlit UI and session-state handling |
+| `ui/qa_navigation.py` | Pure helpers for MCQ parsing and back navigation |
 | `clients/live_client.py` | HTTP client for `/chat` and `/solution-feedback` |
 | `clients/mock_client.py` | Keyword-based fixed responses for UI testing |
 

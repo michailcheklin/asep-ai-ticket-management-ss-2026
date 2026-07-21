@@ -88,6 +88,7 @@ These scripts unit-test individual LangGraph nodes from `backend/graph/nodes.py`
 * `test_ticket_category_live.py` — `classify_ticket_category` against the real LLM (live counterpart to `test_ticket_category.py`)
 * `test_ask_for_additional_info.py` — `ask_for_additional_info`
 * `test_give_solutions.py` — `give_solutions`
+* `test_question_back_navigation.py` — frontend MCQ back navigation (`frontend.ui.qa_navigation`)
 
 **Why is this test done:**
 To catch regressions in a single node's decision logic (fallback behavior, prompt construction, state updates) without needing a running chatbot, a real LLM, or a real Zammad instance — these tests run fast and deterministically in CI on every push.
@@ -140,7 +141,7 @@ Note: `ask_for_additional_info` builds its structured-output LLM inline (`llm.wi
 All assertions in every test case must pass. `test_ticket_category_live.py`'s classes are skipped unless `RUN_LLM_CATEGORY_TESTS=1` is set — without it, the job still counts as passed, just with those cases reported as skipped.
 
 **Additional notes:**
-* The four mocked files (`test_intent_classification.py`, `test_ticket_category.py`, `test_ask_for_additional_info.py`, `test_give_solutions.py`) run together in one CI job (`run_test_graph_nodes`, stage `before_deepeval`) via a single `pytest` invocation on every push, since they all test nodes from the same module, share the same mocking approach, and never touch a real LLM — this keeps the pipeline lean instead of one job per node.
+* The four mocked graph-node files (`test_intent_classification.py`, `test_ticket_category.py`, `test_ask_for_additional_info.py`, `test_give_solutions.py`) plus the frontend Q&A back-navigation suite (`test_question_back_navigation.py`) run together in one CI job (`run_test_graph_nodes`, stage `before_deepeval`) via a single `pytest` invocation on every push — the node tests share the same mocking approach and never touch a real LLM; the back-navigation tests are pure helpers with no Streamlit runtime.
 * `test_ticket_category_live.py` is **not** part of that job — it needs `RUN_LLM_CATEGORY_TESTS=1` to actually execute anything (without it, every test class is skipped), and it burns real SAIA quota (56 regression + 5+ holdout + 3 spot-check calls). It instead has its own CI job, `run_test_ticket_category_live` (stage `deepeval`), gated the same way as `run_deepeval_tests`: manual and `allow_failure: true` on merge-request pipelines, so it only runs when someone explicitly triggers it (e.g. after changing the classification prompt/logic), not on every push.
 * `test_ticket_category.py`'s `TicketCategoryConstantsTests` and `test_ticket_category_live.py`'s regression/holdout suites load fixtures from `backend/rag/old_tickets.json` and `backend/rag/category_holdout_tests.json` via the shared helper module `category_test_support.py`. Regression/holdout accuracy thresholds are configurable via `CATEGORY_REGRESSION_MIN_ACCURACY` (default 0.90), `CATEGORY_HOLDOUT_MIN_ACCURACY` (default 0.80), and an optional `CATEGORY_REGRESSION_LIMIT` cap.
 * To run the live LLM suite locally: `RUN_LLM_CATEGORY_TESTS=1 pytest tests/test_ticket_category_live.py -v -s` (uses real SAIA/Ollama quota — don't run casually, see the SAIA request cap in the main `CLAUDE.md`).
