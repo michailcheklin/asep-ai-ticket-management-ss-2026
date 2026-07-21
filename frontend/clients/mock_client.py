@@ -36,7 +36,7 @@ class MockChatClient:
             return {
                 **base,
                 "bot_response": "Ich habe folgende Lösungsvorschläge für dich gefunden:",
-                "full_conversation": (
+                "summary": (
                     "Der Nutzer hat ein WLAN-Problem im Gebäude LF mit seinem MacBook."
                 ),
                 "solutions": [

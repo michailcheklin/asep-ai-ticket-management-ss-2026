@@ -96,7 +96,7 @@ class ProblemService:
         )
 
         if not problem_id or problem_id == -1:
-            print("[ProblemService] Problem-Ticket konnte nicht erstellt werden.")
+            print("[ProblemService] Could not create problem ticket.")
             return None
 
         for incident_id in all_incident_ids:
@@ -104,8 +104,8 @@ class ProblemService:
             add_tag_to_ticket(incident_id, _problem_tag(problem_id))
 
         print(
-            f"[ProblemService] Neues Problem {problem_id} aus "
-            f"{len(all_incident_ids)} Incidents erstellt."
+            f"[ProblemService] Created new problem {problem_id} from "
+            f"{len(all_incident_ids)} incidents."
         )
         return problem_id
 
@@ -129,11 +129,11 @@ class ProblemService:
                 internal=True,
             )
         except Exception as e:
-            print(f"[ProblemService] Konnte Incident nicht am Problem vermerken: {e}")
+            print(f"[ProblemService] Could not attach incident to problem: {e}")
 
         print(
-            f"[ProblemService] Incident {new_ticket_id} bestehendem "
-            f"Problem {problem_id} zugeordnet."
+            f"[ProblemService] Assigned incident {new_ticket_id} to existing "
+            f"problem {problem_id}."
         )
 
     def _derive_topic(self, similar_incidents: list[dict], new_text: str) -> str:
@@ -152,7 +152,7 @@ class ProblemService:
             topic = (response.content or "").strip().splitlines()[0].strip()
             return topic or "Gehäufte ähnliche Incidents"
         except Exception as e:
-            print(f"[ProblemService] Themen-Ableitung fehlgeschlagen: {e}")
+            print(f"[ProblemService] Topic derivation failed: {e}")
             return "Gehäufte ähnliche Incidents"
 
     def _ticket_link(self, ticket_id: int) -> str:

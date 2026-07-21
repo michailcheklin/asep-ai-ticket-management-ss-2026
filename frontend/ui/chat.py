@@ -36,7 +36,7 @@ INITIAL_STATES = {
     "category": "",
     "additional_info_attempts": 0,
     "ask_issue_attempts": 0,
-    "full_conversation": "",
+    "summary": "",
     # ── Ticket confirmation (frontend-only, before finalising support ticket) ──
     "pending_ticket_confirmation": None,  # message index with unhelpful solution feedback
     "show_ticket_addendum_form": False,
@@ -255,7 +255,7 @@ def build_chat_payload(user_input: str) -> dict:
         "tutorial_attempts": st.session_state.tutorial_attempts,
         "graph_runs": st.session_state.graph_runs,
         "ticket_id": st.session_state.get("ticket_id"),
-        "full_conversation": st.session_state.full_conversation,
+        "summary": st.session_state.summary,
         **_metadata_fields(),
     }
 
@@ -277,7 +277,7 @@ def build_feedback_payload(message_index: int, helpful: bool, user_addendum: str
         "additional_info_attempts": st.session_state.additional_info_attempts,
         "ask_issue_attempts": st.session_state.ask_issue_attempts,
         "ticket_id": st.session_state.get("ticket_id"),
-        "full_conversation": st.session_state.full_conversation,
+        "summary": st.session_state.summary,
         "user_addendum": user_addendum,
         **_metadata_fields(),
     }
@@ -285,7 +285,7 @@ def build_feedback_payload(message_index: int, helpful: bool, user_addendum: str
 
 def get_issue_summary() -> str:
     """Return the chatbot summary shown before ticket finalisation."""
-    summary = (st.session_state.full_conversation or "").strip()
+    summary = (st.session_state.summary or "").strip()
     if summary:
         return summary
     parts = []
@@ -338,13 +338,13 @@ def apply_response_to_session(user_input: str, res_json: dict) -> None:
     st.session_state.additional_info_attempts = res_json.get("additional_info_attempts", 0)
     st.session_state.ask_issue_attempts = res_json.get("ask_issue_attempts", 0)
     st.session_state.category = res_json.get("category", "")
-    st.session_state.full_conversation = res_json.get("full_conversation", "")
+    st.session_state.summary = res_json.get("summary", "")
     st.session_state.intent = res_json.get("intent", "")
     st.session_state.tutorial_attempts = res_json.get("tutorial_attempts", 0)
     st.session_state.graph_runs = res_json.get("graph_runs", 0)
     st.session_state.is_complete = res_json.get("is_complete", False)
-    
-    
+
+
     if "ticket_id" in res_json:
         st.session_state.ticket_id = res_json.get("ticket_id")
 
@@ -497,7 +497,7 @@ def render_ticket_confirmation_widget(client: ChatClient) -> None:
                     st.session_state["scroll_target"] = "ticket_addendum_anchor"
                     st.rerun()
 
-        # Anchor am Ende des Widgets: ermöglicht gezieltes Scrollen beim Auftauchen.
+        # Anchor at the end of the widget: enables targeted scrolling when it appears.
         st.markdown(
             '<div id="ticket_confirmation_anchor"></div>',
             unsafe_allow_html=True,
