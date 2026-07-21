@@ -203,8 +203,8 @@ class TicketService:
             return {
                 "messages": [
                     AIMessage(content=(
-                        "Super, das freut mich! Wenn du in Zukunft weitere Fragen hast, "
-                        "stehe ich gerne zur Verfügung. Hab einen schönen Tag!"
+                        "Super, das freut mich! Bei weiteren Fragen stehe ich jederzeit zur Verfügung. "
+                        "Einen schönen Tag noch!"
                     ))
                 ],
                 "is_complete": True
@@ -443,8 +443,8 @@ class TicketService:
         return {
             "messages": [
                 AIMessage(content=(
-                    f"{greeting} Dein Ticket wurde erfolgreich erstellt.\n\n"
-                    "Ein Support-Mitarbeiter meldet sich so bald wie möglich bei dir.\n\n"
+                    f"{greeting} Perfekt! Ihr Ticket wurde erfolgreich erstellt.\n\n"
+                    "Ein Support-Mitarbeiter meldet sich so bald wie möglich.\n\n"
                     "**Ticketübersicht**\n\n"
                     f"**Betreff:** {title}\n\n"
                     f"**E-Mail:** {state['user_email']}\n\n"

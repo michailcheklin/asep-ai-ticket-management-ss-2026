@@ -320,7 +320,7 @@ async def solution_feedback(request: ChatRequest):
         ticket_service.create_ai_solved_ticket(current_state)
         greeting = f"Super, {first_name}, das freut mich!" if first_name else "Super, das freut mich!"
         return {
-            "bot_response": f"{greeting} Wenn du in Zukunft weitere Fragen hast, stehe ich gerne zur Verfügung. Hab einen schönen Tag!",
+            "bot_response": f"{greeting} Bei weiteren Fragen stehe ich jederzeit zur Verfügung. Einen schönen Tag noch!",
             "category": current_state.get("category", "")
         }
 
@@ -328,7 +328,7 @@ async def solution_feedback(request: ChatRequest):
         ticket_service.append_support_ticket_context(current_state, request.ticket_id)
         greeting = f"Danke, {first_name}!" if first_name else "Danke!"
         return {
-            "bot_response": f"{greeting} Dein Ticket wurde an den Support weitergeleitet.",
+            "bot_response": f"{greeting} Das Ticket wurde an den Support weitergeleitet.",
             "category": current_state.get("category", "")
         }
 
