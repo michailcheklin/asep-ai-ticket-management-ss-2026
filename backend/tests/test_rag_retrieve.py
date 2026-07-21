@@ -67,7 +67,7 @@ def run_tests() -> bool:
 
     # ── Test 1: VPN query ─────────────────────────────────────────────────────
     print(f"\n{'='*60}")
-    print("Test 1: VPN-Verbindung")
+    print("Test 1: VPN connection")
     print(f"{'='*60}")
 
     vpn_query   = "Wie verbinde ich mich mit dem VPN der Universität?"
@@ -81,35 +81,35 @@ def run_tests() -> bool:
 
     print("\n  Checks:")
     t1_faq = check(
-        "FAQ-Treffer zurückgegeben (beliebige Stufe)",
+        "FAQ matches returned (any tier)",
         len(vpn_results["faq_matches"]) > 0,
         best_faq_detail(vpn_results["faq_matches"])
     )
     t1_faq_strong = check(
-        f"FAQ-Treffer >= Stufe 1 ({FAQ_TIER_1_THRESHOLD})",
+        f"FAQ matches >= tier 1 ({FAQ_TIER_1_THRESHOLD})",
         any(m[4] >= FAQ_TIER_1_THRESHOLD for m in vpn_results["faq_matches"]),
         best_faq_detail(vpn_results["faq_matches"])
     )
     t1_ticket = check(
-        f"Ticket-Treffer >= {CI_TICKET_THRESHOLD}",
+        f"Ticket matches >= {CI_TICKET_THRESHOLD}",
         len(vpn_ticket_above) > 0,
         best_ticket_detail(vpn_results["ticket_matches"], vpn_ticket_above)
     )
     t1_passed = t1_faq and t1_faq_strong and t1_ticket
     all_passed = all_passed and t1_passed
     test_results.append({
-        "name":   "VPN-Verbindung",
+        "name":   "VPN connection",
         "passed": t1_passed,
         "checks": [
-            ("FAQ beliebige Stufe",              t1_faq),
-            (f"FAQ Stufe 1 >= {FAQ_TIER_1_THRESHOLD}", t1_faq_strong),
+            ("FAQ any tier",              t1_faq),
+            (f"FAQ tier 1 >= {FAQ_TIER_1_THRESHOLD}", t1_faq_strong),
             (f"Ticket >= {CI_TICKET_THRESHOLD}", t1_ticket),
         ]
     })
 
     # ── Test 2: WLAN query ────────────────────────────────────────────────────
     print(f"\n{'='*60}")
-    print("Test 2: WLAN-Verbindungsprobleme")
+    print("Test 2: WLAN connection problems")
     print(f"{'='*60}")
 
     wlan_query   = "Mein WLAN funktioniert nicht, ich kann mich nicht mit eduroam verbinden."
@@ -123,35 +123,35 @@ def run_tests() -> bool:
 
     print("\n  Checks:")
     t2_faq = check(
-        "FAQ-Treffer zurückgegeben (beliebige Stufe)",
+        "FAQ matches returned (any tier)",
         len(wlan_results["faq_matches"]) > 0,
         best_faq_detail(wlan_results["faq_matches"])
     )
     t2_faq_strong = check(
-        f"FAQ-Treffer >= Stufe 1 ({FAQ_TIER_1_THRESHOLD})",
+        f"FAQ matches >= tier 1 ({FAQ_TIER_1_THRESHOLD})",
         any(m[4] >= FAQ_TIER_1_THRESHOLD for m in wlan_results["faq_matches"]),
         best_faq_detail(wlan_results["faq_matches"])
     )
     t2_ticket = check(
-        f"Ticket-Treffer >= {CI_TICKET_THRESHOLD}",
+        f"Ticket matches >= {CI_TICKET_THRESHOLD}",
         len(wlan_ticket_above) > 0,
         best_ticket_detail(wlan_results["ticket_matches"], wlan_ticket_above)
     )
     t2_passed = t2_faq and t2_faq_strong and t2_ticket
     all_passed = all_passed and t2_passed
     test_results.append({
-        "name":   "WLAN-Verbindungsprobleme",
+        "name":   "WLAN connection problems",
         "passed": t2_passed,
         "checks": [
-            ("FAQ beliebige Stufe",                    t2_faq),
-            (f"FAQ Stufe 1 >= {FAQ_TIER_1_THRESHOLD}", t2_faq_strong),
+            ("FAQ any tier",                    t2_faq),
+            (f"FAQ tier 1 >= {FAQ_TIER_1_THRESHOLD}", t2_faq_strong),
             (f"Ticket >= {CI_TICKET_THRESHOLD}",       t2_ticket),
         ]
     })
 
     # ── Test 3: Software-Lizenz query ─────────────────────────────────────────
     print(f"\n{'='*60}")
-    print("Test 3: Windows Lizenz")
+    print("Test 3: Windows license")
     print(f"{'='*60}")
 
     sw_query   = "Wie bekomme ich eine Windows 10 Lizenz?"
@@ -165,35 +165,35 @@ def run_tests() -> bool:
 
     print("\n  Checks:")
     t3_faq = check(
-        "FAQ-Treffer zurückgegeben (beliebige Stufe)",
+        "FAQ matches returned (any tier)",
         len(sw_results["faq_matches"]) > 0,
         best_faq_detail(sw_results["faq_matches"])
     )
     t3_faq_strong = check(
-        f"FAQ-Treffer >= Stufe 1 ({FAQ_TIER_1_THRESHOLD})",
+        f"FAQ matches >= tier 1 ({FAQ_TIER_1_THRESHOLD})",
         any(m[4] >= FAQ_TIER_1_THRESHOLD for m in sw_results["faq_matches"]),
         best_faq_detail(sw_results["faq_matches"])
     )
     t3_ticket = check(
-        f"Ticket-Treffer >= {CI_TICKET_THRESHOLD}",
+        f"Ticket matches >= {CI_TICKET_THRESHOLD}",
         len(sw_ticket_above) > 0,
         best_ticket_detail(sw_results["ticket_matches"], sw_ticket_above)
     )
     t3_passed = t3_faq and t3_faq_strong and t3_ticket
     all_passed = all_passed and t3_passed
     test_results.append({
-        "name":   "Software-Lizenz",
+        "name":   "Software license",
         "passed": t3_passed,
         "checks": [
-            ("FAQ beliebige Stufe",                    t3_faq),
-            (f"FAQ Stufe 1 >= {FAQ_TIER_1_THRESHOLD}", t3_faq_strong),
+            ("FAQ any tier",                    t3_faq),
+            (f"FAQ tier 1 >= {FAQ_TIER_1_THRESHOLD}", t3_faq_strong),
             (f"Ticket >= {CI_TICKET_THRESHOLD}",       t3_ticket),
         ]
     })
 
     # ── Test 4: Irrelevant query — expect no strong matches ───────────────────
     print(f"\n{'='*60}")
-    print("Test 4: Irrelevante Anfrage — keine starken Treffer erwartet")
+    print("Test 4: Irrelevant query — no strong matches expected")
     print(f"{'='*60}")
 
     irr_query   = "Wie buche ich einen Urlaub nach Mallorca?"
@@ -211,23 +211,23 @@ def run_tests() -> bool:
 
     print("\n  Checks:")
     t4_faq = check(
-        f"Keine starken FAQ-Treffer >= Stufe 1 ({FAQ_TIER_1_THRESHOLD})",
+        f"No strong FAQ matches >= tier 1 ({FAQ_TIER_1_THRESHOLD})",
         len(irr_faq_strong) == 0,
-        best_faq_detail(irr_results["faq_matches"]) if irr_results["faq_matches"] else "keine Treffer — korrekt"
+        best_faq_detail(irr_results["faq_matches"]) if irr_results["faq_matches"] else "no matches — correct"
     )
     t4_ticket = check(
-        f"Keine Ticket-Treffer >= {CI_TICKET_THRESHOLD}",
+        f"No ticket matches >= {CI_TICKET_THRESHOLD}",
         len(irr_ticket_above) == 0,
         best_ticket_detail(irr_results["ticket_matches"], irr_ticket_above)
     )
     t4_passed = t4_faq and t4_ticket
     all_passed = all_passed and t4_passed
     test_results.append({
-        "name":   "Irrelevante Anfrage",
+        "name":   "Irrelevant query",
         "passed": t4_passed,
         "checks": [
-            (f"Keine FAQ >= {FAQ_TIER_1_THRESHOLD}",   t4_faq),
-            (f"Keine Tickets >= {CI_TICKET_THRESHOLD}", t4_ticket),
+            (f"No FAQ >= {FAQ_TIER_1_THRESHOLD}",   t4_faq),
+            (f"No tickets >= {CI_TICKET_THRESHOLD}", t4_ticket),
         ]
     })
 
@@ -241,14 +241,14 @@ def run_tests() -> bool:
     )
 
     print(f"\n{'='*60}")
-    print("TESTERGEBNIS — ZUSAMMENFASSUNG")
+    print("TEST RESULT — SUMMARY")
     print(f"{'='*60}")
-    print(f"  Tests gesamt   : {len(test_results)}")
-    print(f"  Tests bestanden: {passed_count}")
-    print(f"  Tests fehlgesch: {failed_count}")
-    print(f"  Checks gesamt  : {total_checks}")
-    print(f"  Checks best.   : {passed_checks}")
-    print(f"  Checks fehlg.  : {total_checks - passed_checks}")
+    print(f"  Tests total    : {len(test_results)}")
+    print(f"  Tests passed   : {passed_count}")
+    print(f"  Tests failed   : {failed_count}")
+    print(f"  Checks total   : {total_checks}")
+    print(f"  Checks passed  : {passed_checks}")
+    print(f"  Checks failed  : {total_checks - passed_checks}")
     print(f"\n  Details:")
     for t in test_results:
         status = "PASS" if t["passed"] else "FAIL"
@@ -259,9 +259,9 @@ def run_tests() -> bool:
 
     print(f"\n{'='*60}")
     if all_passed:
-        print("CI ERGEBNIS: ERFOLG — alle Tests bestanden.")
+        print("CI RESULT: PASS — all tests passed.")
     else:
-        print("CI ERGEBNIS: FEHLSCHLAG — ein oder mehrere Tests fehlgeschlagen.")
+        print("CI RESULT: FAIL — one or more tests failed.")
     print(f"{'='*60}\n")
 
     return all_passed

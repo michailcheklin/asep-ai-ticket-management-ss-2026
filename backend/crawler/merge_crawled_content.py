@@ -137,10 +137,10 @@ def main():
     with open(output_filepath, 'w', encoding='utf-8') as f:
         json.dump(faq_data, f, ensure_ascii=False, indent=2)
 
-    print(f"Fertig! Gespeichert in: {output_filepath}")
-    print(f"FAQ-Einträge verarbeitet: {len(faq_data.get('faq_entries', []))}")
-    print(f"URLs gesamt: {total_urls}")
-    print(f"URLs ohne passenden Crawl-Eintrag: {unmatched_counter[0]}")
+    print(f"Done! Saved to: {output_filepath}")
+    print(f"FAQ entries processed: {len(faq_data.get('faq_entries', []))}")
+    print(f"Total URLs: {total_urls}")
+    print(f"URLs without matching crawl entry: {unmatched_counter[0]}")
 
 
 if __name__ == "__main__":
