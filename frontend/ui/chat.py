@@ -137,7 +137,10 @@ def init_session_state() -> None:
 def reset_session_state() -> None:
     """Clear chat history and unlock the input for a fresh start."""
     for key, value in INITIAL_STATES.items():
-        st.session_state[key] = copy.deepcopy(value)
+        if key == "messages":
+            st.session_state[key] = st.session_state[key][:1]
+        else:
+            st.session_state[key] = copy.deepcopy(value)
     st.session_state["email_input"] = ""
     st.session_state["matrikelnummer_input"] = ""
 
