@@ -392,7 +392,7 @@ def process_user_message(client: ChatClient, user_input: str) -> None:
             return
 
         answer = res_json["bot_response"]
-        placeholder.markdown(answer)
+        placeholder.markdown(answer, unsafe_allow_html=True)
         apply_response_to_session(user_input, res_json)
 
 
@@ -532,7 +532,7 @@ def render_chat_history(client: ChatClient) -> None:
                 display_text = "\n".join(non_bullet_lines + [f"* {q['text']}" for q in parsed])
             else:
                 display_text = message["content"]
-            st.markdown(display_text)
+            st.markdown(display_text, unsafe_allow_html=True)
             render_message_extras(message, i, client)
 
 

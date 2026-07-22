@@ -162,10 +162,10 @@ def classify_intent(state: ChatbotState):
     system_prompt = SystemMessage(content=f"""Du bist ein Verteiler im IT-Support des ZIM einer Universitaet.
 Entscheide anhand des GESAMTEN Chatverlaufs, was der Nutzer AKTUELL moechte:
 
-- "tutorial": Der Nutzer moechte wissen, WIE etwas geht, und es selbst tun.
-  Typisch: "Wie richte ich ... ein?", "Wo finde ich ...?", "Anleitung fuer ...".
-- "problem": Etwas funktioniert nicht oder der Nutzer moechte, dass der Support
-  sich kuemmert. Typisch: "... ist kaputt", "... geht nicht", "erstellt mir ein Ticket".
+- "tutorial": Der Nutzer sucht nach einer Anleitung, Hilfe zur Selbsthilfe oder einer Loesung, um ein Problem/eine Stoerung SELBST zu beheben.
+  WICHTIG: Auch wenn der Nutzer Formulierungen nutzt wie "Ich habe ein Problem", "X geht nicht", "X funktioniert nicht" oder "Ich komme nicht rein", gilt dies als "tutorial", solange er wissen moechte, wie er es selbst loesen kann (z. B. "Was kann ich tun?", "Wie loese ich das?", "Wie richte ich ... ein?").
+- "problem": Der Nutzer moechte EXPLIZIT, dass der menschliche Support übernimmt / ein Ticket erstellt wird, ODER meldet einen reinen Infrastruktur-Ausfall, den er selbst nicht beheben kann.
+  Typisch: "Erstellt mir ein Ticket", "Ich will mit einem Mitarbeiter sprechen", "WLAN in Raum R14 ist komplett ausgefallen", "Das System ist down".
 - "unclear": Die Absicht ist aus den Nachrichten nicht erkennbar (z. B. nur "Hallo").
 - "solved": NUR waehlen, wenn der Bot zuvor eine Anleitung gegeben hat UND der
   Nutzer jetzt bestaetigt, dass sein Anliegen damit geloest ist.
@@ -537,18 +537,23 @@ def ask_for_additional_info(state: ChatbotState):
         
         9. Stelle niemals Rückfragen über Informationen, die nicht aus dem aktuellen Problem oder der Wissensdatenbank ableitbar sind.
         
-        10. Jede Rückfrage darf nur eine einzige Information abfragen.
-            Kombiniere niemals mehrere unabhängige Fragen oder Attribute in einer Frage
-            (z.B. nicht "Welches Gerät wird genutzt und welche Fehlermeldung erscheint?").
+        10. Jede Rückfrage darf nur ein einziges, unabhängiges Thema abfragen.
+            Mische niemals völlig verschiedene Themen in einer Frage 
+            (Frage z.B. NICHT: "Welches Gerät wird genutzt und welche Fehlermeldung erscheint?").
         
-        11. Wenn mehrere Informationen benötigt werden, erstelle mehrere separate Bullet-Fragen.
+        11. Wenn du mehrere unabhängige Themen klären musst, erstelle dafür separate Bullet-Fragen.
             Jede Frage muss genau ein Unterscheidungsmerkmal zwischen den möglichen Lösungen klären.
             
         12. Die Rückfragen dienen NUR dazu, die passenden Lösungen zu klassifizieren. Daher nicht die einzelnen todos der Lösung als Frage formulieren.
-
-        13. Stelle KEINE Rückfragen zu Informationen, die bereits im BENUTZER-KONTEXT bekannt sind (z.B. Betriebssystem, Gerät, Rolle). Diese Daten sind bereits verifiziert und muessen nicht erneut erfragt werden. Nutze sie direkt fuer die Auswahl der passenden Lösung.
         
-        14. Vermeide die Wiedergabe einer Option mit einem Komma, also vermeide zum Beispiel: "options: Keine Verbindung, Verbindung, aber kein Internet, Verbindungsabbrüche, Keine IP‑Adresse, Andere"
+        13. Vermeide Wenn-Dann-Abhängigkeiten zwischen separaten Fragen.
+            Da alle Fragen dem Nutzer GLEICHZEITIG angezeigt werden, dürfen sie logisch nicht aufeinander aufbauen. 
+            Fasse solche Abhängigkeiten stattdessen über inklusive Antwortoptionen in einer einzigen Frage zusammen 
+            (z.B. statt zwei Fragen zu stellen, frage lieber: "Welche Maßnahmen hast du bereits ergriffen?" mit den Optionen: [Maßnahme A], [Maßnahme B], [Bisher noch keine Maßnahmen ergriffen], [Andere]).
+
+        14. Stelle KEINE Rückfragen zu Informationen, die bereits im BENUTZER-KONTEXT bekannt sind (z.B. Betriebssystem, Gerät, Rolle). Diese Daten sind bereits verifiziert und muessen nicht erneut erfragt werden. Nutze sie direkt fuer die Auswahl der passenden Lösung.
+        
+        15. Vermeide die Wiedergabe einer Option mit einem Komma, also vermeide zum Beispiel: "options: Keine Verbindung, Verbindung, aber kein Internet, Verbindungsabbrüche, Keine IP‑Adresse, Andere"
         """
     ))
 
@@ -681,45 +686,42 @@ def give_solutions(state: ChatbotState):
     system_prompt = SystemMessage(content=(
         AGENT_PROMPT + "\n\n" + tutorial_handover + "\n\n" + metadata_context + "\n\n" +
         f"""
-            Deine Aufgabe ist es, basierend auf dem
-            aktuellen Problem und den bereits bekannten Zusatzinfos eine konkrete, direkt umsetzbare Lösung zu geben.
-            
-            AKTUELLES PROBLEM: {problem}
-            BEREITS BEKANNTE ZUSATZINFOS: {infos}
-            LÖSUNGEN (RAG-Kontext): {solutions}
-            
-            REGELN:
-            1. Antworte in einem einzigen zusammenhängenden Fließtext, "...NICHT als Liste, Aufzählung oder mit Zwischenüberschriften. 
-               Bei mehreren aufeinanderfolgenden Handlungsschritten nutze stattdessen Ordinalwörter im Fließtext
-               ('zunächst … öffnen', 'anschließend … klicken', 'abschließend … bestätigen'),
-               um die Reihenfolge erkennbar zu machen, ohne Listenformat zu verwenden.
-            2. Formuliere die Lösung als konkrete Handlungsanweisung – nicht 
-               "es gibt folgende Lösungsansätze", sondern konkret, was zu tun ist, z. B. "X deaktivieren, dann..." 
-               bzw. "Das Problem liegt an Y, daher sollte Z erfolgen".
-            3. Wenn mehrere Lösungen im Kontext vorhanden sind, wähle die passensten Lösungen. 
-               Die Lösungen darfst du nicht vermischen. Behandle sie seperat.
-            4. Gib die Lösungen nie wörtlich aus dem Kontext wieder. Interpretiere sie und setze sie in Bezug zum 
-               konkreten Problem des Nutzers.
-            5. Maximal 6 Sätze pro Lösung, auf die du eingehst.
-               Bei mehrschrittigen technischen Anleitungen darf die Satzzahl überschritten werden, 
-               wenn sonst notwendige Schritte fehlen würden – Vollständigkeit (Regel 6) hat Vorrang vor Kürze. 
-               Keine Begrüßungsfloskeln, keine Zusammenfassung am Ende, keine Abschlussfrage wie 'Konnte ich helfen?".
-            6. Die Lösung muss aus sich selbst heraus vollständig verständlich sein. Der Nutzer soll keinen Link 
-               öffnen müssen, um zu verstehen, was ihn dort erwartet. Nenne alle relevanten Schritte/Infos direkt im Text,
-               fasse dabei den Linkinhalt kurz zusammen statt ihn vollständig wiederzugeben.
-               Füge Links an der Stelle im Text ein, zu der sie inhaltlich gehören.
-               - Liegt zu einem Link Content vor: bau den Inhalt des Kontexts in der Lösung ein, sofern dieser relevant für das "AKTUELLE PROBLEM" ist.
-               - Liegt kein Content vor (nur eine Notiz zum Fehlschlag): beschreibe nur, was sich sicher aus 
-                 problem/solution ableiten lässt, erfinde keine Details, und mache transparent, dass der Inhalt 
-                 nicht automatisch abrufbar war.
-               - Ist der Link selbst der auszuführende Schritt (Formular, Login, Download, Zahlung), bleibt er 
-                 Pflichtklick – erkläre vorher, was dort zu tun ist.
-            7. Halluziniere dir keine Lösungen herbei, sondern gebe nah am Kontext die Lösung wieder!.
-            8. Enthält eine Lösung irreversible oder folgenreiche Schritte (z. B. Konto löschen, Daten zurücksetzen, Zahlung auslösen),
-            weise im Text kurz und klar darauf hin, bevor du den Schritt nennst.
-            """
+            Deine Aufgabe ist es, basierend auf dem aktuellen Problem und den bereits bekannten Zusatzinfos eine konkrete, direkt umsetzbare Lösung zu geben.
+
+        AKTUELLES PROBLEM: {problem}
+        BEREITS BEKANNTE ZUSATZINFOS: {infos}
+        LÖSUNGEN (RAG-Kontext): {solutions}
+
+        REGELN:
+        1. Nutze zur Strukturierung AUSSCHLIESSLICH die HTML-Tags `<details>` und `<summary>` für aufklappbare Bereiche. 
+            - Jeder Lösungsansatz MUSS in einem `<details>`-Tag stehen. 
+            - Die Überschrift kommt in ein `<summary>`-Tag (fettgedruckt mit <b>). 
+            - GANZ WICHTIG: Nach dem schließenden `</summary>`-Tag MUSS zwingend eine leere Zeile (Zeilenumbruch) folgen!
+            - Darunter erstellst du eine NUMMERIERTE Schritt-fuer-Schritt-Anleitung (1., 2., 3., ...) basierend auf dem RAG-Kontext.
+            Beispiel-Format:
+            <details>
+            <summary><b>Ansatz 1: eduroam-Profil löschen</b></summary>
+   
+            1. Öffne das Self-Care-Portal und melde dich an.
+            2. Wähle danach "Authentifizierungsserver testen".
+            3. Falls ein Fehler erscheint, sende einen Screenshot an den support.
+            </details>
+        2. Formuliere die Lösung als konkrete Handlungsanweisung – nicht 
+           "es gibt folgende Lösungsansätze", sondern konkret, was zu tun ist, z. B. "X deaktivieren, dann..." 
+           bzw. "Das Problem liegt an Y, daher sollte Z erfolgen".
+        3. Wenn mehrere Lösungen im Kontext vorhanden sind, wähle die passendsten Lösungen. Die Lösungen darfst du nicht vermischen. Behandle sie separat in eigenen aufklappbaren Blöcken.
+        4. Gib die Lösungen nie wörtlich aus dem Kontext wieder. Interpretiere sie und setze sie in Bezug zum konkreten Problem des Nutzers.
+        5. Maximal 6 Sätze pro Lösung, auf die du eingehst. Bei mehrschrittigen technischen Anleitungen darf die Satzzahl überschritten werden, wenn sonst notwendige Schritte fehlen würden – Vollständigkeit (Regel 6) hat Vorrang vor Kürze. Keine Begrüßungsfloskeln, keine Zusammenfassung am Ende, keine Abschlussfrage wie 'Konnte ich helfen?'.
+        6. Die Lösung muss aus sich selbst heraus vollständig verständlich sein. Der Nutzer soll keinen Link öffnen müssen, um zu verstehen, was ihn dort erwartet. Nenne alle relevanten Schritte/Infos direkt im Text, fasse dabei den Linkinhalt kurz zusammen statt ihn vollständig wiederzugeben.
+        Füge Links an der Stelle im Text ein, zu der sie inhaltlich gehören.
+        - Liegt zu einem Link Content vor: bau den Inhalt des Kontexts in der Lösung ein, sofern dieser relevant für das "AKTUELLE PROBLEM" ist.
+        - Liegt kein Content vor (nur eine Notiz zum Fehlschlag): beschreibe nur, was sich sicher aus problem/solution ableiten lässt, erfinde keine Details, und mache transparent, dass der Inhalt nicht automatisch abrufbar war.
+        - Ist der Link selbst der auszuführende Schritt (Formular, Login, Download, Zahlung), bleibt er Pflichtklick – erkläre vorher, was dort zu tun ist.
+        7. Halluziniere dir keine Lösungen herbei, sondern gebe nah am Kontext die Lösung wieder!
+        8. Enthält eine Lösung irreversible oder folgenreiche Schritte (z. B. Konto löschen, Daten zurücksetzen, Zahlung auslösen), weise im Text kurz und klar darauf hin, bevor du den Schritt nennst.
+        """
     ))
-    message_text = llm.invoke([system_prompt, HumanMessage(content="Bitte fasse die Lösungen für den User zusammen.")])
+    message_text = llm.invoke([system_prompt])
 
 
     final_message = AIMessage(content=message_text.content + "\n\n Konnte das Problem damit gelöst werden?")
