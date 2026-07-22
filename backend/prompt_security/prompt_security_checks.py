@@ -115,7 +115,7 @@ def evaluate_off_topic(text:str) -> dict:
     output = topic_classifier(text, ON_TOPIC_TOPICS, multi_label=True)
     topics_and_scores = list(zip(output["labels"], output["scores"]))
     topics_and_scores = sorted(topics_and_scores, key=lambda x: x[1], reverse=True)
-    most_relevant_topic, most_relevant_score = topics_and_scores[0]
+    _, most_relevant_score = topics_and_scores[0]
 
     blocked = len([x for x in output["scores"] if x > ON_TOPIC_DETECTION_THRESHOLD]) == 0
 

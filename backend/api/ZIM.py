@@ -11,7 +11,7 @@ from ..graph.orchestrator import __execute_langchain_workflow, graph
 from ..graph.nodes import _resolve_ticket_category
 from ..services.TicketService import TicketService
 from ..rag import recent_incidents
-from ..api.zammad import log_ticket_close_event, get_ticket_tags, get_ticket_article_bodies
+from ..api.zammad import log_ticket_close_event, get_ticket_tags
 from ..rag.rag_store_tickets import store_ticket_state_to_rag
 
 ticket_service = TicketService()
@@ -244,7 +244,7 @@ async def zammad_ticket_closed(payload: dict):
     }
 
     articles = get_zammad_ticket_articles(ticket_id) if ticket_id else []
-    ticket_summary, full_text, agent_messages = build_ticket_summary_and_conversation(articles)
+    ticket_summary, _, agent_messages = build_ticket_summary_and_conversation(articles)
 
     rag_state = {
         "full_conversation": ticket_summary,

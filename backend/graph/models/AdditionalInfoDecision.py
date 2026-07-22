@@ -1,5 +1,5 @@
-from pydantic import BaseModel, Field, model_validator
-from typing import Optional, List
+from pydantic import BaseModel, Field
+from typing import Optional
 
 
 class AdditionalInfoDecision(BaseModel):

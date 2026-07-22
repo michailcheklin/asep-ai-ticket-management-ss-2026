@@ -14,7 +14,6 @@ from ..api.zammad import (
 )
 
 from ..llm.llm import llm
-from ..rag.rag_store_tickets import store_ticket_state_to_rag
 
 
 class TicketService:

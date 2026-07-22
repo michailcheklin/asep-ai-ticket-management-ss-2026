@@ -326,7 +326,7 @@ def mark_ticket_as_closed(ticket_id:int):
     :param ticket_id: The ticket id of the ticket to close
     """
     try:
-        response = requests.put(
+        requests.put(
             url=f"{server_address}/api/v1/tickets/{ticket_id}",
             json={
                 "state":"closed",
