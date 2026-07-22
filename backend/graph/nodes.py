@@ -273,21 +273,14 @@ def finish_tutorial(state: ChatbotState):
 
     return {**result, "messages": [response]}
 
-@traceable
-def extract_information(state: ChatbotState):
-    """
-    Analyzes the latest user message to extract structured ticket details.
-    :param state: The current state of the chatbot conversation.
-    :return: A dictionary containing the newly extracted fields to update the state.
-    """
-    log_node_entry("extract_information", state)
-    last_user_message = [msg for msg in state["messages"] if isinstance(msg, HumanMessage)][-1]
-    user_messages = [msg.content for msg in state["messages"] if isinstance(msg, HumanMessage)]
-    prior_issue = state.get("issue_description", "")
-    prior_infos = state.get("additional_info", [])
-    conversation_context = "\n".join(f"- {msg}" for msg in user_messages)
 
-    system_prompt = AGENT_PROMPT + "\n\n" + ("""Deine Aufgabe ist es, als hochpräziser KI-Daten-Extraktor aus den eingehenden Chat-Nachrichten von Studierenden und Mitarbeitern strukturierte Ticket-Daten zu extrahieren.
+def _build_extraction_system_prompt(
+    prior_issue: str,
+    prior_infos: list,
+    conversation_context: str,
+) -> str:
+    """Build the structured-extraction system prompt for extract_information."""
+    return AGENT_PROMPT + "\n\n" + ("""Deine Aufgabe ist es, als hochpräziser KI-Daten-Extraktor aus den eingehenden Chat-Nachrichten von Studierenden und Mitarbeitern strukturierte Ticket-Daten zu extrahieren.
 
         BEREITS BEKANNTER KONTEXT:
         Problembeschreibung: {prior_issue}
@@ -314,12 +307,9 @@ def extract_information(state: ChatbotState):
         conversation_context=conversation_context or "keine",
     ))
 
-    # Cast structured LLM output to ExtractedTicketData
-    extracted_data = cast(ExtractedTicketData, structured_llm.invoke([
-        SystemMessage(content=system_prompt),
-        last_user_message
-    ]))
 
+def _state_update_from_extracted_data(state: ChatbotState, extracted_data: ExtractedTicketData) -> dict:
+    """Map ExtractedTicketData into a state update without overwriting existing fields."""
     state_update = {}
 
     if extracted_data.email and not state.get("user_email"):
@@ -338,12 +328,25 @@ def extract_information(state: ChatbotState):
             state_update["additional_info"] = new_infos
     state_update["full_conversation"] = extracted_data.full_conversation or state.get("full_conversation", "")
 
+    return state_update
+
+
+def _sync_ticket_after_extraction(
+    state: ChatbotState,
+    state_update: dict,
+    extracted_data: ExtractedTicketData,
+    last_user_message,
+) -> None:
+    """Append to an existing ticket or create one when a problem was first extracted.
+
+    Mutates state_update in place when a new ticket is created.
+    """
     ticket_id = state.get("ticket_id")
     # If ticket already exists: append
     if ticket_id is not None:
         print(f"[extract_information] Appending customer message to ticket {ticket_id}")
         ticket_service.append_message_to_ticket(ticket_id, last_user_message.content, sender="Customer")
-        # Update the ticket title with the latest extracted information 
+        # Update the ticket title with the latest extracted information
         merged_state = {**state, **state_update}
         if extracted_data.problem:
             merged_state["issue_description"] = extracted_data.problem
@@ -365,6 +368,32 @@ def extract_information(state: ChatbotState):
         state_update["ticket_id"] = result
         add_tag_to_ticket(result, "AI-Created")
         print(f"[extract_information] Created ticket {result}")
+
+
+@traceable
+def extract_information(state: ChatbotState):
+    """
+    Analyzes the latest user message to extract structured ticket details.
+    :param state: The current state of the chatbot conversation.
+    :return: A dictionary containing the newly extracted fields to update the state.
+    """
+    log_node_entry("extract_information", state)
+    last_user_message = [msg for msg in state["messages"] if isinstance(msg, HumanMessage)][-1]
+    user_messages = [msg.content for msg in state["messages"] if isinstance(msg, HumanMessage)]
+    prior_issue = state.get("issue_description", "")
+    prior_infos = state.get("additional_info", [])
+    conversation_context = "\n".join(f"- {msg}" for msg in user_messages)
+
+    system_prompt = _build_extraction_system_prompt(prior_issue, prior_infos, conversation_context)
+
+    # Cast structured LLM output to ExtractedTicketData
+    extracted_data = cast(ExtractedTicketData, structured_llm.invoke([
+        SystemMessage(content=system_prompt),
+        last_user_message
+    ]))
+
+    state_update = _state_update_from_extracted_data(state, extracted_data)
+    _sync_ticket_after_extraction(state, state_update, extracted_data, last_user_message)
 
     return state_update
 

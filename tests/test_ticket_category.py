@@ -109,7 +109,7 @@ class ClassifyTicketCategoryTests(unittest.TestCase):
 
 
 class ExtractInformationTests(unittest.TestCase):
-    """Unit tests ensuring extraction does not perform category classification."""
+    """Unit tests for extract_information state mapping and ticket side effects."""
 
     @patch("backend.graph.nodes.structured_llm")
     def test_extract_information_does_not_set_category(self, mock_structured_llm):
@@ -141,6 +141,172 @@ class ExtractInformationTests(unittest.TestCase):
         system_prompt = mock_structured_llm.invoke.call_args[0][0][0].content
         self.assertNotIn("4. Kategorie", system_prompt)
         self.assertNotIn("ITSM-Ticket-Typ", system_prompt)
+
+    @patch("backend.graph.nodes.ticket_service.update_ticket_title_from_state")
+    @patch("backend.graph.nodes.ticket_service.append_message_to_ticket")
+    @patch("backend.graph.nodes.structured_llm")
+    def test_maps_fields_only_when_missing_in_state(
+        self,
+        mock_structured_llm,
+        mock_append,
+        mock_update_title,
+    ):
+        mock_structured_llm.invoke.return_value = ExtractedTicketData(
+            email="neu@example.com",
+            matrikelnummer="7654321",
+            problem="Neues Problem",
+            priority=1,
+            additional_info=["eduroam"],
+            full_conversation="Kurzfassung",
+        )
+
+        state_update = extract_information({
+            "messages": [HumanMessage(content="Mein WLAN geht nicht")],
+            "user_email": "alt@example.com",
+            "matrikelnummer": "1234567",
+            "issue_description": "Bestehendes Problem",
+            "additional_info": ["Gebäude SGW"],
+            "priority": 1,
+            "full_conversation": "alt",
+            "ticket_id": 42,
+        })
+
+        self.assertNotIn("user_email", state_update)
+        self.assertNotIn("matrikelnummer", state_update)
+        self.assertNotIn("issue_description", state_update)
+        self.assertNotIn("priority", state_update)
+        self.assertEqual(state_update["additional_info"], ["eduroam"])
+        self.assertEqual(state_update["full_conversation"], "Kurzfassung")
+
+    @patch("backend.graph.nodes.ticket_service.update_ticket_title_from_state")
+    @patch("backend.graph.nodes.ticket_service.append_message_to_ticket")
+    @patch("backend.graph.nodes.structured_llm")
+    def test_priority_zero_in_state_is_treated_as_unset(
+        self,
+        mock_structured_llm,
+        mock_append,
+        mock_update_title,
+    ):
+        """Document current behavior: priority 0 is falsy, so a new priority is applied."""
+        mock_structured_llm.invoke.return_value = ExtractedTicketData(
+            priority=1,
+            full_conversation="Kurzfassung",
+        )
+
+        state_update = extract_information({
+            "messages": [HumanMessage(content="Dringend")],
+            "user_email": "user@mail.com",
+            "priority": 0,
+            "additional_info": [],
+            "ticket_id": 42,
+        })
+
+        self.assertEqual(state_update["priority"], 1)
+
+    @patch("backend.graph.nodes.structured_llm")
+    def test_skips_duplicate_additional_info(self, mock_structured_llm):
+        mock_structured_llm.invoke.return_value = ExtractedTicketData(
+            additional_info=["Gebäude SGW", "eduroam"],
+            full_conversation="Kurzfassung",
+        )
+
+        state_update = extract_information({
+            "messages": [HumanMessage(content="Noch Infos")],
+            "additional_info": ["Gebäude SGW"],
+            "user_email": "test@example.com",
+            "ticket_id": None,
+        })
+
+        self.assertEqual(state_update["additional_info"], ["eduroam"])
+
+    @patch("backend.graph.nodes.add_tag_to_ticket")
+    @patch("backend.graph.nodes.create_ticket_by_user_email")
+    @patch("backend.graph.nodes.structured_llm")
+    def test_creates_ticket_when_problem_extracted_and_no_ticket_id(
+        self,
+        mock_structured_llm,
+        mock_create_ticket,
+        mock_add_tag,
+    ):
+        mock_structured_llm.invoke.return_value = ExtractedTicketData(
+            problem="WLAN funktioniert nicht",
+            matrikelnummer="1234567",
+            priority=1,
+            full_conversation="Kurzfassung",
+        )
+        mock_create_ticket.return_value = 99
+
+        state_update = extract_information({
+            "messages": [HumanMessage(content="WLAN geht nicht")],
+            "user_email": "user@mail.com",
+            "priority": 0,
+            "additional_info": [],
+            "category": "Incident",
+        })
+
+        self.assertEqual(state_update["ticket_id"], 99)
+        mock_create_ticket.assert_called_once_with(
+            email="user@mail.com",
+            title="[1234567] WLAN funktioniert nicht",
+            body="WLAN geht nicht",
+            priority=1,
+            internal=True,
+            state="new",
+            kategorie="Incident",
+        )
+        mock_add_tag.assert_called_once_with(99, "AI-Created")
+
+    @patch("backend.graph.nodes.ticket_service.update_ticket_title_from_state")
+    @patch("backend.graph.nodes.ticket_service.append_message_to_ticket")
+    @patch("backend.graph.nodes.create_ticket_by_user_email")
+    @patch("backend.graph.nodes.structured_llm")
+    def test_appends_to_existing_ticket_instead_of_creating(
+        self,
+        mock_structured_llm,
+        mock_create_ticket,
+        mock_append,
+        mock_update_title,
+    ):
+        mock_structured_llm.invoke.return_value = ExtractedTicketData(
+            problem="Präzisierung",
+            additional_info=["MacBook"],
+            full_conversation="Kurzfassung",
+        )
+
+        state_update = extract_information({
+            "messages": [HumanMessage(content="Es ist ein MacBook")],
+            "user_email": "user@mail.com",
+            "issue_description": "WLAN Problem",
+            "additional_info": [],
+            "ticket_id": 42,
+            "priority": 0,
+        })
+
+        mock_create_ticket.assert_not_called()
+        mock_append.assert_called_once_with(42, "Es ist ein MacBook", sender="Customer")
+        mock_update_title.assert_called_once()
+        merged_state = mock_update_title.call_args[0][0]
+        self.assertEqual(merged_state["issue_description"], "Präzisierung")
+        self.assertEqual(mock_update_title.call_args[0][1], 42)
+        self.assertNotIn("ticket_id", state_update)
+
+    @patch("backend.graph.nodes.create_ticket_by_user_email")
+    @patch("backend.graph.nodes.structured_llm")
+    def test_does_not_create_ticket_without_problem(self, mock_structured_llm, mock_create_ticket):
+        mock_structured_llm.invoke.return_value = ExtractedTicketData(
+            full_conversation="Nur Hallo",
+        )
+
+        state_update = extract_information({
+            "messages": [HumanMessage(content="Hallo")],
+            "user_email": "user@mail.com",
+            "priority": 0,
+            "additional_info": [],
+        })
+
+        mock_create_ticket.assert_not_called()
+        self.assertNotIn("ticket_id", state_update)
+        self.assertEqual(state_update["full_conversation"], "Nur Hallo")
 
 
 class ClassifyTicketNodeTests(unittest.TestCase):
