@@ -251,7 +251,6 @@ async def zammad_ticket_closed(payload: dict):
         "ticket_id": ticket_id,
         "messages": agent_messages,
     }
-    print(f"\n\nDEBUG: RAG STATE= {rag_state}\n\n")
 
     if ticket_id:
         print(f"[RAG] Close webhook received for ticket {ticket_id}")

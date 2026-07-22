@@ -22,6 +22,19 @@ ticket_service = TicketService()
 problem_service = ProblemService()
 
 
+def _append_agent_article_to_ticket(ticket_id, body: str, context: str) -> None:
+    """Append an internal agent article; log and continue on failure."""
+    try:
+        ticket_service.append_message_to_ticket(
+            ticket_id=ticket_id,
+            body=body,
+            sender="Agent",
+            internal=True,
+        )
+    except Exception as e:
+        print(f"[{context}] Could not append message to ticket {ticket_id}: {e}")
+
+
 def _format_faq_match_for_prompt(match: dict) -> str:
     """Rendert einen faq_matches-Eintrag (dict mit id, text, similarity,
     optional extracted_urls) als Prompt-Text."""
@@ -307,10 +320,6 @@ def extract_information(state: ChatbotState):
         last_user_message
     ]))
 
-    print("\n===== EXTRACTED DATA =====")
-    print(extracted_data)
-    print("==========================\n")
-
     state_update = {}
 
     if extracted_data.email and not state.get("user_email"):
@@ -332,7 +341,7 @@ def extract_information(state: ChatbotState):
     ticket_id = state.get("ticket_id")
     # If ticket already exists: append
     if ticket_id is not None:
-        print(f"Appending to ticket {ticket_id} the user message: {last_user_message.content}")
+        print(f"[extract_information] Appending customer message to ticket {ticket_id}")
         ticket_service.append_message_to_ticket(ticket_id, last_user_message.content, sender="Customer")
         # Update the ticket title with the latest extracted information 
         merged_state = {**state, **state_update}
@@ -355,9 +364,7 @@ def extract_information(state: ChatbotState):
         )
         state_update["ticket_id"] = result
         add_tag_to_ticket(result, "AI-Created")
-
-        print(f"Created ticket with ID {result} for the state update: {state_update}")
-
+        print(f"[extract_information] Created ticket {result}")
 
     return state_update
 
@@ -439,10 +446,7 @@ def ask_for_additional_info(state: ChatbotState):
     infos = state.get("additional_info", [])
     attempts = state.get("additional_info_attempts", 0)
 
-    print(f"[DEBUG: ask_for_additional_info]: attempts: {attempts} ")
-
-    aditionalInfo_llm = llm.with_structured_output(AdditionalInfoDecision)
-
+    additional_info_llm = llm.with_structured_output(AdditionalInfoDecision)
 
     query = f"{issue} + {infos}"
     rag_results = retrieve_relevant_entries(query, n_results=2)
@@ -451,15 +455,10 @@ def ask_for_additional_info(state: ChatbotState):
     ticket_matches = rag_results.get("ticket_matches", [])
 
     if not faq_matches and not ticket_matches:
-        print("[DEBUG] RAG lieferte keine Ergebnisse. Überspringe Rückfrage.")
         return {"needs_additional_info": False}
 
     faq_context = "\n".join([f"- {_format_faq_match_for_prompt(match)}" for match in faq_matches])
     ticket_context = "\n".join([f"- {match['text']} (Kategorie: {match['category']})" for match in ticket_matches])
-
-    print(f"[DEBUG]: faq_matches: {faq_matches}\n\n")
-    print("-"*10 + "\n\n")
-    print(f"[DEBUG]: faq_context: {faq_context}")
 
     system_prompt = SystemMessage(content=(
         AGENT_PROMPT + "\n\n" +
@@ -526,14 +525,11 @@ def ask_for_additional_info(state: ChatbotState):
     # Adding a minimal HumanMessage preserves the existing prompting logic
     # while making the structured-output request compatible with all evaluated models.
 
-    decision = cast(AdditionalInfoDecision, aditionalInfo_llm.invoke([
+    decision = cast(AdditionalInfoDecision, additional_info_llm.invoke([
         system_prompt,
         HumanMessage(
             content="Bitte prüfe anhand des Problems und der Zusatzinfos, ob weitere Informationen benötigt werden.")
     ]))
-
-    print(f"[DEBUG]: decision.needs_additional_info: {decision.needs_additional_info}")
-    print(f"[DEBUG]: decision.follow_up_question: {decision.follow_up_question!r}")
 
     # Logic switch if all information needed is collected or not
     follow_up_question = (decision.follow_up_question or "").strip()
@@ -543,15 +539,11 @@ def ask_for_additional_info(state: ChatbotState):
 
     llm_msg = f"Ich habe für dich gerade ein Support-Ticket erstellt. Um dich optimal zu unterstützen, beantworte  bitte folgende Fragen:\n{follow_up_question}"
     ticket_id = state.get("ticket_id")
-    try:
-        ticket_service.append_message_to_ticket(
-            ticket_id=ticket_id,
-            body=f"[ZIM AI-AGENT]\n\n{llm_msg}",
-            sender="Agent",
-            internal=True
-        )
-    except Exception as e:
-        print(f"Failed to add internal article: {e}")
+    _append_agent_article_to_ticket(
+        ticket_id,
+        f"[ZIM AI-AGENT]\n\n{llm_msg}",
+        "ask_for_additional_info",
+    )
     return {
         "needs_additional_info": True,
         "additional_info_attempts": attempts + 1,
@@ -561,18 +553,10 @@ def ask_for_additional_info(state: ChatbotState):
 @traceable
 def give_solutions(state: ChatbotState):
     """
-    Build a RAG query from: history + user_message + issue_description + additional_info
-    (in that exact order), then retrieve and return up to two solutions.
+    Build a RAG query from issue_description and additional_info,
+    then retrieve and return up to two solutions.
     """
     log_node_entry("give_solutions", state)
-    msgs = state.get("messages", []) or []
-    # history = all messages except the last one
-    history_parts = [m.content for m in msgs[:-1]] if len(msgs) > 1 else []
-    history_text = " ".join(history_parts).strip()
-
-    # user_message = last message if present
-    user_msg = msgs[-1].content.strip() if msgs else ""
-
     issue = (state.get("issue_description") or "").strip()
     additional = " ".join(state.get("additional_info", [])) if state.get("additional_info") else ""
 
@@ -582,17 +566,17 @@ def give_solutions(state: ChatbotState):
         return {"messages": [AIMessage(content="Keine ausreichende Anfrage für die Suche.")], "solutions": []}
 
     try:
-        print(f"[RAG QUERY] {query}")
         results = retrieve_relevant_entries(query, n_results=2)
         print(
-            f"[RAG RESULT] faq={len(results.get('faq_matches', []))} tickets={len(results.get('ticket_matches', []))} inferred={results.get('inferred')}")
+            f"[give_solutions] RAG result: faq={len(results.get('faq_matches', []))} "
+            f"tickets={len(results.get('ticket_matches', []))}"
+        )
     except Exception as e:
-        print(f"[RAG ERROR] {e}")
+        print(f"[give_solutions] RAG retrieval failed: {e}")
         return {"messages": [AIMessage(content="Fehler bei der Suche in der Wissensdatenbank.")], "solutions": []}
 
     faq_matches = results.get("faq_matches", [])
     ticket_matches = results.get("ticket_matches", [])
-    inferred = results.get("inferred", {})
 
     # Build up to 2 solutions (FAQ first)
     solutions = []
@@ -601,7 +585,6 @@ def give_solutions(state: ChatbotState):
     for t in ticket_matches:
         solutions.append(
             {"title": f"Ähnliches Ticket ({t.get('category', 'unknown')})", "description": t.get("text", "")})
-    print(f"[Node: give_solutions] Solutions: {solutions}")
 
     problem = state.get("issue_description", "")
     infos = state.get("additional_info", [])
@@ -653,27 +636,15 @@ def give_solutions(state: ChatbotState):
     final_message = AIMessage(content=message_text.content + "\n\n Konnte ich dir dabei helfen, dein Problem zu lösen?")
 
     ticket_id = state.get("ticket_id")
-    try:
-        print(f"appending bot message to ticket {ticket_id}")
-        ticket_service.append_message_to_ticket(
-            ticket_id = ticket_id,
-            body=f"[ZIM AI-AGENT]\n\n{final_message.content}",
-            sender="Agent",
-            internal = True
-        )
-    except:
-        print("Could not append message to ticket (give solutions).")
-
+    _append_agent_article_to_ticket(
+        ticket_id,
+        f"[ZIM AI-AGENT]\n\n{final_message.content}",
+        "give_solutions",
+    )
 
     return {
         "messages": [final_message],
         "solutions": solutions,
-        # "rag_debug": {
-        #     "query": query,
-        #     "faq_count": len(faq_matches),
-        #     "ticket_count": len(ticket_matches),
-        #     "inferred": inferred
-        # }
     }
 
 @traceable
@@ -705,15 +676,14 @@ def finish_ticket(state):
     ticket_id = result.get("ticket_id")
     try:
         bot_message_content = result["messages"][0].content
-        print(f"appending bot message {bot_message_content}")
-        ticket_service.append_message_to_ticket(
-            ticket_id = ticket_id,
-            body=f"[ZIM AI-AGENT]\n\n{bot_message_content}",
-            sender="Agent",
-            internal = True
+    except Exception as e:
+        print(f"[finish_ticket] Could not append message to ticket {ticket_id}: {e}")
+    else:
+        _append_agent_article_to_ticket(
+            ticket_id,
+            f"[ZIM AI-AGENT]\n\n{bot_message_content}",
+            "finish_ticket",
         )
-    except:
-        print("Could not append message to ticket (give solutions).")
 
     return {**result, "category": category}
 

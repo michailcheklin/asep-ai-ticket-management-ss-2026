@@ -27,11 +27,6 @@ def evaluate_prompt_injection(text: str) -> dict:
     label = output.get("label", "")
     score = float(output.get("score", 0.0))
 
-   
-    print("Injection Output:", output)
-
-
-
     text_lower = text.lower()
     has_attack_pattern = any(pattern in text_lower for pattern in DANGEROUS_PATTERNS)
 
@@ -161,5 +156,4 @@ def __translate_from_german_into_english(text: str) -> str:
         out = translator.generate(**inputs)
 
     translation = translator_tokenizer.decode(out[0], skip_special_tokens=True)
-    print(f"Englische Übersetzung: '{translation}'")
     return translation
