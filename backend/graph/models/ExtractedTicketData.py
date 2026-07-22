@@ -6,8 +6,6 @@ class ExtractedTicketData(BaseModel):
     """
     Schema defining the structured ticket data to be extracted from user messages
     """
-    email: Optional[str] = Field(None,
-                                 description="Die E-Mail-Adresse des Users. Nur ausfüllen, wenn sie ein @-Zeichen enthält.")
     matrikelnummer: Optional[str] = Field(None,
                                           description="Die 7-stellige Matrikelnummer des Studenten, falls genannt.")
     problem: Optional[str] = Field(None,
@@ -28,5 +26,5 @@ class ExtractedTicketData(BaseModel):
             "complete outage. Use 0 for normal or non-urgent issues."
         )
     )
-    full_conversation: Optional[str] = Field(None,
+    summary: Optional[str] = Field(None,
                                               description="Eine kurze Zusammenfassung des Problems basierend auf dem gesamten Chatverlauf. Diese Zusammenfassung sollte den Kontext und die wichtigsten Punkte des Problems in bis zu 3 Sätze erfassen.")
