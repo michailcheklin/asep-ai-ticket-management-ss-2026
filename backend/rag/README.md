@@ -198,3 +198,4 @@ A CI test file, `tests/test_anonymiser.py`, checks anonymization quality on a ha
 - **Models load once** at module import time (around 30 seconds on my device). Subsequent queries are fast.
 - **All input should be in German**. Both databases are stored with German text and the ticket embedder is a German monolingual model. If the user conversation is not in German, the ticket summary should still be in German. For better results, translate input before calling `retrieve_relevant_entries` if needed.
 - **A CI test file** is available at `tests/test_rag_retrieve.py` to confirm the databases are loaded correctly and retrieval works as expected.
+- **Hardware resources** used by the whole project after this feature is estimated to be around 8 GB of RAM (mostly for loading models that embed and retrieve tickets from the RAG DB as well as models to anonymise tickets).
