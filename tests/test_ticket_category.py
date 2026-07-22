@@ -26,6 +26,7 @@ from tests.category_test_support import (
     validate_cases,
 )
 from backend.graph.models.TicketCategoryDecision import TICKET_CATEGORIES
+from backend.graph.models.ExtractedTicketData import ExtractedTicketData
 from backend.graph.nodes import (
     classify_ticket,
     classify_ticket_category,
@@ -112,8 +113,6 @@ class ExtractInformationTests(unittest.TestCase):
 
     @patch("backend.graph.nodes.structured_llm")
     def test_extract_information_does_not_set_category(self, mock_structured_llm):
-        from backend.graph.models.ExtractedTicketData import ExtractedTicketData
-
         mock_structured_llm.invoke.return_value = ExtractedTicketData(
             problem="WLAN Problem",
             priority=0,
@@ -131,8 +130,6 @@ class ExtractInformationTests(unittest.TestCase):
 
     @patch("backend.graph.nodes.structured_llm")
     def test_extract_prompt_does_not_include_category_rules(self, mock_structured_llm):
-        from backend.graph.models.ExtractedTicketData import ExtractedTicketData
-
         mock_structured_llm.invoke.return_value = ExtractedTicketData()
 
         extract_information({
