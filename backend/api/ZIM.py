@@ -209,8 +209,10 @@ def build_ticket_summary_and_conversation(articles: list[dict]) -> str:
         sender = article.get("sender", "")
         if sender not in ("Customer", "Agent"):
             continue  # skip System notifications
-        role = "User" if sender == "Customer" else "Agent"
         body = _strip_html(article.get("body", ""))
+        if body.lstrip("=\n ").startswith(BOT_SOLUTIONS_MARKER):
+            continue  # skip standalone "bot-offered solutions" article
+        role = "User" if sender == "Customer" else "Agent"
         if body:
             conversation_lines.append(f"{role}: {body}")
 

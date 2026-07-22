@@ -26,6 +26,7 @@ services:
       start_period: 180s
     volumes:
       - huggingface-models:/models
+      - flair-models:/flair_models
 
   frontend_app:
     build:
@@ -126,5 +127,8 @@ volumes:
   zammad-storage:
   mailpit-data:
   huggingface-models:
-    # In diesem Volume werden die Huggingface-Modelle persistent gespeichert, damit diese nicht bei jedem Programmstart
-    # neu heruntergeladen werden müssen
+    # In this volume the Huggingface models for the PII anonymizer are persisted so that they do not
+    # have to be downloaded every time
+  flair-models:
+    # In this volume the Flair models for the PII anonymizer are persisted so that they do not
+    # have to be downloaded every time
