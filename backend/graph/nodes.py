@@ -1,4 +1,5 @@
 import re
+import logging
 from typing import cast
 
 from langsmith import traceable
@@ -17,6 +18,8 @@ from .node_logging import log_node_entry
 from ..api.zammad import create_ticket_by_user_email, add_tag_to_ticket
 from .models.IntentDecision import IntentDecision
 
+
+logger = logging.getLogger(__name__)
 
 ticket_service = TicketService()
 problem_service = ProblemService()
@@ -123,9 +126,15 @@ def escalate_incidents(state: ChatbotState):
             issue_description=state.get("issue_description", ""),
             additional_info=list(state.get("additional_info", [])),
         )
-        print(f"[escalate_incidents] ticket {ticket_id} -> {result}")
-    except Exception as e:
-        print(f"[escalate_incidents] failed for ticket {ticket_id}: {e}")
+        logger.info(
+            "[escalate_incidents] ticket %s -> escalated=%s problem_id=%s created=%s",
+            ticket_id,
+            result.get("escalated"),
+            result.get("problem_id"),
+            result.get("created"),
+        )
+    except Exception:
+        logger.exception("[escalate_incidents] failed for ticket %s", ticket_id)
 
     return {}
 
@@ -596,12 +605,13 @@ def give_solutions(state: ChatbotState):
 
     try:
         results = retrieve_relevant_entries(query, n_results=2)
-        print(
-            f"[give_solutions] RAG result: faq={len(results.get('faq_matches', []))} "
-            f"tickets={len(results.get('ticket_matches', []))}"
+        logger.info(
+            "[give_solutions] RAG result: faq=%s tickets=%s",
+            len(results.get("faq_matches", [])),
+            len(results.get("ticket_matches", [])),
         )
-    except Exception as e:
-        print(f"[give_solutions] RAG retrieval failed: {e}")
+    except Exception:
+        logger.exception("[give_solutions] RAG retrieval failed")
         return {"messages": [AIMessage(content="Fehler bei der Suche in der Wissensdatenbank.")], "solutions": []}
 
     faq_matches = results.get("faq_matches", [])
@@ -705,8 +715,11 @@ def finish_ticket(state):
     ticket_id = result.get("ticket_id")
     try:
         bot_message_content = result["messages"][0].content
-    except Exception as e:
-        print(f"[finish_ticket] Could not append message to ticket {ticket_id}: {e}")
+    except Exception:
+        logger.exception(
+            "[finish_ticket] Could not read bot message to append to ticket %s",
+            ticket_id,
+        )
     else:
         _append_agent_article_to_ticket(
             ticket_id,

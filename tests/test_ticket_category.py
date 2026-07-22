@@ -348,17 +348,19 @@ class ClassifyTicketNodeTests(unittest.TestCase):
         mock_create_ticket.return_value = {
             "messages": [],
             "is_complete": True,
+            "ticket_id": 55,
         }
 
-        result = finish_ticket({
-            "messages": [HumanMessage(content="WLAN geht nicht")],
-            "user_email": "user@mail.com",
-            "matrikelnummer": "1234567",
-            "issue_description": "WLAN funktioniert nicht",
-            "additional_info": [],
-            "priority": 0,
-            "category": "Incident",
-        })
+        with self.assertLogs("backend.graph.nodes", level="ERROR") as log_cm:
+            result = finish_ticket({
+                "messages": [HumanMessage(content="WLAN geht nicht")],
+                "user_email": "user@mail.com",
+                "matrikelnummer": "1234567",
+                "issue_description": "WLAN funktioniert nicht",
+                "additional_info": [],
+                "priority": 0,
+                "category": "Incident",
+            })
 
         mock_classify.assert_not_called()
         mock_create_ticket.assert_called_once()
@@ -366,6 +368,9 @@ class ClassifyTicketNodeTests(unittest.TestCase):
         self.assertEqual(
             mock_create_ticket.call_args[0][0]["category"],
             "Incident",
+        )
+        self.assertTrue(
+            any("Could not read bot message to append to ticket 55" in line for line in log_cm.output)
         )
 
 
