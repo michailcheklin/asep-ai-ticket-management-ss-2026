@@ -1,7 +1,7 @@
 
 import secrets
 
-from flask import Flask, jsonify, request, redirect, make_response, render_template_string
+from flask import Flask, jsonify, request, redirect, render_template_string
 
 
 # fake_idp.py — fake Shibboleth login page for local development
