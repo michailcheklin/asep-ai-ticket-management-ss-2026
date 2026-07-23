@@ -11,6 +11,11 @@ Core flow (see register_and_check_incident):
 """
 from langchain_core.messages import HumanMessage
 
+from ..api.zammad import (
+    add_article_to_ticket,
+    add_tag_to_ticket,
+    create_system_ticket,
+)
 from ..config import (
     INCIDENT_ESCALATION_MIN_COUNT,
     PROBLEM_TICKET_AUTHOR_EMAIL,
@@ -18,11 +23,6 @@ from ..config import (
 )
 from ..llm.llm import llm
 from ..rag import recent_incidents
-from ..api.zammad import (
-    create_system_ticket,
-    add_tag_to_ticket,
-    add_article_to_ticket,
-)
 
 
 def _problem_tag(problem_id: int) -> str:

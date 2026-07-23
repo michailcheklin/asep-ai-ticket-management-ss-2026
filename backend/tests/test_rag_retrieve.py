@@ -5,7 +5,8 @@ RAG_ROOT = Path(__file__).resolve().parents[1] / "rag"
 if str(RAG_ROOT) not in sys.path:
     sys.path.insert(0, str(RAG_ROOT))
 
-from retrieve_info import retrieve_relevant_entries
+# noqa: E402 below - needs RAG_ROOT on sys.path first
+from retrieve_info import retrieve_relevant_entries  # noqa: E402
 
 # --- FAQ tiered thresholds (must match retrieve_info.py) ---
 FAQ_TIER_1_THRESHOLD = 0.40

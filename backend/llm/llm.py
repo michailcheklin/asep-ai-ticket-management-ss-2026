@@ -1,8 +1,10 @@
 import os
 from pathlib import Path
+
 from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
 from pydantic import SecretStr
+
 from ..graph.models.ExtractedTicketData import ExtractedTicketData
 from ..graph.models.TicketCategoryDecision import TicketCategoryDecision
 

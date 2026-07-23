@@ -1,8 +1,9 @@
+import json
+import re
+from urllib.parse import urljoin
+
 import requests
 from bs4 import BeautifulSoup
-from urllib.parse import urljoin
-import re
-import json
 
 BASE_URL = "https://www.uni-due.de/zim/hilfecenter/faqs.php"
 

@@ -32,7 +32,7 @@ class TicketService:
     # -------------------------
     # Title Generation
     # -------------------------
-    def generate_title(self, issue_description: str, matrikelnummer: str) -> str:
+    def generate_title(self, issue_description: str, student_id: str) -> str:
         """
         Generates a concise ticket title using the configured LLM.
 
@@ -40,7 +40,7 @@ class TicketService:
         to simplify ticket identification inside the ticket system.
 
         :param issue_description: User's problem description.
-        :param matrikelnummer: Student's matriculation number.
+        :param student_id: Student's matriculation number.
         :return: Formatted ticket title.
         """
         prompt = (
@@ -53,8 +53,8 @@ class TicketService:
         response = llm.invoke([HumanMessage(content=prompt)])
         title = response.content.strip()
 
-        if matrikelnummer:
-            return f"[{matrikelnummer}] {title}"
+        if student_id:
+            return f"[{student_id}] {title}"
         return title
 
 
@@ -70,15 +70,15 @@ class TicketService:
             title (used on every extractor iteration).
         """
         issue = state.get("issue_description", "")
-        matrikelnummer = state.get("matrikelnummer", "")
+        student_id = state.get("student_id", "")
         if not issue:
            return
 
         if use_llm:
             summary = state.get("summary") or issue
-            title = self.generate_title(summary, matrikelnummer)
+            title = self.generate_title(summary, student_id)
         else:
-            title = f"[{matrikelnummer or 'unknown'}] {issue}"
+            title = f"[{student_id or 'unknown'}] {issue}"
 
         update_ticket_title(ticket_id, title)
 
@@ -107,7 +107,7 @@ class TicketService:
         """
         title = self.generate_title(
             state["issue_description"],
-            state["matrikelnummer"],
+            state["student_id"],
         )
 
         body = self._build_open_body(state)
@@ -228,7 +228,7 @@ class TicketService:
         user_messages = [m.content for m in state.get("messages", []) if isinstance(m, HumanMessage)]
         issue = state.get("issue_description") or (user_messages[0] if user_messages else "Anliegen per Chatbot geloest")
 
-        title = self.generate_title(issue, state.get("matrikelnummer", ""))
+        title = self.generate_title(issue, state.get("student_id", ""))
         body = (
             f"E-Mail: {state.get('user_email', '')}\n"
             f"Anliegen:\n{issue}\n\n"
@@ -266,7 +266,7 @@ class TicketService:
         :return: Formatted ticket body as plain text.
         """
         return (
-            f"Matrikelnummer: {state['matrikelnummer']}\n"
+            f"Matrikelnummer: {state['student_id']}\n"
             f"E-Mail: {state['user_email']}\n\n"
             f"Priorität: {'urgent' if state.get('priority') == 1 else 'normal'}\n"
             f"Kategorie: {resolve_zammad_category(state.get('category')) or state.get('category', 'Service Request')}\n"
@@ -295,7 +295,7 @@ class TicketService:
         :return: Formatted ticket body as plain text.
         """
         return (
-            f"Matrikelnummer: {state['matrikelnummer']}\n"
+            f"Matrikelnummer: {state['student_id']}\n"
             f"E-Mail: {state['user_email']}\n\n"
             f"Priorität: {'urgent' if state.get('priority') == 1 else 'normal'}\n"
             f"Kategorie: {resolve_zammad_category(state.get('category')) or state.get('category', 'Service Request')}\n"

@@ -1,6 +1,7 @@
-from typing import Annotated, TypedDict
-from langgraph.graph.message import add_messages
 import operator
+from typing import Annotated, TypedDict
+
+from langgraph.graph.message import add_messages
 
 
 class ChatbotState(TypedDict):
@@ -26,7 +27,7 @@ class ChatbotState(TypedDict):
 
     # ticket data
     user_email: str
-    matrikelnummer: str
+    student_id: str
     issue_description: str
     additional_info: Annotated[list[str], operator.add]
     additional_info_attempts: int

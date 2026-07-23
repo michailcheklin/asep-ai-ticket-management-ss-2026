@@ -1,4 +1,3 @@
-import re
 from typing import cast
 
 from langsmith import traceable
@@ -20,6 +19,19 @@ from backend.rag.rag_logging import rag_logger
 
 ticket_service = TicketService()
 problem_service = ProblemService()
+
+
+def _append_agent_article_to_ticket(ticket_id, body: str, context: str) -> None:
+    """Append an internal agent article; log and continue on failure."""
+    try:
+        ticket_service.append_message_to_ticket(
+            ticket_id=ticket_id,
+            body=body,
+            sender="Agent",
+            internal=True,
+        )
+    except Exception:
+        langgraph_logger.exception(f"[{context}] Could not append message to ticket {ticket_id}")
 
 
 def _build_metadata_context(state: dict) -> str:
@@ -135,8 +147,8 @@ def escalate_incidents(state: ChatbotState):
             additional_info=list(state.get("additional_info", [])),
         )
         langgraph_logger.info(f"Escalating incident for ticket {ticket_id} -> {result}")
-    except Exception as e:
-        langgraph_logger.error(f"Escalating incident failed for ticket {ticket_id}: {e}")
+    except Exception:
+        langgraph_logger.exception(f"Escalating incident failed for ticket {ticket_id}")
 
     return visit("escalate_incidents_node")
 
@@ -303,23 +315,14 @@ def finish_tutorial(state: ChatbotState):
         "messages": [response]
         }
 
-@traceable
-def extract_information(state: ChatbotState):
-    """
-    Analyzes the latest user message to extract structured ticket details.
-    :param state: The current state of the chatbot conversation.
-    :return: A dictionary containing the newly extracted fields to update the state.
-    """
-    log_node_entry("extract_information", state)
-    last_user_message = [msg for msg in state["messages"] if isinstance(msg, HumanMessage)][-1]
-    user_messages = [msg.content for msg in state["messages"] if isinstance(msg, HumanMessage)]
-    prior_issue = state.get("issue_description", "")
-    prior_infos = state.get("additional_info", [])
-    conversation_context = "\n".join(f"- {msg}" for msg in user_messages)
-
-    metadata_context = _build_metadata_context(state)
-
-    system_prompt = AGENT_PROMPT + metadata_context + "\n\n" + ("""Deine Aufgabe ist es, als hochpräziser KI-Daten-Extraktor aus den eingehenden Chat-Nachrichten von Studierenden und Mitarbeitern strukturierte Ticket-Daten zu extrahieren.
+def _build_extraction_system_prompt(
+    prior_issue: str,
+    prior_infos: list,
+    conversation_context: str,
+    metadata_context: str = "",
+) -> str:
+    """Build the structured-extraction system prompt for extract_information."""
+    return AGENT_PROMPT + metadata_context + "\n\n" + ("""Deine Aufgabe ist es, als hochpräziser KI-Daten-Extraktor aus den eingehenden Chat-Nachrichten von Studierenden und Mitarbeitern strukturierte Ticket-Daten zu extrahieren.
 
         BEREITS BEKANNTER KONTEXT:
         Problembeschreibung: {prior_issue}
@@ -328,7 +331,7 @@ def extract_information(state: ChatbotState):
         {conversation_context}
 
         EXTRAKTIONS-REGELN:
-        1. Basis-Daten (Textfelder): Suche nach der 'matrikelnummer' und dem Haupt-'problem' und speichere diese ausschließlich in ihren jeweiligen Textfeldern.
+        1. Basis-Daten (Textfelder): Suche nach der 'student_id' und dem Haupt-'problem' und speichere diese ausschließlich in ihren jeweiligen Textfeldern.
         2. Das 'problem' darf ausschließlich gesetzt werden, wenn der Nutzer tatsächlich ein konkretes IT-Problem oder eine Supportanfrage beschreibt.
         2a. Ist in BEREITS BEKANNTER KONTEXT unter "Problembeschreibung" bereits ein Wert vorhanden, setze 'problem' NICHT erneut. Beschreibt die aktuelle Nachricht eine Verfeinerung, Präzisierung oder Detailantwort zum bereits bekannten Problem (z.B. eine Antwort auf eine Rückfrage), ordne diesen Inhalt stattdessen dem Feld 'additional_info' zu.
         3. Zusatzinformationen (Listen-Feld): Extrahiere alle weiteren technischen oder lokalen Details, die für die Lösung des Problems nützlich sein könnten, und weise sie dem Feld 'additional_info' zu.
@@ -348,19 +351,14 @@ def extract_information(state: ChatbotState):
         conversation_context=conversation_context or "keine",
     ))
 
-    # Cast structured LLM output to ExtractedTicketData
-    extracted_data = cast(ExtractedTicketData, structured_llm.invoke([
-        SystemMessage(content=system_prompt),
-        last_user_message
-    ]))
 
-    langgraph_logger.debug(f"EXTRACTED DATA: {extracted_data}")
-
+def _state_update_from_extracted_data(state: ChatbotState, extracted_data: ExtractedTicketData) -> dict:
+    """Map ExtractedTicketData into a state update without overwriting existing fields."""
     state_update = {}
     state_update["graph_runs"] = state.get("graph_runs", 0) + 1
 
-    if extracted_data.matrikelnummer and not state.get("matrikelnummer"):
-        state_update["matrikelnummer"] = extracted_data.matrikelnummer
+    if extracted_data.student_id and not state.get("student_id"):
+        state_update["student_id"] = extracted_data.student_id
     if extracted_data.problem and not state.get("issue_description"):
         state_update["issue_description"] = extracted_data.problem
     if extracted_data.priority is not None and not state.get("priority"):
@@ -373,12 +371,25 @@ def extract_information(state: ChatbotState):
             state_update["additional_info"] = new_infos
     state_update["summary"] = extracted_data.summary or state.get("summary", "")
 
+    return state_update
+
+
+def _sync_ticket_after_extraction(
+    state: ChatbotState,
+    state_update: dict,
+    extracted_data: ExtractedTicketData,
+    last_user_message,
+) -> None:
+    """Append to an existing ticket or create one when a problem was first extracted.
+
+    Mutates state_update in place when a new ticket is created.
+    """
     ticket_id = state.get("ticket_id")
     # If ticket already exists: append
     if ticket_id is not None:
-        langgraph_logger.info(f"Appending to ticket {ticket_id} the user message: {last_user_message.content}")
+        langgraph_logger.info(f"Appending customer message to ticket {ticket_id}")
         ticket_service.append_message_to_ticket(ticket_id, last_user_message.content, sender="Customer")
-        # Update the ticket title with the latest extracted information 
+        # Update the ticket title with the latest extracted information
         merged_state = {**state, **state_update}
         if extracted_data.problem:
             merged_state["issue_description"] = extracted_data.problem
@@ -386,8 +397,8 @@ def extract_information(state: ChatbotState):
 
     # If this is the first message with a valid issue: create ticket
     elif extracted_data.problem is not None and extracted_data.problem != "":
-        matrikelnummer = extracted_data.matrikelnummer or state.get("matrikelnummer", "unknown")
-        title = f"[{matrikelnummer}] {extracted_data.problem}"
+        student_id = extracted_data.student_id or state.get("student_id", "unknown")
+        title = f"[{student_id}] {extracted_data.problem}"
         result = create_ticket_by_user_email(
             email=state["user_email"],
             title=title,
@@ -399,13 +410,42 @@ def extract_information(state: ChatbotState):
         )
         state_update["ticket_id"] = result
         add_tag_to_ticket(result, "AI-Created")
+        langgraph_logger.info(f"Created ticket with ID {result}")
 
-        langgraph_logger.info(f"Created ticket with ID {result} for the state update: {state_update}")
 
+@traceable
+def extract_information(state: ChatbotState):
+    """
+    Analyzes the latest user message to extract structured ticket details.
+    :param state: The current state of the chatbot conversation.
+    :return: A dictionary containing the newly extracted fields to update the state.
+    """
+    log_node_entry("extract_information", state)
+    last_user_message = [msg for msg in state["messages"] if isinstance(msg, HumanMessage)][-1]
+    user_messages = [msg.content for msg in state["messages"] if isinstance(msg, HumanMessage)]
+    prior_issue = state.get("issue_description", "")
+    prior_infos = state.get("additional_info", [])
+    conversation_context = "\n".join(f"- {msg}" for msg in user_messages)
+
+    metadata_context = _build_metadata_context(state)
+    system_prompt = _build_extraction_system_prompt(
+        prior_issue, prior_infos, conversation_context, metadata_context
+    )
+
+    # Cast structured LLM output to ExtractedTicketData
+    extracted_data = cast(ExtractedTicketData, structured_llm.invoke([
+        SystemMessage(content=system_prompt),
+        last_user_message
+    ]))
+
+    langgraph_logger.debug(f"EXTRACTED DATA: {extracted_data}")
+
+    state_update = _state_update_from_extracted_data(state, extracted_data)
+    _sync_ticket_after_extraction(state, state_update, extracted_data, last_user_message)
 
     return {
         **visit("extractor_node"),
-        ** state_update,
+        **state_update,
         }
 
 
@@ -592,15 +632,11 @@ def ask_for_additional_info(state: ChatbotState):
 
     llm_msg = f"Ich habe gerade ein Support-Ticket erstellt. Für eine optimale Bearbeitung bitte die folgenden Fragen beantworten:\n{follow_up_question}"
     ticket_id = state.get("ticket_id")
-    try:
-        ticket_service.append_message_to_ticket(
-            ticket_id=ticket_id,
-            body=f"[ZIM AI-AGENT]\n\n{llm_msg}",
-            sender="Agent",
-            internal=True
-        )
-    except Exception as e:
-        langgraph_logger.error(f"Failed to add internal article: {e}")
+    _append_agent_article_to_ticket(
+        ticket_id,
+        f"[ZIM AI-AGENT]\n\n{llm_msg}",
+        "ask_for_additional_info",
+    )
     return {
         **visit("ask_for_additional_info"),
         "needs_additional_info": True,
@@ -643,8 +679,8 @@ def give_solutions(state: ChatbotState):
         rag_logger.info(f"tickets={len(results.get('ticket_matches', []))} ")
         rag_logger.info(f"inferred={results.get('inferred')}")
 
-    except Exception as e:
-        rag_logger.error(f"RAG ERROR {e}")
+    except Exception:
+        rag_logger.exception(f"RAG retrieval failed for ticket {state.get('ticket_id')}")
         return {
              **visit("give_solutions_node"),
              "messages": [AIMessage(content="Fehler bei der Suche in der Wissensdatenbank.")],
@@ -725,17 +761,12 @@ def give_solutions(state: ChatbotState):
     final_message = AIMessage(content=message_text.content + "\n\n Konnte das Problem damit gelöst werden?")
 
     ticket_id = state.get("ticket_id")
-    try:
-        langgraph_logger.info(f"appending bot message to ticket {ticket_id}")
-        ticket_service.append_message_to_ticket(
-            ticket_id = ticket_id,
-            body=f"[ZIM AI-AGENT]\n\n{final_message.content}",
-            sender="Agent",
-            internal = True
-        )
-    except Exception as e:
-        langgraph_logger.error(f"give_solutions node: Could not append message to ticket.\nError: {e}")
-
+    langgraph_logger.info(f"appending bot message to ticket {ticket_id}")
+    _append_agent_article_to_ticket(
+        ticket_id,
+        f"[ZIM AI-AGENT]\n\n{final_message.content}",
+        "give_solutions",
+    )
 
     return {
         **visit("give_solutions_node"),
@@ -779,15 +810,17 @@ def finish_ai_created_ticket(state):
     ticket_id = result.get("ticket_id")
     try:
         bot_message_content = result["messages"][0].content
-        langgraph_logger.info(f"appending bot message {bot_message_content}")
-        ticket_service.append_message_to_ticket(
-            ticket_id = ticket_id,
-            body=f"[ZIM AI-AGENT]\n\n{bot_message_content}",
-            sender="Agent",
-            internal = True
+    except Exception:
+        langgraph_logger.exception(
+            f"Could not read bot message to append to ticket {ticket_id}"
         )
-    except Exception as e:
-        langgraph_logger.info(f"give_solution node: Could not append message to ticket.\nError: {e}")
+    else:
+        langgraph_logger.info(f"appending bot message to ticket {ticket_id}")
+        _append_agent_article_to_ticket(
+            ticket_id,
+            f"[ZIM AI-AGENT]\n\n{bot_message_content}",
+            "finish_ai_created_ticket",
+        )
 
     return {
         **visit("finish_ai_created_ticket_node"),

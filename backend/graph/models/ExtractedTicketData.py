@@ -1,12 +1,13 @@
+from typing import List, Optional
+
 from pydantic import BaseModel, Field
-from typing import Optional, List
 
 
 class ExtractedTicketData(BaseModel):
     """
     Schema defining the structured ticket data to be extracted from user messages
     """
-    matrikelnummer: Optional[str] = Field(None,
+    student_id: Optional[str] = Field(None,
                                           description="Die 7-stellige Matrikelnummer des Studenten, falls genannt.")
     problem: Optional[str] = Field(None,
                                    description="Das vom Nutzer explizit beschriebene IT-Problem oder die Supportanfrage. "

@@ -131,7 +131,7 @@ class DeepEvalTestTemplate:
             turns = []
             next_req = {
                 "user_message": "", "history": [],
-                "user_email": "a@example.com", "matrikelnummer": "1234567",
+                "user_email": "a@example.com", "student_id": "1234567",
                 "issue_description": "", "additional_info": [],
                 "priority": 0, "helpful": False, "solutions": [],
                 "bot_message": "", "additional_info_attempts": 0, "ask_issue_attempts": 0,

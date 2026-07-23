@@ -67,7 +67,7 @@ def __execute_langchain_workflow(state: ChatbotState):
         "bot_response": bot_response,
         "ticket_id": updated_state.get("ticket_id"),
         "user_email": updated_state.get("user_email", ""),
-        "matrikelnummer": updated_state.get("matrikelnummer", ""),
+        "student_id": updated_state.get("student_id", ""),
         "issue_description": updated_state.get("issue_description", ""),
         "additional_info": updated_state.get("additional_info", []),
         "needs_additional_info": updated_state.get("needs_additional_info", False),

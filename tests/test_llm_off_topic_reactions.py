@@ -1,5 +1,5 @@
-﻿from deepeval.metrics import ConversationCompletenessMetric, GEval, ConversationalGEval
-from deepeval.test_case import SingleTurnParams, MultiTurnParams
+﻿from deepeval.metrics import ConversationalGEval
+from deepeval.test_case import MultiTurnParams
 
 from tests.llm_benchmark_template import DeepEvalTestTemplate
 from tests.setup import SAIA_JUDGE_MODEL
