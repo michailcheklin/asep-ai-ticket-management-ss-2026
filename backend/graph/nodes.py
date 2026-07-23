@@ -12,7 +12,7 @@ from backend.rag.retrieve_info import retrieve_relevant_entries
 from ..services.TicketService import TicketService
 from ..llm.prompts import TICKET_CATEGORY_RULES
 from ..services.ProblemService import ProblemService
-from ..llm.llm import llm, structured_llm, AGENT_PROMPT, category_llm
+from ..llm.llm import llm, structured_llm, AGENT_PROMPT, category_llm, with_structured_fallback
 from .node_logging import log_node_entry, langgraph_logger, truncate_long_strings_in_dicts_for_logging, visit
 from ..api.zammad import create_ticket_by_user_email, add_tag_to_ticket
 from .models.IntentDecision import IntentDecision
@@ -143,7 +143,8 @@ def escalate_incidents(state: ChatbotState):
 
 
 INTENTS = ["tutorial", "problem", "unclear", "solved"]
-intent_llm = llm.with_structured_output(IntentDecision)
+intent_llm = with_structured_fallback(IntentDecision)
+aditionalInfo_llm = with_structured_fallback(AdditionalInfoDecision)
 
 
 @traceable
@@ -462,9 +463,6 @@ def ask_for_additional_info(state: ChatbotState):
     attempts = state.get("additional_info_attempts", 0)
 
     langgraph_logger.debug(f"ask_for_additional_info node: attempts: {attempts} ")
-
-    aditionalInfo_llm = llm.with_structured_output(AdditionalInfoDecision)
-
 
     query = f"{issue} + {infos}"
     rag_results = retrieve_relevant_entries(query, n_results=2)
