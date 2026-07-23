@@ -1,18 +1,18 @@
 # backend/services/ticket_service.py
 
-from langchain_core.messages import HumanMessage, AIMessage
+from langchain_core.messages import AIMessage, HumanMessage
+
 from ..api.zammad import (
-    create_ticket_by_user_email,
-    add_tag_to_ticket,
     add_article_to_ticket,
-    replace_tag_for_ticket,
+    add_tag_to_ticket,
+    create_ticket_by_user_email,
+    log_ticket_close_event,
     mark_ticket_as_closed,
+    replace_tag_for_ticket,
+    resolve_zammad_kategorie,
     update_ticket_kategorie,
     update_ticket_title,
-    resolve_zammad_kategorie,
-    log_ticket_close_event,
 )
-
 from ..llm.llm import llm
 
 

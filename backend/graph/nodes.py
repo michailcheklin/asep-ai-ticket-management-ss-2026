@@ -1,23 +1,23 @@
-import re
 import logging
+import re
 from typing import cast
 
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langsmith import traceable
 
-from .models.ExtractedTicketData import ExtractedTicketData
-from .models.AdditionalInfoDecision import AdditionalInfoDecision
-from .models.TicketCategoryDecision import TICKET_CATEGORIES, TicketCategoryDecision
-from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
-from .state import ChatbotState
 from backend.rag.retrieve_info import retrieve_relevant_entries
-from ..services.TicketService import TicketService
+
+from ..api.zammad import add_tag_to_ticket, create_ticket_by_user_email
+from ..llm.llm import AGENT_PROMPT, category_llm, llm, structured_llm
 from ..llm.prompts import TICKET_CATEGORY_RULES
 from ..services.ProblemService import ProblemService
-from ..llm.llm import llm, structured_llm, AGENT_PROMPT, category_llm
-from .node_logging import log_node_entry
-from ..api.zammad import create_ticket_by_user_email, add_tag_to_ticket
+from ..services.TicketService import TicketService
+from .models.AdditionalInfoDecision import AdditionalInfoDecision
+from .models.ExtractedTicketData import ExtractedTicketData
 from .models.IntentDecision import IntentDecision
-
+from .models.TicketCategoryDecision import TICKET_CATEGORIES, TicketCategoryDecision
+from .node_logging import log_node_entry
+from .state import ChatbotState
 
 logger = logging.getLogger(__name__)
 

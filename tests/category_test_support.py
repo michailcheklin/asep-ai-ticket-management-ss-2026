@@ -13,7 +13,11 @@ load_dotenv(_REPO_ROOT / ".env")
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
-from backend.graph.nodes import TICKET_CATEGORIES, TicketCategoryDecision, classify_ticket_category
+from backend.graph.nodes import (
+    TICKET_CATEGORIES,
+    TicketCategoryDecision,
+    classify_ticket_category,
+)
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 OLD_TICKETS_PATH = _REPO_ROOT / "backend" / "rag" / "old_tickets.json"

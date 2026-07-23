@@ -1,9 +1,11 @@
 import concurrent.futures
+
 from .prompt_security_checks import (
-    evaluate_prompt_injection,
     evaluate_legality,
-    evaluate_off_topic
+    evaluate_off_topic,
+    evaluate_prompt_injection,
 )
+
 
 def __check_prompt (prompt:str) -> list[dict]:
     """

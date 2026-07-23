@@ -2,9 +2,7 @@ import concurrent.futures
 
 import pytest
 
-from backend.prompt_security.helper import (
-    __check_prompt
-)
+from backend.prompt_security.helper import __check_prompt
 
 expected_ok_prompts = [
     # OK

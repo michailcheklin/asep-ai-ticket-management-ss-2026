@@ -1,24 +1,26 @@
-import json
 import asyncio
+import json
 from unittest.mock import patch
 
 import openai
-from langchain_core.outputs import ChatResult
-from langchain_openai import ChatOpenAI
-from pydantic import SecretStr
 from deepeval.evaluate import evaluate
 from deepeval.metrics import ConversationCompletenessMetric
 from deepeval.test_case import ConversationalTestCase, Turn
+from dotenv import load_dotenv
+from langchain_core.outputs import ChatResult
+from langchain_openai import ChatOpenAI
+from langsmith import Client as LangSmithClient
+from pydantic import SecretStr
+
 from backend.api.ZIM import chat_endpoint
 from backend.graph.models.ChatRequest import ChatRequest
 from backend.graph.models.ExtractedTicketData import ExtractedTicketData
-from tests.setup import SAIA_MODEL, SAIA_API_KEY, SAIA_BASE_URL
-from langsmith import Client as LangSmithClient
-from dotenv import load_dotenv
+from tests.setup import SAIA_API_KEY, SAIA_BASE_URL, SAIA_MODEL
 
 load_dotenv()
 
 import re
+
 
 class ThinkStripChatOpenAI(ChatOpenAI):
     """Wrapper für DeepSeek: entfernt <think>...</think> Tags vor dem JSON-Parsing."""

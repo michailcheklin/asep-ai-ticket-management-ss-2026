@@ -1,6 +1,7 @@
-from dotenv import load_dotenv
 import os
+
 import requests
+from dotenv import load_dotenv
 from requests.exceptions import ConnectionError, MissingSchema
 
 from ..graph.models.TicketCategoryDecision import TICKET_CATEGORIES

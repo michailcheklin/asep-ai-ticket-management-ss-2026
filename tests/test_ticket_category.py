@@ -19,20 +19,20 @@ from unittest.mock import patch
 
 from langchain_core.messages import HumanMessage
 
+from backend.graph.models.ExtractedTicketData import ExtractedTicketData
+from backend.graph.models.TicketCategoryDecision import TICKET_CATEGORIES
+from backend.graph.nodes import (
+    _resolve_ticket_category,
+    classify_ticket,
+    classify_ticket_category,
+    extract_information,
+    finish_ticket,
+)
 from tests.category_test_support import (
     category_decision,
     load_holdout_cases,
     load_regression_cases,
     validate_cases,
-)
-from backend.graph.models.TicketCategoryDecision import TICKET_CATEGORIES
-from backend.graph.models.ExtractedTicketData import ExtractedTicketData
-from backend.graph.nodes import (
-    classify_ticket,
-    classify_ticket_category,
-    extract_information,
-    finish_ticket,
-    _resolve_ticket_category,
 )
 
 

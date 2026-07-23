@@ -1,8 +1,9 @@
+import json
+import re
+import time
+
 import requests
 from bs4 import BeautifulSoup
-import json
-import time
-import re
 
 """
 This script takes all links from the links.json file and creates a json file with all the problems and solutions from scraped pages.

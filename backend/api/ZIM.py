@@ -1,18 +1,20 @@
 """Backend API for the AI ticket management system with optional Zammad integration."""
 import os
 import re
+
 import requests
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from langchain_core.messages import AIMessage, HumanMessage
+
+from ..api.zammad import get_ticket_tags, log_ticket_close_event
 from ..graph.models.ChatRequest import ChatRequest
-from langchain_core.messages import HumanMessage, AIMessage
-from ..graph.state import ChatbotState
-from ..graph.orchestrator import __execute_langchain_workflow, graph
 from ..graph.nodes import _resolve_ticket_category
-from ..services.TicketService import TicketService
+from ..graph.orchestrator import __execute_langchain_workflow, graph
+from ..graph.state import ChatbotState
 from ..rag import recent_incidents
-from ..api.zammad import log_ticket_close_event, get_ticket_tags
 from ..rag.rag_store_tickets import store_ticket_state_to_rag
+from ..services.TicketService import TicketService
 
 ticket_service = TicketService()
 

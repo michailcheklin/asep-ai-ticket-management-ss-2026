@@ -1,20 +1,22 @@
+from datetime import datetime
+
 import torch
 
-from .security_logger import log_blocked_prompt
-from datetime import datetime
 from backend.prompt_security.prompt_check_model_setup import (
-    ZIM_KEYWORDS,
     DANGEROUS_PATTERNS,
-    ON_TOPIC_TOPICS,
-    ON_TOPIC_DETECTION_THRESHOLD,
-    ILLEGAL_TOPICS,
     ILLEGAL_TOPIC_DETECTION_THRESHOLD,
-    translator,
-    translator_tokenizer,
+    ILLEGAL_TOPICS,
+    ON_TOPIC_DETECTION_THRESHOLD,
+    ON_TOPIC_TOPICS,
+    ZIM_KEYWORDS,
+    device,
     prompt_injection_detector,
     topic_classifier,
-    device
+    translator,
+    translator_tokenizer,
 )
+
+from .security_logger import log_blocked_prompt
 
 
 def evaluate_prompt_injection(text: str) -> dict:

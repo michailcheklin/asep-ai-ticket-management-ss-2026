@@ -1,9 +1,10 @@
-import chromadb
 import json
-import numpy as np
-from collections import defaultdict
 import os
-from sentence_transformers import SentenceTransformer, CrossEncoder
+from collections import defaultdict
+
+import chromadb
+import numpy as np
+from sentence_transformers import CrossEncoder, SentenceTransformer
 
 # --- These run ONCE when the module is first imported ---
 print("[RAG] Loading FAQ embedder...")

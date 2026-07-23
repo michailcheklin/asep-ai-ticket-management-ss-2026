@@ -1,6 +1,5 @@
 from datetime import datetime
 
-
 LOG_FILE = "./backend/blocked_prompts.log"
 
 

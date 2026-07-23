@@ -1,5 +1,6 @@
 ﻿from datetime import datetime
 
+
 def log_node_entry(node_name:str, state):
     """
     Whenever a node is entered, a log will be written with the name of the node that was entered,

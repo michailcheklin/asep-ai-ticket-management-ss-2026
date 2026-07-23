@@ -16,8 +16,8 @@ or via pytest:
 """
 import os
 import sys
-import time
 import tempfile
+import time
 from pathlib import Path
 
 # Make the project root importable (backend as a package).

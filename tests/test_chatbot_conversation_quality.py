@@ -1,13 +1,17 @@
-﻿from deepeval.evaluate import evaluate
-from deepeval.metrics import ConversationCompletenessMetric, TurnRelevancyMetric, KnowledgeRetentionMetric
+﻿from deepeval.dataset import ConversationalGolden, EvaluationDataset
+from deepeval.evaluate import evaluate
+from deepeval.metrics import (
+    ConversationCompletenessMetric,
+    KnowledgeRetentionMetric,
+    TurnRelevancyMetric,
+)
 from deepeval.simulator import ConversationSimulator
 from deepeval.simulator.controller import end, proceed
+from deepeval.test_case import Turn
 
 from backend.api.ZIM import chat_endpoint
 from backend.graph.models.ChatRequest import ChatRequest
 from tests.setup import SAIA_MODEL
-from deepeval.dataset import EvaluationDataset, ConversationalGolden
-from deepeval.test_case import Turn
 
 # Special "response" object that denotes that the chatbot was not called yet in the test
 EMPTY_LAST_RESPONSE_FROM_CHATBOT = {

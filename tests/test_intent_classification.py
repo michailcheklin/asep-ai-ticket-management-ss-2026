@@ -14,8 +14,8 @@ from unittest.mock import patch
 
 from langchain_core.messages import HumanMessage
 
-from backend.graph.nodes import INTENTS, classify_intent
 from backend.graph.models.IntentDecision import IntentDecision
+from backend.graph.nodes import INTENTS, classify_intent
 
 
 def intent_decision(intent: str, reason: str = "") -> IntentDecision:

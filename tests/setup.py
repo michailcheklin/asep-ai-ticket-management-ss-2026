@@ -1,7 +1,7 @@
 import os
+
 from deepeval.models import GPTModel
 from dotenv import load_dotenv
-
 
 load_dotenv()
 SAIA_API_KEY = os.environ.get("SAIA_API_KEY", "")

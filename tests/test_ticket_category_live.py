@@ -7,13 +7,13 @@ Run from the repo root:
 import os
 import unittest
 
+from backend.graph.nodes import classify_ticket_category
 from tests.category_test_support import (
     load_holdout_cases,
     load_regression_cases,
     regression_limit,
     run_live_category_suite,
 )
-from backend.graph.nodes import classify_ticket_category
 
 
 @unittest.skipUnless(

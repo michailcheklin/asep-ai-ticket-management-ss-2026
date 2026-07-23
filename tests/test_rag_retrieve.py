@@ -1,8 +1,8 @@
 import pytest
 
 from backend.rag.retrieve_info import (
-    retrieve_relevant_entries,
     FAQ_TIER_1_THRESHOLD,
+    retrieve_relevant_entries,
 )
 
 QUERIES = {

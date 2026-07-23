@@ -23,6 +23,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT))
 
 from langchain_core.messages import SystemMessage
+
 from backend.llm.llm import llm
 
 FAQ_SOURCE_PATH = Path(__file__).resolve().parents[1] / "rag" / "faq_extracted_with_crawled_content.json"

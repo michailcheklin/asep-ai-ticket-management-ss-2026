@@ -1,6 +1,5 @@
 
-from flask import Flask, request, redirect, make_response, render_template_string
-
+from flask import Flask, make_response, redirect, render_template_string, request
 
 # fake_idp.py — fake Shibboleth login page for local development
 # Setting port to something different than 5000 to avoid port conflicts on MacOS computers

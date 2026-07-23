@@ -6,11 +6,12 @@ URLs are separated into:
 - failed: URLs that resulted in an error
 """
 import json
+import os
 import time
+from urllib.parse import urlparse
+
 import requests
 from bs4 import BeautifulSoup
-from urllib.parse import urlparse
-import os
 
 # Dateitypen, die NICHT gecrawlt werden sollen
 SKIP_EXTENSIONS = {

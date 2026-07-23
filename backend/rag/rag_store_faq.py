@@ -1,5 +1,6 @@
-import chromadb
 import json
+
+import chromadb
 from sentence_transformers import SentenceTransformer
 
 """
