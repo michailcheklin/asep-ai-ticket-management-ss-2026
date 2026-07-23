@@ -54,3 +54,4 @@ class ChatbotState(TypedDict):
     faculty: str
     device: str
     os_name: str
+    language: str

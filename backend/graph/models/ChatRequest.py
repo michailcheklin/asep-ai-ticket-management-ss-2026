@@ -31,3 +31,4 @@ class ChatRequest(BaseModel):
     faculty: str = ""
     device: str = ""
     os_name: str = ""
+    language: str = ""

@@ -46,6 +46,9 @@ def _build_metadata_context(state: dict) -> str:
         parts.append(f"Geraet: {state['device']}")
     if state.get("os_name"):
         parts.append(f"Betriebssystem: {state['os_name']}")
+    if state.get("language"):
+        response_language = "Deutsch" if state["language"] == "de" else "Englisch"
+        parts.append(f"Antwortsprache: {response_language}")
     if not parts:
         return ""
     context = "\n\nBENUTZER-KONTEXT:\n" + "\n".join(parts)
@@ -344,6 +347,7 @@ def _build_extraction_system_prompt(
         Setze priority auf 0 bei normalen oder weniger dringenden Problemen.
         5. Zusammenfassung (summary): Dieses Feld MUSS bei jeder Antwort neu gesetzt werden - auch wenn sich nur wenig geändert hat. Schreibe eine aktualisierte Zusammenfassung des gesamten bisherigen Gesprächs aus der Perspektive eines Support-Agenten, der einem Kollegen den Fall erklärt. Integriere alle bisher bekannten Informationen, einschließlich Antworten auf Rückfragen. Beispiel: "Der Student fragt nach einer kostenlosen Windows 10 Lizenz für sein universitätseigenes Gerät. Er hat bereits ein qualifizierendes Betriebssystem und benötigt eine Vollversion." Maximal 3 Sätze, keine Aufzählung. Schreib die Zusamenfassung IMMER auf Deutsch.
         6. Integriere in der Zusammenfassung (summary) die Metadata des Users.
+        7. Sprache (language): Erkenne die Sprache der aktuellsten Nutzernachricht (der beigefuegten HumanMessage, NICHT dieser Instruktionen) und setze 'language' auf 'de' oder 'en'. Ist die Sprache nicht eindeutig erkennbar (z.B. nur Zahlen, Matrikelnummer, Emojis, einzelnes Wort), setze 'language' auf null.
 
         """.format(
         prior_issue=prior_issue or "noch nicht bekannt",
@@ -357,6 +361,8 @@ def _state_update_from_extracted_data(state: ChatbotState, extracted_data: Extra
     state_update = {}
     state_update["graph_runs"] = state.get("graph_runs", 0) + 1
 
+    if extracted_data.language:
+        state_update["language"] = extracted_data.language
     if extracted_data.student_id and not state.get("student_id"):
         state_update["student_id"] = extracted_data.student_id
     if extracted_data.problem and not state.get("issue_description"):

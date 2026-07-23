@@ -85,6 +85,7 @@ def __execute_langchain_workflow(state: ChatbotState):
         "faculty": updated_state.get("faculty", ""),
         "device": updated_state.get("device", ""),
         "os_name": updated_state.get("os_name", ""),
+        "language": updated_state.get("language", ""),
         "graph_runs": updated_state.get("graph_runs", 0),
     }
 

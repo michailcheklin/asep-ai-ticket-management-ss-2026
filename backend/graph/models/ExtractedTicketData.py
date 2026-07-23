@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -7,6 +7,12 @@ class ExtractedTicketData(BaseModel):
     """
     Schema defining the structured ticket data to be extracted from user messages
     """
+    language: Optional[Literal["de", "en"]] = Field(
+        None,
+        description="Die Sprache der aktuellsten Nutzernachricht: 'de' oder 'en'. "
+                    "Nur setzen, wenn die Sprache eindeutig erkennbar ist (mehrere Woerter Fliesstext). "
+                    "Bei einzelnen Zahlen, Matrikelnummern, Emojis oder unklarem Text: null lassen."
+    )
     student_id: Optional[str] = Field(None,
                                           description="Die 7-stellige Matrikelnummer des Studenten, falls genannt.")
     problem: Optional[str] = Field(None,
