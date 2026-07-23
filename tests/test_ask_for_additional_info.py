@@ -40,7 +40,7 @@ def base_state(**overrides) -> dict:
 class AskForAdditionalInfoTests(unittest.TestCase):
     """Unit tests for ask_for_additional_info's RAG-gated follow-up logic."""
 
-    @patch("backend.graph.nodes.llm")
+    @patch("backend.graph.nodes.aditionalInfo_llm")
     @patch("backend.graph.nodes.retrieve_relevant_entries")
     def test_skips_follow_up_when_rag_has_no_matches(self, mock_retrieve, mock_llm):
         """
@@ -48,7 +48,7 @@ class AskForAdditionalInfoTests(unittest.TestCase):
         switches from true to false if no results could be found in both
         the FAQ and the old ticket RAG database
         :param mock_retrieve: Mock function for the RAG retrieval
-        :param mock_llm: Mock function for the LLM call
+        :param mock_llm: Mock function for the LLM call (aditionalInfo_llm)
         """
         # Arrange
         mock_retrieve.return_value = {"faq_matches": [], "ticket_matches": []}
@@ -58,10 +58,10 @@ class AskForAdditionalInfoTests(unittest.TestCase):
 
         # Assert
         self.assertEqual(result.get("needs_additional_info"), False)
-        mock_llm.with_structured_output.return_value.invoke.assert_not_called()
+        mock_llm.invoke.assert_not_called()
 
     @patch("backend.graph.nodes.ticket_service.append_message_to_ticket")
-    @patch("backend.graph.nodes.llm")
+    @patch("backend.graph.nodes.aditionalInfo_llm")
     @patch("backend.graph.nodes.retrieve_relevant_entries")
     def test_marks_complete_when_two_additional_infos_already_collected(
         self, mock_retrieve, mock_llm, mock_append
@@ -71,7 +71,7 @@ class AskForAdditionalInfoTests(unittest.TestCase):
         switches from true to false if 2 additional info could be derived from the
         chat history with the user
         :param mock_retrieve: Mock function for the RAG retrieval
-        :param mock_llm: Mock function for the LLM call
+        :param mock_llm: Mock function for the LLM call (aditionalInfo_llm)
         :param mock_append: Mock function for the appending to the simulated ticket
         """
         # Arrange
@@ -79,7 +79,7 @@ class AskForAdditionalInfoTests(unittest.TestCase):
             "faq_matches": [{"text": "FAQ Eintrag"}],
             "ticket_matches": [],
         }
-        mock_llm.with_structured_output.return_value.invoke.return_value = additional_info_decision(
+        mock_llm.invoke.return_value = additional_info_decision(
             True, "Bist du im Uni-Netzwerk?"
         )
         state = base_state(additional_info=["Gebäude SGW", "eduroam"])
@@ -92,7 +92,7 @@ class AskForAdditionalInfoTests(unittest.TestCase):
         mock_append.assert_not_called()
 
     @patch("backend.graph.nodes.ticket_service.append_message_to_ticket")
-    @patch("backend.graph.nodes.llm")
+    @patch("backend.graph.nodes.aditionalInfo_llm")
     @patch("backend.graph.nodes.retrieve_relevant_entries")
     def test_marks_complete_after_max_attempts(self, mock_retrieve, mock_llm, mock_append):
         """
@@ -100,7 +100,7 @@ class AskForAdditionalInfoTests(unittest.TestCase):
         switches from true to false if the maximum amount of attempts to get additional information
         from the user has been reached
         :param mock_retrieve: Mock function for the RAG retrieval
-        :param mock_llm: Mock function for the LLM call
+        :param mock_llm: Mock function for the LLM call (aditionalInfo_llm)
         :param mock_append: Mock function for the appending to the simulated ticket
         """
         # Arrange
@@ -108,7 +108,7 @@ class AskForAdditionalInfoTests(unittest.TestCase):
             "faq_matches": [{"text": "FAQ Eintrag"}],
             "ticket_matches": [],
         }
-        mock_llm.with_structured_output.return_value.invoke.return_value = additional_info_decision(
+        mock_llm.invoke.return_value = additional_info_decision(
             True, "Bist du im Uni-Netzwerk?"
         )
         state = base_state(additional_info_attempts=3)
@@ -121,7 +121,7 @@ class AskForAdditionalInfoTests(unittest.TestCase):
         mock_append.assert_not_called()
 
     @patch("backend.graph.nodes.ticket_service.append_message_to_ticket")
-    @patch("backend.graph.nodes.llm")
+    @patch("backend.graph.nodes.aditionalInfo_llm")
     @patch("backend.graph.nodes.retrieve_relevant_entries")
     def test_marks_complete_when_llm_decides_no_more_info_needed(
         self, mock_retrieve, mock_llm, mock_append
@@ -130,7 +130,7 @@ class AskForAdditionalInfoTests(unittest.TestCase):
         Tests the behavior of the LLM to make sure that needs_additional_info
         switches from true to false if no more info is needed
         :param mock_retrieve: Mock function for the RAG retrieval
-        :param mock_llm: Mock function for the LLM call
+        :param mock_llm: Mock function for the LLM call (aditionalInfo_llm)
         :param mock_append: Mock function for the appending to the simulated ticket
         """
         # Arrange
@@ -138,7 +138,7 @@ class AskForAdditionalInfoTests(unittest.TestCase):
             "faq_matches": [{"text": "FAQ Eintrag"}],
             "ticket_matches": [],
         }
-        mock_llm.with_structured_output.return_value.invoke.return_value = additional_info_decision(False)
+        mock_llm.invoke.return_value = additional_info_decision(False)
 
         # Act
         result = ask_for_additional_info(base_state())
@@ -148,7 +148,7 @@ class AskForAdditionalInfoTests(unittest.TestCase):
         mock_append.assert_not_called()
 
     @patch("backend.graph.nodes.ticket_service.append_message_to_ticket")
-    @patch("backend.graph.nodes.llm")
+    @patch("backend.graph.nodes.aditionalInfo_llm")
     @patch("backend.graph.nodes.retrieve_relevant_entries")
     def test_asks_follow_up_question_and_appends_to_ticket(
         self, mock_retrieve, mock_llm, mock_append
@@ -158,7 +158,7 @@ class AskForAdditionalInfoTests(unittest.TestCase):
             "faq_matches": [{"text": "FAQ Eintrag"}],
             "ticket_matches": [],
         }
-        mock_llm.with_structured_output.return_value.invoke.return_value = additional_info_decision(
+        mock_llm.invoke.return_value = additional_info_decision(
             True, "Bist du im Uni-Netzwerk?"
         )
         state = base_state(additional_info=["Gebäude SGW"], additional_info_attempts=1)
