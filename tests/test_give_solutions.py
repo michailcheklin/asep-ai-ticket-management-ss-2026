@@ -49,7 +49,7 @@ class GiveSolutionsTests(unittest.TestCase):
         mock_retrieve.side_effect = Exception("Chroma unavailable")
 
         # Act
-        with self.assertLogs("backend.graph.nodes", level="ERROR") as log_cm:
+        with self.assertLogs("RAG", level="ERROR") as log_cm:
             result = give_solutions(base_state())
 
         # Assert

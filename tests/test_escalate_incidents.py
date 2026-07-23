@@ -13,6 +13,11 @@ from unittest.mock import patch
 from backend.graph.nodes import escalate_incidents
 
 
+def _visited(result: dict) -> None:
+    """After main's visit() helper, escalate_incidents always records the node name."""
+    assert result == {"visited_nodes": ["escalate_incidents_node"]}
+
+
 class EscalateIncidentsTests(unittest.TestCase):
     """Control-flow and fallback tests for escalate_incidents."""
 
@@ -23,27 +28,21 @@ class EscalateIncidentsTests(unittest.TestCase):
             "issue_description": "WLAN",
             "additional_info": [],
         })
-        self.assertEqual(result, {})
+        _visited(result)
 
     def test_returns_empty_when_ticket_id_missing_or_invalid(self):
-        self.assertEqual(
-            escalate_incidents({
-                "category": "Incident",
-                "ticket_id": None,
-                "issue_description": "WLAN",
-                "additional_info": [],
-            }),
-            {},
-        )
-        self.assertEqual(
-            escalate_incidents({
-                "category": "Incident",
-                "ticket_id": -1,
-                "issue_description": "WLAN",
-                "additional_info": [],
-            }),
-            {},
-        )
+        _visited(escalate_incidents({
+            "category": "Incident",
+            "ticket_id": None,
+            "issue_description": "WLAN",
+            "additional_info": [],
+        }))
+        _visited(escalate_incidents({
+            "category": "Incident",
+            "ticket_id": -1,
+            "issue_description": "WLAN",
+            "additional_info": [],
+        }))
 
     @patch("backend.graph.nodes.problem_service.register_and_check_incident")
     def test_returns_empty_after_successful_escalation_check(self, mock_register):
@@ -60,7 +59,7 @@ class EscalateIncidentsTests(unittest.TestCase):
             "additional_info": ["Gebäude LF"],
         })
 
-        self.assertEqual(result, {})
+        _visited(result)
         mock_register.assert_called_once_with(
             ticket_id=42,
             issue_description="WLAN down",
@@ -71,7 +70,7 @@ class EscalateIncidentsTests(unittest.TestCase):
     def test_swallows_exception_and_returns_empty(self, mock_register):
         mock_register.side_effect = RuntimeError("RAG unavailable")
 
-        with self.assertLogs("backend.graph.nodes", level="ERROR") as log_cm:
+        with self.assertLogs("Langgraph", level="ERROR") as log_cm:
             result = escalate_incidents({
                 "category": "Incident",
                 "ticket_id": 42,
@@ -79,7 +78,7 @@ class EscalateIncidentsTests(unittest.TestCase):
                 "additional_info": [],
             })
 
-        self.assertEqual(result, {})
+        _visited(result)
         mock_register.assert_called_once()
         self.assertTrue(any("failed for ticket 42" in line for line in log_cm.output))
         self.assertTrue(any("RAG unavailable" in line for line in log_cm.output))
@@ -92,7 +91,7 @@ class EscalateIncidentsTests(unittest.TestCase):
             "created": True,
         }
 
-        with self.assertLogs("backend.graph.nodes", level="INFO") as log_cm:
+        with self.assertLogs("Langgraph", level="INFO") as log_cm:
             escalate_incidents({
                 "category": "Incident",
                 "ticket_id": 42,
@@ -102,7 +101,7 @@ class EscalateIncidentsTests(unittest.TestCase):
 
         joined = "\n".join(log_cm.output)
         self.assertIn("ticket 42", joined)
-        self.assertIn("escalated=True", joined)
+        self.assertIn("'escalated': True", joined)
         self.assertNotIn("sensitive user problem text", joined)
 
 
