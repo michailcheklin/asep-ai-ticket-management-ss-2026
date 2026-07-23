@@ -8,6 +8,7 @@ import streamlit as st
 from streamlit.components.v1 import html
 
 from frontend.clients.base import ChatClient
+from frontend.ui.strings import t
 from frontend.ui.qa_navigation import (
     apply_question_answer,
     can_go_back,
@@ -56,7 +57,15 @@ INITIAL_STATES = {
     "_pending_first_message": None, # first user message held until metadata is confirmed
 }
 
-WAITING_MESSAGE = '*:color[Bitte warten. Antwort wird generiert...]{foreground="#888888"}*'
+def _waiting_message(lang: str) -> str:
+    text = t("Bitte warten. Antwort wird generiert...", lang)
+    return f'*:color[{text}]{{foreground="#888888"}}*'
+
+
+def _lang() -> str:
+    """Current UI/response language, detected from the user's Accept-Language header."""
+    metadata = st.session_state.get("user_metadata") or {}
+    return metadata.get("language", "de")
 
 
 # ── User-Agent parsing ──────────────────────────────────────────────────────
@@ -86,6 +95,15 @@ def _parse_os_from_ua(ua: str) -> str:
     return "Unbekannt"
 
 
+def _parse_language_from_header(accept_language: str) -> str:
+    """Extract the primary language tag from an Accept-Language header.
+
+    Only "de"/"en" are supported UI languages; anything else falls back to "de".
+    """
+    primary = accept_language.split(",")[0].strip().split("-")[0].lower()
+    return primary if primary in ("de", "en") else "de"
+
+
 def _fetch_and_store_metadata() -> None:
     """Fetch user metadata from the IdP API and enrich with browser info."""
     # Only fetch once per session; Shibboleth login already ran before the chat page loaded.
@@ -109,6 +127,7 @@ def _fetch_and_store_metadata() -> None:
     ua = st.context.headers.get("User-Agent", "")
     metadata["device"] = _parse_device_from_ua(ua)
     metadata["os_name"] = _parse_os_from_ua(ua)
+    metadata["language"] = _parse_language_from_header(st.context.headers.get("Accept-Language", ""))
 
     st.session_state["user_metadata"] = metadata
 
@@ -119,11 +138,15 @@ def _fetch_and_store_metadata() -> None:
         st.session_state["student_id_input"] = metadata["student_id"]
 
     # Personalize the greeting with the user's first name, but only if the chat hasn't started yet.
+    lang = metadata["language"]
     name = metadata.get("display_name", "").split()[0] if metadata.get("display_name") else ""
-    if name and "messages" not in st.session_state:
-        st.session_state["messages"] = [
-            {"role": "assistant", "content": f"Hallo {name}! Ich bin ZIM Helper. Worum geht es? Bitte das Anliegen kurz beschreiben."}
-        ]
+    if "messages" not in st.session_state:
+        greeting = (
+            t("Hallo {name}! Ich bin ZIM Helper. Worum geht es? Bitte das Anliegen kurz beschreiben.", lang).format(name=name)
+            if name
+            else t("Hallo! Ich bin ZIM Helper. Worum geht es? Bitte das Anliegen kurz beschreiben.", lang)
+        )
+        st.session_state["messages"] = [{"role": "assistant", "content": greeting}]
 
 
 # ── Session state helpers ────────────────────────────────────────────────────
@@ -248,6 +271,7 @@ def _metadata_fields() -> dict:
         "faculty": metadata.get("faculty", ""),
         "device": metadata.get("device", ""),
         "os_name": metadata.get("os_name", ""),
+        "language": metadata.get("language", ""),
     }
 
 
@@ -305,24 +329,31 @@ def get_issue_summary() -> str:
         parts.append(st.session_state.issue_description)
     if st.session_state.additional_info:
         parts.append(", ".join(st.session_state.additional_info))
-    return "\n".join(parts) or "(keine Zusammenfassung vorhanden)"
+    return "\n".join(parts) or t("(keine Zusammenfassung vorhanden)", _lang())
 
 
 # ── Core message processing ───────────────────────────────────────────────────
 
-TICKET_INTRO = (
+TICKET_INTRO_VARIANTS = (
     "Ich habe gerade ein Support-Ticket erstellt. "
-    "Für eine optimale Bearbeitung bitte die folgenden Fragen beantworten:"
+    "Für eine optimale Bearbeitung bitte die folgenden Fragen beantworten:",
+    "I've just created a support ticket. To process it optimally, please answer the following questions:",
 )
 
 def strip_redundant_ticket_intro(content: str) -> str:
     """Remove any duplicated filler text between the fixed ticket-intro
     sentence and the first bullet-point question that follows it.
     """
-    idx = content.find(TICKET_INTRO)
+    idx = -1
+    intro = ""
+    for variant in TICKET_INTRO_VARIANTS:
+        idx = content.find(variant)
+        if idx != -1:
+            intro = variant
+            break
     if idx == -1:
         return content
-    start = idx + len(TICKET_INTRO)
+    start = idx + len(intro)
     star_idx = content.find("*", start)
     if star_idx == -1:
         return content
@@ -382,13 +413,13 @@ def process_user_message(client: ChatClient, user_input: str) -> None:
 
     with st.chat_message("assistant"):
         placeholder = st.empty()
-        placeholder.write(WAITING_MESSAGE)
+        placeholder.write(_waiting_message(_lang()))
 
         req = build_chat_payload(user_input)
         res_json = client.send_message(req)
 
         if "security" in res_json:
-            placeholder.write("Die Anfrage konnte aus Sicherheitsgründen nicht verarbeitet werden.")
+            placeholder.write(t("Die Anfrage konnte aus Sicherheitsgründen nicht verarbeitet werden.", _lang()))
             return
 
         answer = res_json["bot_response"]
@@ -413,9 +444,13 @@ def process_solution_feedback(
         st.session_state.show_ticket_addendum_form = False
         st.session_state["scroll_target"] = None
         metadata = st.session_state.get("user_metadata") or {}
+        lang = metadata.get("language", "de")
         first_name = metadata.get("display_name", "").split()[0] if metadata.get("display_name") else ""
-        greeting = f"Danke, {first_name}!" if first_name else "Danke!"
-        return f"{greeting} Das Feedback wurde notiert und ein Support-Ticket erstellt. Ein Agent kümmert sich bald um das Anliegen."
+        greeting = t("Danke, {name}!", lang).format(name=first_name) if first_name else t("Danke!", lang)
+        return t(
+            "{greeting} Das Feedback wurde notiert und ein Support-Ticket erstellt. Ein Agent kümmert sich bald um das Anliegen.",
+            lang,
+        ).format(greeting=greeting)
 
     # For "Yes" response, parse the JSON response
     res_json = client.send_feedback(payload)
@@ -435,18 +470,19 @@ def start_ticket_confirmation(message_index: int) -> None:
 
 def render_message_extras(message: dict, message_index: int, client: ChatClient) -> None:
     ui_flags = message.get("ui_flags", [])
+    lang = _lang()
 
     if "show_faq" in ui_flags:
-        st.info("FAQ-Platzhalter: WLAN-Verbindung, Moodle-Login, Drucker im Poolraum, …")
+        st.info(t("FAQ-Platzhalter: WLAN-Verbindung, Moodle-Login, Drucker im Poolraum, …", lang))
 
     if "show_ticket_button" in ui_flags:
-        st.button("Ticket erstellen", disabled=True, key=f"ticket_btn_{message_index}")
+        st.button(t("Ticket erstellen", lang), disabled=True, key=f"ticket_btn_{message_index}")
 
     if message.get("solutions") and st.session_state.pending_ticket_confirmation is None:
         col1, col2 = st.columns(2)
 
         with col1:
-            if st.button("Ja", key=f"solution_yes_{message_index}"):
+            if st.button(t("Ja", lang), key=f"solution_yes_{message_index}"):
                 st.session_state.messages.append({
                     "role": "assistant",
                     "content": process_solution_feedback(client, message_index, True),
@@ -455,7 +491,7 @@ def render_message_extras(message: dict, message_index: int, client: ChatClient)
                 st.rerun()
 
         with col2:
-            if st.button("Nein", key=f"solution_no_{message_index}"):
+            if st.button(t("Nein", lang), key=f"solution_no_{message_index}"):
                 start_ticket_confirmation(message_index)
                 st.rerun()
 
@@ -466,8 +502,9 @@ def render_ticket_confirmation_widget(client: ChatClient) -> None:
     if message_index is None:
         return
 
+    lang = _lang()
     with st.container(border=True):
-        st.markdown("**Zusammenfassung des Anliegens**")
+        st.markdown(t("**Zusammenfassung des Anliegens**", lang))
         st.info(get_issue_summary())
 
         if st.session_state.show_ticket_addendum_form:
@@ -477,13 +514,13 @@ def render_ticket_confirmation_widget(client: ChatClient) -> None:
             )
 
             addendum = st.text_area(
-                "Hier weitere Information zum Anliegen ergänzen:",
+                t("Hier weitere Information zum Anliegen ergänzen:", lang),
                 key="ticket_addendum_input",
                 height=120,
             )
-            if st.button("Ticket absenden", key="ticket_submit_with_addendum", use_container_width=True):
+            if st.button(t("Ticket absenden", lang), key="ticket_submit_with_addendum", use_container_width=True):
                 if not addendum.strip():
-                    st.error("Bitte eine Ergänzung ein oder die Zusammenfassung ohne Änderungen bestätigen.")
+                    st.error(t("Bitte eine Ergänzung ein oder die Zusammenfassung ohne Änderungen bestätigen.", lang))
                 else:
                     st.session_state.messages.append({
                         "role": "assistant",
@@ -496,7 +533,7 @@ def render_ticket_confirmation_widget(client: ChatClient) -> None:
         else:
             col1, col2 = st.columns(2)
             with col1:
-                if st.button("Zusammenfassung bestätigen", key="ticket_confirm_summary", use_container_width=True):
+                if st.button(t("Zusammenfassung bestätigen", lang), key="ticket_confirm_summary", use_container_width=True):
                     st.session_state.messages.append({
                         "role": "assistant",
                         "content": process_solution_feedback(client, message_index, False),
@@ -504,7 +541,7 @@ def render_ticket_confirmation_widget(client: ChatClient) -> None:
                     st.session_state.bot_thinking = True
                     st.rerun()
             with col2:
-                if st.button("Informationen ergänzen", key="ticket_show_addendum", use_container_width=True):
+                if st.button(t("Informationen ergänzen", lang), key="ticket_show_addendum", use_container_width=True):
                     st.session_state.show_ticket_addendum_form = True
                     st.session_state["scroll_target"] = "ticket_addendum_anchor"
                     st.rerun()
@@ -546,44 +583,53 @@ def render_metadata_confirmation() -> None:
     if not metadata:
         return
 
+    lang = metadata.get("language", "de")
+    yes_no = [t("Ja", lang), t("Nein", lang)]
     with st.container(border=True):
-        st.markdown("**Erkannte Geräteinformationen**\n")
-        st.markdown("Der Browser hat diese Informationen automatisch bereitgestellt. Dadurch lässt sich besser nachvollziehen, unter welchen Bedingungen das Problem auftritt.")
+        st.markdown(t("**Erkannte Geräteinformationen**\n", lang))
+        st.markdown(t(
+            "Der Browser hat diese Informationen automatisch bereitgestellt. Dadurch lässt sich besser nachvollziehen, unter welchen Bedingungen das Problem auftritt.",
+            lang,
+        ))
 
         device_correct = st.radio(
-            f"Bezieht sich das Anliegen auf ein **{metadata.get('device', 'Unbekannt')}**-Gerät?",
-            ["Ja", "Nein"],
+            t("Bezieht sich das Anliegen auf ein **{device}**-Gerät?", lang).format(
+                device=metadata.get("device", "Unbekannt")
+            ),
+            yes_no,
             key="confirm_device",
             index=None,
         )
         custom_device = ""
-        if device_correct == "Nein":
-            custom_device = st.text_input("Welches Gerät wird verwendet?", key="custom_device_input")
+        if device_correct == t("Nein", lang):
+            custom_device = st.text_input(t("Welches Gerät wird verwendet?", lang), key="custom_device_input")
 
         os_correct = st.radio(
-            f"Bezieht sich das Anliegen auf **{metadata.get('os_name', 'Unbekannt')}**?",
-            ["Ja", "Nein"],
+            t("Bezieht sich das Anliegen auf **{os_name}**?", lang).format(
+                os_name=metadata.get("os_name", "Unbekannt")
+            ),
+            yes_no,
             key="confirm_os",
             index=None,
         )
         custom_os = ""
-        if os_correct == "Nein":
-            custom_os = st.text_input("Welches Betriebssystem wird verwendet?", key="custom_os_input")
+        if os_correct == t("Nein", lang):
+            custom_os = st.text_input(t("Welches Betriebssystem wird verwendet?", lang), key="custom_os_input")
 
-        if st.button("Bestätigen", key="confirm_metadata_btn", use_container_width=True):
+        if st.button(t("Bestätigen", lang), key="confirm_metadata_btn", use_container_width=True):
             if device_correct is None or os_correct is None:
-                st.error("Bitte beide Fragen beantworten.")
+                st.error(t("Bitte beide Fragen beantworten.", lang))
                 return
-            if device_correct == "Nein" and not custom_device.strip():
-                st.error("Bitte das Gerät angeben.")
+            if device_correct == t("Nein", lang) and not custom_device.strip():
+                st.error(t("Bitte das Gerät angeben.", lang))
                 return
-            if os_correct == "Nein" and not custom_os.strip():
-                st.error("Bitte das Betriebssystem angeben.")
+            if os_correct == t("Nein", lang) and not custom_os.strip():
+                st.error(t("Bitte das Betriebssystem angeben.", lang))
                 return
 
-            if device_correct == "Nein":
+            if device_correct == t("Nein", lang):
                 metadata["device"] = custom_device.strip()
-            if os_correct == "Nein":
+            if os_correct == t("Nein", lang):
                 metadata["os_name"] = custom_os.strip()
 
             st.session_state["metadata_confirmed"] = True
@@ -619,8 +665,9 @@ def render_question_widget(client: ChatClient) -> None:
     total = len(questions)
     show_back = can_go_back(idx)
     stored_answer = answers[idx] if idx < len(answers) else None
+    lang = _lang()
 
-    st.progress((idx + 1) / total, text=f"Frage {idx + 1} von {total}")
+    st.progress((idx + 1) / total, text=t("Frage {idx} von {total}", lang).format(idx=idx + 1, total=total))
 
     with st.container(border=True):
         st.markdown(
@@ -643,7 +690,7 @@ def render_question_widget(client: ChatClient) -> None:
                 st.session_state[detail_key] = other_detail_default
 
             selected: str | None = st.radio(
-                "Bitte eine Option wählen :",
+                t("Bitte eine Option wählen :", lang),
                 question["options"],
                 key=radio_key,
                 index=None,
@@ -651,7 +698,7 @@ def render_question_widget(client: ChatClient) -> None:
             other_detail = ""
             if selected and is_other_option(selected):
                 other_detail = st.text_input(
-                    "Bitte genauer angeben:",
+                    t("Bitte genauer angeben:", lang),
                     key=detail_key,
                 )
             if selected is not None:
@@ -661,16 +708,16 @@ def render_question_widget(client: ChatClient) -> None:
             if stored_answer is not None and open_key not in st.session_state:
                 st.session_state[open_key] = stored_answer
 
-            open_text: str = st.text_area("Antwort:", key=f"open_{idx}")
+            open_text: str = st.text_area(t("Antwort:", lang), key=f"open_{idx}")
             if open_text and open_text.strip():
                 answer = open_text.strip()
 
-        btn_label = "Senden ✓" if is_last else "Weiter →"
+        btn_label = t("Senden ✓", lang) if is_last else t("Weiter →", lang)
         if show_back:
             back_col, next_col = st.columns(2)
             with back_col:
                 back_clicked = st.button(
-                    "← Zurück",
+                    t("← Zurück", lang),
                     key=f"back_btn_{idx}",
                     use_container_width=True,
                     type="secondary",
@@ -703,7 +750,7 @@ def render_question_widget(client: ChatClient) -> None:
             st.rerun()
         elif next_clicked and not st.session_state.get("_qa_navigating"):
             if answer is None:
-                st.error("Bitte die Frage beantworten, bevor es weitergeht.")
+                st.error(t("Bitte die Frage beantworten, bevor es weitergeht.", lang))
             else:
                 st.session_state["_qa_navigating"] = True
                 answer_changed = not (idx < len(answers) and answers[idx] == answer)
@@ -736,31 +783,32 @@ def run_app(client: ChatClient, *, mock_mode: bool = False) -> None:
     _fetch_and_store_metadata()
 
     metadata = st.session_state.get("user_metadata")
+    lang = _lang()
 
     with st.sidebar:
-        st.header("Einstellungen")
+        st.header(t("Einstellungen", lang))
         if metadata:
-            role_label = "Student" if metadata.get("role") == "student" else "Mitarbeiter"
-            st.markdown(f"**Eingeloggt als:** {metadata.get('display_name', '')}")
+            role_label = t("Student", lang) if metadata.get("role") == "student" else t("Mitarbeiter", lang)
+            st.markdown(t("**Eingeloggt als:** {name}", lang).format(name=metadata.get("display_name", "")))
             st.caption(f"{role_label} · {metadata.get('faculty', '')}")
             if metadata.get("device") or metadata.get("os_name"):
                 st.caption(f"{metadata.get('device', '')} · {metadata.get('os_name', '')}")
-        if st.button("Neu starten", type="secondary"):
+        if st.button(t("Neu starten", lang), type="secondary"):
             reset_session_state()
             st.rerun()
 
-    st.title("Support-Annahme über ZIM Helper")
-    st.caption("Digitaler Assistent für Support-Anfragen")
+    st.title(t("Support-Annahme über ZIM Helper", lang))
+    st.caption(t("Digitaler Assistent für Support-Anfragen", lang))
     if mock_mode:
-        st.caption("Mock-Modus: keine Backend- oder KI-Aufrufe.")
+        st.caption(t("Mock-Modus: keine Backend- oder KI-Aufrufe.", lang))
 
-    st.subheader("Kontaktdaten")
+    st.subheader(t("Kontaktdaten", lang))
     is_logged_in = metadata is not None
-    st.text_input("E-Mail-Adresse *", key="email_input", disabled=is_logged_in)
+    st.text_input(t("E-Mail-Adresse *", lang), key="email_input", disabled=is_logged_in)
     if not metadata or metadata.get("role") == "student":
-        st.text_input("Matrikelnummer *", key="student_id_input", disabled=is_logged_in)
+        st.text_input(t("Matrikelnummer *", lang), key="student_id_input", disabled=is_logged_in)
     st.divider()
-    st.header("ZIM Helper")
+    st.header(t("ZIM Helper", lang))
 
     init_session_state()
     render_chat_history(client)
@@ -770,7 +818,7 @@ def run_app(client: ChatClient, *, mock_mode: bool = False) -> None:
     # Priority 0: first message sent — confirm metadata before dispatching to backend.
     if metadata_needs_confirm and st.session_state.get("_pending_first_message"):
         render_metadata_confirmation()
-        st.chat_input(placeholder="Bitte zuerst die Geräteinformationen bestätigen.", disabled=True)
+        st.chat_input(placeholder=t("Bitte zuerst die Geräteinformationen bestätigen.", lang), disabled=True)
         return
 
     # Priority 1: a finished Q&A round or released first message is ready.
@@ -809,11 +857,11 @@ def run_app(client: ChatClient, *, mock_mode: bool = False) -> None:
         )
         if user_input := st.chat_input(
             placeholder=(
-                "Das Gespräch ist abgeschlossen — bitte über 'Neu starten' ein neues Anliegen beginnen."
+                t("Das Gespräch ist abgeschlossen — bitte über 'Neu starten' ein neues Anliegen beginnen.", lang)
                 if st.session_state.is_complete
-                else "Bitte E-Mail-Adresse und Matrikelnummer eingeben"
+                else t("Bitte E-Mail-Adresse und Matrikelnummer eingeben", lang)
                 if not are_form_fields_valid()
-                else "Anliegen beschreiben..."
+                else t("Anliegen beschreiben...", lang)
             ),
             disabled=chat_disabled,
             on_submit=bot_starting_thinking,
