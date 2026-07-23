@@ -76,22 +76,6 @@ class ClassifyIntentTests(unittest.TestCase):
         self.assertIn("hat leider nicht funktioniert", prompt)
 
     @patch("backend.graph.nodes.intent_llm")
-    def test_email_is_extracted_when_missing(self, mock_intent_llm):
-        """
-        Checks if the e-mail address is actually extracted into the correct field,
-        if it is missing.
-        """
-        mock_intent_llm.invoke.return_value = intent_decision("tutorial")
-
-        result = classify_intent({
-            "messages": [HumanMessage(content="Hallo, meine Mail ist max@web.de")],
-            "intent": "tutorial",
-            "user_email": "",
-        })
-
-        self.assertEqual(result.get("user_email"), "max@web.de")
-
-    @patch("backend.graph.nodes.intent_llm")
     def test_existing_email_is_not_overwritten(self, mock_intent_llm):
         """
         Check if the e-mail address is kept throughout the whole conversation

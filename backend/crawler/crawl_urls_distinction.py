@@ -13,7 +13,7 @@ from urllib.parse import urlparse
 import requests
 from bs4 import BeautifulSoup
 
-# Dateitypen, die NICHT gecrawlt werden sollen
+# File types that must NOT be crawled
 SKIP_EXTENSIONS = {
     '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
     '.zip', '.tar', '.gz', '.rar',
@@ -25,19 +25,19 @@ SKIP_EXTENSIONS = {
 
 
 def get_url_extension(url: str) -> str:
-    """Gibt die Dateiendung einer URL zurück, z.B. '.pdf'"""
+    """Return the file extension of a URL, e.g. '.pdf'."""
     path = urlparse(url).path
     _, ext = os.path.splitext(path)
     return ext.lower()
 
 
 def is_skippable(url: str) -> bool:
-    """Prüft ob die URL eine nicht-crawlbare Datei ist."""
+    """Return True if the URL points to a non-crawlable file."""
     return get_url_extension(url) in SKIP_EXTENSIONS
 
 
 def crawl_url(url: str, timeout: int = 10) -> dict:
-    """Crawlt eine URL und gibt den bereinigten Text zurück."""
+    """Crawl a URL and return cleaned text content."""
     try:
         headers = {
             'User-Agent': 'Mozilla/5.0 (compatible; UniDUE-RAG-Bot/1.0)'
@@ -45,10 +45,10 @@ def crawl_url(url: str, timeout: int = 10) -> dict:
         response = requests.get(url, headers=headers, timeout=timeout)
         response.raise_for_status()
 
-        # Prüfe Content-Type aus dem Response-Header
+        # Check Content-Type from the response header
         content_type = response.headers.get('Content-Type', '').lower()
         if 'html' not in content_type:
-            # Wurde doch als nicht-HTML erkannt (z.B. falsche Endung in URL)
+            # Detected as non-HTML (e.g. wrong extension in URL)
             ext = get_url_extension(url) or f"({content_type.split('/')[1] if '/' in content_type else 'unknown'})"
             return {
                 'status': 'skipped',
@@ -57,14 +57,14 @@ def crawl_url(url: str, timeout: int = 10) -> dict:
 
         soup = BeautifulSoup(response.text, 'html.parser')
 
-        # Entferne irrelevante Tags
+        # Remove irrelevant tags
         for tag in soup(['script', 'style', 'nav', 'footer', 'header', 'aside', 'form']):
             tag.decompose()
 
-        # Extrahiere den Haupttext
+        # Extract main text
         text = soup.get_text(separator='\n', strip=True)
 
-        # Mehrfache Leerzeilen entfernen
+        # Remove repeated blank lines
         lines = [line.strip() for line in text.splitlines() if line.strip()]
         clean_text = '\n'.join(lines)
 
@@ -95,7 +95,7 @@ def main():
     skipped = {}
     failed = {}
 
-    # Zähler für eindeutige Keys
+    # Counters for unique keys
     website_counter = 0
     skipped_counter = 0
     failed_counter = 0
@@ -104,14 +104,14 @@ def main():
         entry_id = entry.get('id', '')
         urls = entry.get('urls', [])
 
-        print(f"\nVerarbeite Eintrag: {entry_id}")
+        print(f"\nProcessing entry: {entry_id}")
 
         for url in urls:
             ext = get_url_extension(url)
 
-            # --- Skippable: nicht crawlen ---
+            # --- Skippable: do not crawl ---
             if is_skippable(url):
-                print(f"  Überspringe [{ext}]: {url}")
+                print(f"  Skipping [{ext}]: {url}")
                 skipped[str(skipped_counter)] = {
                     'url': url,
                     'faq_id': entry_id,
@@ -120,8 +120,8 @@ def main():
                 skipped_counter += 1
                 continue
 
-            # --- Crawlen ---
-            print(f"  Crawle: {url}")
+            # --- Crawl ---
+            print(f"  Crawling: {url}")
             result = crawl_url(url)
             result['faq_id'] = entry_id
 
@@ -130,7 +130,7 @@ def main():
                 website_counter += 1
 
             elif result['status'] == 'skipped':
-                # Wurde beim Crawlen als non-HTML erkannt
+                # Detected as non-HTML during crawl
                 skipped[str(skipped_counter)] = {
                     'url': url,
                     'faq_id': entry_id,
@@ -158,10 +158,10 @@ def main():
     with open(output_filepath, 'w', encoding='utf-8') as f:
         json.dump(output_data, f, ensure_ascii=False, indent=2)
 
-    print(f"\nFertig! Gespeichert in: {output_filepath}")
-    print(f"Websites (gecrawlt): {len(websites)}")
-    print(f"Übersprungen:        {len(skipped)}")
-    print(f"Fehlgeschlagen:      {len(failed)}")
+    print(f"\nDone! Saved to: {output_filepath}")
+    print(f"Websites (crawled): {len(websites)}")
+    print(f"Skipped:            {len(skipped)}")
+    print(f"Failed:             {len(failed)}")
 
 
 if __name__ == "__main__":

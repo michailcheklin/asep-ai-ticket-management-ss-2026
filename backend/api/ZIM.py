@@ -14,8 +14,10 @@ from ..graph.orchestrator import __execute_langchain_workflow, graph
 from ..graph.state import ChatbotState
 from ..rag import recent_incidents
 from ..rag.rag_store_tickets import store_ticket_state_to_rag
+from ..services.BackendLoggingService import BackendLogger
 from ..services.TicketService import TicketService
 
+zim_logger = BackendLogger("ZIM")
 ticket_service = TicketService()
 
 # Create FastAPI application instance
@@ -63,7 +65,7 @@ def _history_to_langchain_messages(history: list[dict]) -> list:
 def root():
     """Root endpoint of the backend API."""
     return {
-        "message": "AI Ticket Management Backend läuft"
+        "message": "AI Ticket Management Backend is running"
     }
 
 
@@ -96,6 +98,7 @@ async def chat_endpoint(request: ChatRequest):
     :return: Updated conversation state
     """
 
+    zim_logger.info(f"Received request to the chat endpoint\n{request}")
     """
     complete_evaluation = __check_prompt(request.user_message)
 
@@ -132,9 +135,15 @@ async def chat_endpoint(request: ChatRequest):
         "additional_info_attempts": request.additional_info_attempts,
         "ask_issue_attempts": request.ask_issue_attempts,
         "ticket_id": request.ticket_id,
-        "full_conversation": request.full_conversation,
+        "summary": request.summary,
         "intent": request.intent,
         "tutorial_attempts": request.tutorial_attempts,
+        "display_name": request.display_name,
+        "role": request.role,
+        "faculty": request.faculty,
+        "device": request.device,
+        "os_name": request.os_name,
+        "graph_runs": request.graph_runs,
     }
     return __execute_langchain_workflow(current_state)
 
@@ -202,8 +211,10 @@ def build_ticket_summary_and_conversation(articles: list[dict]) -> str:
         sender = article.get("sender", "")
         if sender not in ("Customer", "Agent"):
             continue  # skip System notifications
-        role = "User" if sender == "Customer" else "Agent"
         body = _strip_html(article.get("body", ""))
+        if body.lstrip("=\n ").startswith(BOT_SOLUTIONS_MARKER):
+            continue  # skip standalone "bot-offered solutions" article
+        role = "User" if sender == "Customer" else "Agent"
         if body:
             conversation_lines.append(f"{role}: {body}")
 
@@ -232,7 +243,7 @@ async def zammad_ticket_closed(payload: dict):
     tags = get_ticket_tags(ticket_id) if ticket_id else []
     matched_tags = EXCLUDE_FROM_TRAINING_TAGS.intersection(tags)
     if matched_tags:
-        print(f"[RAG] Ticket {ticket_id} excluded from training: {matched_tags}")
+        zim_logger.info(f"Ticket {ticket_id} excluded from AI training due to tag: {matched_tags}")
         return {
             "status": "ignored",
             "reason": f"excluded_from_training:{','.join(matched_tags)}",
@@ -249,13 +260,13 @@ async def zammad_ticket_closed(payload: dict):
     ticket_summary, _, agent_messages = build_ticket_summary_and_conversation(articles)
 
     rag_state = {
-        "full_conversation": ticket_summary,
+        "summary": ticket_summary,
         "ticket_id": ticket_id,
         "messages": agent_messages,
     }
-
     if ticket_id:
-        print(f"[RAG] Close webhook received for ticket {ticket_id}")
+        zim_logger.debug(f"Preparing RAG store for closed ticket {ticket_id}")
+        zim_logger.info(f"Close webhook received for ticket {ticket_id}")
         store_ticket_state_to_rag(rag_state, ticket_id=ticket_id)
 
     log_ticket_close_event(ticket_id=ticket_id, source="manual", metadata=metadata)
@@ -293,25 +304,34 @@ async def solution_feedback(request: ChatRequest):
         "ask_issue_attempts": request.ask_issue_attempts,
         "additional_info_attempts": request.additional_info_attempts,
         "ticket_id": request.ticket_id,
-        "full_conversation": request.full_conversation,
+        "summary": request.summary,
         "user_addendum": request.user_addendum,
         "intent": request.intent,
         "tutorial_attempts": request.tutorial_attempts,
+        "display_name": request.display_name,
+        "role": request.role,
+        "faculty": request.faculty,
+        "device": request.device,
+        "os_name": request.os_name,
+        "graph_runs": request.graph_runs,
     }
 
     current_state["category"] = _resolve_ticket_category(current_state)
+    first_name = current_state.get("display_name", "").split()[0] if current_state.get("display_name") else ""
 
     if request.helpful:
         ticket_service.create_ai_solved_ticket(current_state)
+        greeting = f"Super, {first_name}, das freut mich!" if first_name else "Super, das freut mich!"
         return {
-            "bot_response": "Super, das freut mich! Wenn du in Zukunft weitere Fragen hast, stehe ich gerne zur Verfügung. Hab einen schönen Tag!",
+            "bot_response": f"{greeting} Bei weiteren Fragen stehe ich jederzeit zur Verfügung. Einen schönen Tag noch!",
             "category": current_state.get("category", "")
         }
 
     else:
         ticket_service.append_support_ticket_context(current_state, request.ticket_id)
+        greeting = f"Danke, {first_name}!" if first_name else "Danke!"
         return {
-            "bot_response": "Ihr Ticket wurde an den Support weitergeleitet.",
+            "bot_response": f"{greeting} Das Ticket wurde an den Support weitergeleitet.",
             "category": current_state.get("category", "")
         }
 
@@ -340,7 +360,7 @@ async def ticket_closed(payload: dict):
         recent_incidents.mark_incident_closed(int(ticket_id))
         return {"ok": True, "removed_ticket_id": int(ticket_id)}
     except Exception as e:
-        print(f"[/webhook/ticket-closed] failed for {ticket_id}: {e}")
+        zim_logger.error(f"Ticket close webhook failed for {ticket_id}: {e}")
         return {"ok": False, "error": str(e)}
 
 
@@ -368,7 +388,7 @@ def run_local_chat():
         "category": "",
         "solutions": [],
         "ticket_id": None,
-        "full_conversation": "",
+        "summary": "",
         "intent": "",
         "tutorial_attempts": 0,
         "needs_additional_info": False,

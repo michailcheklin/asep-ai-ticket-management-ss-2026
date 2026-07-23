@@ -22,7 +22,7 @@ and structured-output schemas that force the LLM to answer in a fixed shape
   - `email`, `matrikelnummer`, `problem`
   - `additional_info` (list)
   - `priority` (int)
-  - `full_conversation` (running summary of the conversation)
+  - `summary` (running summary of the conversation)
 
 - `AdditionalInfoDecision.py` — decides whether more information is needed before a ticket
   can be completed. Fields:

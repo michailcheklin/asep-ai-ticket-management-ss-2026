@@ -1,26 +1,37 @@
 import os
+import copy
 from pathlib import Path
 
 from langchain_core.tracers import LangChainTracer
-from langgraph.graph import END, START, StateGraph
+from langgraph.graph import StateGraph, START, END
+
+from backend.graph.node_logging import langgraph_logger, truncate_long_strings_in_dicts_for_logging
+from .state import ChatbotState
+from .nodes import (
+    extract_information,
+    ask_for_issue,
+    ask_for_additional_info,
+    classify_ticket,
+    escalate_incidents,
+    give_solutions,
+    finish_ai_created_ticket,
+    classify_intent,
+    ask_intent,
+    give_tutorial,
+    finish_tutorial,
+)
+
+from .routing import (
+    route_based_on_state,
+    route_after_intent,
+    route_after_evaluator,
+    route_after_solutions,
+    route_after_classification,
+)
+
 from langsmith import Client
 from langsmith.anonymizer import create_anonymizer
 
-from .nodes import (
-    ask_for_additional_info,
-    ask_for_email,
-    ask_for_issue,
-    ask_intent,
-    classify_intent,
-    classify_ticket,
-    escalate_incidents,
-    extract_information,
-    finish_ticket,
-    finish_tutorial,
-    give_solutions,
-    give_tutorial,
-)
-from .state import ChatbotState
 
 # Matches E-mail addresses and censors them in LangSmith's dashboard
 anonymizer = create_anonymizer([
@@ -44,6 +55,14 @@ def __execute_langchain_workflow(state: ChatbotState):
     updated_state = graph.invoke(state)
     bot_response = updated_state["messages"][-1].content
 
+    # Creating a modified deep copy of the current state
+    # to display it on the console in logs.
+    # The original state is not modified.
+    updated_state_display_for_logs = copy.deepcopy(updated_state)
+    updated_state_display_for_logs["solutions"] = list(map(truncate_long_strings_in_dicts_for_logging, updated_state_display_for_logs["solutions"]))
+    langgraph_logger.debug(f"Final updated state:\n{updated_state_display_for_logs}")
+    langgraph_logger.debug(f"Run #{updated_state.get('graph_runs', 0)} — path: {' -> '.join(updated_state.get('visited_nodes', []))}")
+
     return {
         "bot_response": bot_response,
         "ticket_id": updated_state.get("ticket_id"),
@@ -58,100 +77,16 @@ def __execute_langchain_workflow(state: ChatbotState):
         "solutions": updated_state.get("solutions", []),
         "additional_info_attempts": updated_state.get("additional_info_attempts", 0),
         "ask_issue_attempts": updated_state.get("ask_issue_attempts", 0),
-        "full_conversation": updated_state.get("full_conversation", ""),
+        "summary": updated_state.get("summary", ""),
         "intent": updated_state.get("intent", ""),
         "tutorial_attempts": updated_state.get("tutorial_attempts", 0),
+        "display_name": updated_state.get("display_name", ""),
+        "role": updated_state.get("role", ""),
+        "faculty": updated_state.get("faculty", ""),
+        "device": updated_state.get("device", ""),
+        "os_name": updated_state.get("os_name", ""),
+        "graph_runs": updated_state.get("graph_runs", 0),
     }
-
-def route_based_on_state(state: ChatbotState):
-    """
-    Determine the next workflow node based on the missing
-    required information.
-    """
-    if not state.get("user_email"):
-        return "ask_email_node"
-
-    elif not state.get("issue_description"):
-        if state.get("ask_issue_attempts", 0) >= 3:
-            return "finish_node"
-        else:
-            return "ask_issue_node"
-
-    else:
-        return "classify_intent_node"
-
-def route_after_intent(state: ChatbotState):
-    """
-    Determine the next workflow node based on the intent of the user.
-    """
-
-    intent = state.get("intent")
-
-    if intent == "solved" and state.get("tutorial_attempts", 0) > 0:
-        return "classify_ticket_node"
-
-    if intent == "tutorial" and state.get("tutorial_attempts", 0) > 0:
-        if state.get("tutorial_attempts", 0) <= 3:
-            return "give_tutorial_node"
-        else:
-            return "classify_ticket_node"
-
-    if intent == "tutorial" or intent == "problem":
-        return "ask_for_additional_info"
-
-    return "ask_intent_node"
-
-def route_after_evaluator(state: ChatbotState):
-    """
-    Determine whether enough information has been collected.
-
-    If all required information is available, search for suitable
-    solutions. Otherwise, end the current workflow so the user can
-    provide additional information.
-    """
-    if not state.get("needs_additional_info"):
-        intent = state.get("intent")
-
-        if intent == "tutorial":
-            if state.get("tutorial_attempts", 0) <= 3:
-                return "give_tutorial_node"
-            else:
-                return "classify_ticket_node"
-        else:
-            return "classify_ticket_node"
-    else:
-        return END
-
-def route_after_solutions(state: ChatbotState):
-    """
-    Determine the next step after searching for solutions.
-
-    If solutions were found, wait for user feedback unless the
-    conversation is already complete. If no solutions were found,
-    create a ticket immediately.
-
-    :param state: Current chatbot state
-    :return: Next workflow node
-    """
-    if state.get("solutions"):
-        if state.get("is_complete"):
-            return "finish_node"
-        else:
-            return END
-    else:
-        return "finish_node"
-
-def route_after_classification(state: ChatbotState):
-    """
-    Routes the user to a full tutorial or a quick solution and ticket creation
-    """
-    intent = state.get("intent")
-    if intent == "solved" or state.get("tutorial_attempts", 0) > 3:
-        return "finish_tutorial_node"
-    else:
-        return "escalate_incidents_node"
-
-
 
 
 def build_pathmap_from_nodes_list_for_visualisation(nodes_list:list[str]):
@@ -175,13 +110,12 @@ workflow = StateGraph(ChatbotState)
 
 # Register all workflow nodes.
 workflow.add_node("extractor_node", extract_information)
-workflow.add_node("ask_email_node", ask_for_email)
 workflow.add_node("ask_issue_node", ask_for_issue)
 workflow.add_node("ask_for_additional_info", ask_for_additional_info)
 workflow.add_node("classify_ticket_node", classify_ticket)
 workflow.add_node("escalate_incidents_node", escalate_incidents)
 workflow.add_node("give_solutions_node", give_solutions)
-workflow.add_node("finish_node", finish_ticket)
+workflow.add_node("finish_ai_created_ticket_node", finish_ai_created_ticket)
 workflow.add_node("classify_intent_node", classify_intent)
 workflow.add_node("ask_intent_node", ask_intent)
 workflow.add_node("give_tutorial_node", give_tutorial)
@@ -205,7 +139,7 @@ workflow.add_conditional_edges(
     source="extractor_node",
     path=route_based_on_state,
     path_map=build_pathmap_from_nodes_list_for_visualisation(
-        ["ask_email_node", "ask_issue_node", "finish_node", "classify_intent_node"]
+        ["ask_issue_node", "finish_ai_created_ticket_node", "classify_intent_node"]
     )
 )
 
@@ -234,15 +168,14 @@ workflow.add_conditional_edges(
     source="give_solutions_node",
     path=route_after_solutions,
     path_map=build_pathmap_from_nodes_list_for_visualisation(
-        ["finish_node", "__end__"]
+        ["finish_ai_created_ticket_node", "__end__"]
     )
 )
 
 
 # End the workflow after the information collection nodes.
-workflow.add_edge("ask_email_node", END)
 workflow.add_edge("ask_issue_node", END)
-workflow.add_edge("finish_node", END)
+workflow.add_edge("finish_ai_created_ticket_node", END)
 workflow.add_edge("ask_intent_node", END)
 workflow.add_edge("give_tutorial_node", END)
 workflow.add_edge("finish_tutorial_node", END)

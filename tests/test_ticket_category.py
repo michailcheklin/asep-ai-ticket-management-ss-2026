@@ -26,7 +26,7 @@ from backend.graph.nodes import (
     classify_ticket,
     classify_ticket_category,
     extract_information,
-    finish_ticket,
+    finish_ai_created_ticket,
 )
 from tests.category_test_support import (
     category_decision,
@@ -65,7 +65,7 @@ class ClassifyTicketCategoryTests(unittest.TestCase):
         self.assertEqual(result, "Service Request")
 
     @patch("backend.graph.nodes.category_llm")
-    def test_prompt_includes_full_conversation_context(self, mock_category_llm):
+    def test_prompt_includes_summary_context(self, mock_category_llm):
         mock_category_llm.invoke.return_value = category_decision("Incident")
 
         classify_ticket_category(
@@ -152,12 +152,11 @@ class ExtractInformationTests(unittest.TestCase):
         mock_update_title,
     ):
         mock_structured_llm.invoke.return_value = ExtractedTicketData(
-            email="neu@example.com",
             matrikelnummer="7654321",
             problem="Neues Problem",
             priority=1,
             additional_info=["eduroam"],
-            full_conversation="Kurzfassung",
+            summary="Kurzfassung",
         )
 
         state_update = extract_information({
@@ -167,7 +166,7 @@ class ExtractInformationTests(unittest.TestCase):
             "issue_description": "Bestehendes Problem",
             "additional_info": ["Gebäude SGW"],
             "priority": 1,
-            "full_conversation": "alt",
+            "summary": "alt",
             "ticket_id": 42,
         })
 
@@ -176,7 +175,7 @@ class ExtractInformationTests(unittest.TestCase):
         self.assertNotIn("issue_description", state_update)
         self.assertNotIn("priority", state_update)
         self.assertEqual(state_update["additional_info"], ["eduroam"])
-        self.assertEqual(state_update["full_conversation"], "Kurzfassung")
+        self.assertEqual(state_update["summary"], "Kurzfassung")
 
     @patch("backend.graph.nodes.ticket_service.update_ticket_title_from_state")
     @patch("backend.graph.nodes.ticket_service.append_message_to_ticket")
@@ -190,7 +189,7 @@ class ExtractInformationTests(unittest.TestCase):
         """Document current behavior: priority 0 is falsy, so a new priority is applied."""
         mock_structured_llm.invoke.return_value = ExtractedTicketData(
             priority=1,
-            full_conversation="Kurzfassung",
+            summary="Kurzfassung",
         )
 
         state_update = extract_information({
@@ -207,7 +206,7 @@ class ExtractInformationTests(unittest.TestCase):
     def test_skips_duplicate_additional_info(self, mock_structured_llm):
         mock_structured_llm.invoke.return_value = ExtractedTicketData(
             additional_info=["Gebäude SGW", "eduroam"],
-            full_conversation="Kurzfassung",
+            summary="Kurzfassung",
         )
 
         state_update = extract_information({
@@ -232,7 +231,7 @@ class ExtractInformationTests(unittest.TestCase):
             problem="WLAN funktioniert nicht",
             matrikelnummer="1234567",
             priority=1,
-            full_conversation="Kurzfassung",
+            summary="Kurzfassung",
         )
         mock_create_ticket.return_value = 99
 
@@ -252,7 +251,7 @@ class ExtractInformationTests(unittest.TestCase):
             priority=1,
             internal=True,
             state="new",
-            kategorie="Incident",
+            category="Incident",
         )
         mock_add_tag.assert_called_once_with(99, "AI-Created")
 
@@ -270,7 +269,7 @@ class ExtractInformationTests(unittest.TestCase):
         mock_structured_llm.invoke.return_value = ExtractedTicketData(
             problem="Präzisierung",
             additional_info=["MacBook"],
-            full_conversation="Kurzfassung",
+            summary="Kurzfassung",
         )
 
         state_update = extract_information({
@@ -294,7 +293,7 @@ class ExtractInformationTests(unittest.TestCase):
     @patch("backend.graph.nodes.structured_llm")
     def test_does_not_create_ticket_without_problem(self, mock_structured_llm, mock_create_ticket):
         mock_structured_llm.invoke.return_value = ExtractedTicketData(
-            full_conversation="Nur Hallo",
+            summary="Nur Hallo",
         )
 
         state_update = extract_information({
@@ -306,11 +305,11 @@ class ExtractInformationTests(unittest.TestCase):
 
         mock_create_ticket.assert_not_called()
         self.assertNotIn("ticket_id", state_update)
-        self.assertEqual(state_update["full_conversation"], "Nur Hallo")
+        self.assertEqual(state_update["summary"], "Nur Hallo")
 
 
 class ClassifyTicketNodeTests(unittest.TestCase):
-    """Unit tests for classify_ticket workflow node and finish_ticket reuse."""
+    """Unit tests for classify_ticket workflow node and finish_ai_created_ticket reuse."""
 
     @patch("backend.graph.nodes.classify_ticket_category")
     def test_classify_ticket_node_sets_category(self, mock_classify):
@@ -340,7 +339,7 @@ class ClassifyTicketNodeTests(unittest.TestCase):
 
     @patch("backend.graph.nodes.classify_ticket_category")
     @patch("backend.graph.nodes.ticket_service.create_support_ticket")
-    def test_finish_ticket_reuses_category_without_reclassifying(
+    def test_finish_ai_created_ticket_reuses_category_without_reclassifying(
         self,
         mock_create_ticket,
         mock_classify,
@@ -351,8 +350,8 @@ class ClassifyTicketNodeTests(unittest.TestCase):
             "ticket_id": 55,
         }
 
-        with self.assertLogs("backend.graph.nodes", level="ERROR") as log_cm:
-            result = finish_ticket({
+        with self.assertLogs("Langgraph", level="ERROR") as log_cm:
+            result = finish_ai_created_ticket({
                 "messages": [HumanMessage(content="WLAN geht nicht")],
                 "user_email": "user@mail.com",
                 "matrikelnummer": "1234567",

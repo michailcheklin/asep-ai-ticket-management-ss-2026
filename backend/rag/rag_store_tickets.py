@@ -6,6 +6,9 @@ from typing import Any
 import chromadb
 from sentence_transformers import SentenceTransformer
 
+from .pii_anonymizer import anonymize_ticket_fields
+from .rag_logging import anon_logger, rag_logger
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TICKET_DB_PATH = os.path.join(BASE_DIR, "ticket_db")
 TICKET_COLLECTION_NAME = "tickets"
@@ -44,12 +47,12 @@ def _normalize_messages(messages: Any) -> str:
 
 
 def build_ticket_rag_document(state: dict[str, Any]) -> str:
-    full_conversation = (state.get("full_conversation") or "").strip()
+    summary = (state.get("summary") or state.get("full_conversation") or "").strip()
     ticket_id = str(state.get("ticket_id") or "").strip()
 
     parts = []
-    if full_conversation:
-        parts.append(f"full_conversation: {full_conversation}")
+    if summary:
+        parts.append(f"summary: {summary}")
     if ticket_id:
         parts.append(f"ticket_id: {ticket_id}")
 
@@ -71,12 +74,29 @@ def store_ticket_state_to_rag(
     if resolved_ticket_id.startswith("ticket_") and resolved_ticket_id.count("_") == 1:
         resolved_ticket_id = resolved_ticket_id.replace("ticket_", "ticket_0", 1)
 
-    document = build_ticket_rag_document(state)
+    raw_full_conversation = (state.get("full_conversation") or "").strip()
+    raw_messages = _normalize_messages(state.get("messages"))
+
+    anon_full_conversation, anon_messages = anonymize_ticket_fields(
+        raw_full_conversation, raw_messages, ticket_id=resolved_ticket_id
+    )
+
+    # Debug info for demo purposes, can be removed later
+    anon_logger.debug(f"{resolved_ticket_id} BEFORE full_conversation:\n{raw_full_conversation}\n")
+    anon_logger.debug(f"{resolved_ticket_id} AFTER  full_conversation:\n{anon_full_conversation}\n")
+    anon_logger.debug(f"{resolved_ticket_id} BEFORE messages:\n{raw_messages}\n")
+    anon_logger.debug(f"{resolved_ticket_id} AFTER  messages:\n{anon_messages}\n")
+    # End debug
+
+    anonymized_state = dict(state)
+    anonymized_state["full_conversation"] = anon_full_conversation
+
+    document = build_ticket_rag_document(anonymized_state)
     metadata = {
-        "messages": _normalize_messages(state.get("messages")),
+        "messages": anon_messages,
     }
-    print(f"[RAG] Persisting closed ticket to RAG DB: {resolved_ticket_id}")
-    print(f"[RAG] Document preview: {document[:400]}")
+    rag_logger.info(f"Persisting closed ticket to RAG DB: {resolved_ticket_id}")
+    rag_logger.info(f"Document preview: {document[:400]}")
 
     try:
         embedding_result = embedder.encode(document, normalize_embeddings=True)
@@ -88,10 +108,10 @@ def store_ticket_state_to_rag(
             documents=[document],
             metadatas=[metadata],
         )
-        print(f"[RAG] Stored closed ticket in RAG DB: {resolved_ticket_id}")
+        rag_logger.info(f"Stored closed ticket in RAG DB: {resolved_ticket_id}")
         return resolved_ticket_id
     except Exception as exc:
-        print(f"[RAG] Failed to persist closed ticket in RAG DB: {resolved_ticket_id}: {exc}")
+        rag_logger.error(f"Failed to persist closed ticket in RAG DB: {resolved_ticket_id}: {exc}")
         raise
 
 
@@ -120,11 +140,29 @@ def load_and_store_tickets(
 
     for idx, ticket_entry in enumerate(tickets, start=1):
         ticket_id = f"ticket_{idx:03d}"
-        ticket_text = build_ticket_rag_document(ticket_entry)
+
+        raw_full_conversation = (ticket_entry.get("full_conversation") or "").strip()
+        raw_messages = _normalize_messages(ticket_entry.get("messages"))
+
+        anon_full_conversation, anon_messages = anonymize_ticket_fields(
+            raw_full_conversation, raw_messages, ticket_id=ticket_id
+        )
+
+        # Debug info for demo purposes, can be removed later
+        print(f"[DEBUG-ANON] {ticket_id} BEFORE full_conversation:\n{raw_full_conversation}\n")
+        print(f"[DEBUG-ANON] {ticket_id} AFTER  full_conversation:\n{anon_full_conversation}\n")
+        print(f"[DEBUG-ANON] {ticket_id} BEFORE messages:\n{raw_messages}\n")
+        print(f"[DEBUG-ANON] {ticket_id} AFTER  messages:\n{anon_messages}\n")
+        # End debug
+
+        anonymized_entry = dict(ticket_entry)
+        anonymized_entry["full_conversation"] = anon_full_conversation
+
+        ticket_text = build_ticket_rag_document(anonymized_entry)
         embedding = embedder.encode(ticket_text, normalize_embeddings=True).tolist()
         metadata = {
             "category": (ticket_entry.get("category") or "").strip(),
-            "messages": _normalize_messages(ticket_entry.get("messages")),
+            "messages": anon_messages,
         }
         collection.add(
             ids=[ticket_id],
@@ -133,7 +171,7 @@ def load_and_store_tickets(
             metadatas=[metadata],
         )
         print(f"  [STORED] {ticket_id} | category: {ticket_entry.get('category', 'N/A')}")
-
+        
     print(f"\n[INFO] Done. {len(tickets)} tickets stored.\n")
 
 

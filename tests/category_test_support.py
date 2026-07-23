@@ -28,7 +28,16 @@ def cases_from_ticket_entries(entries: list[dict], id_prefix: str) -> list[dict]
     """Convert JSON ticket entries into normalized live-test case dicts."""
     cases = []
     for index, entry in enumerate(entries):
-        ticket = entry.get("full_conversation", entry.get("ticket"))
+        ticket = (
+            entry.get("summary")
+            or entry.get("full_conversation")
+            or entry.get("ticket")
+        )
+        if not ticket:
+            raise KeyError(
+                f"Fixture entry {id_prefix}_{index} needs 'summary', "
+                "'full_conversation', or 'ticket'"
+            )
         cases.append({
             "id": f"{id_prefix}_{index}",
             "issue_description": ticket,

@@ -1,25 +1,22 @@
-import logging
 import re
 from typing import cast
 
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langsmith import traceable
 
+from .models.ExtractedTicketData import ExtractedTicketData
+from .models.AdditionalInfoDecision import AdditionalInfoDecision
+from .models.TicketCategoryDecision import TICKET_CATEGORIES, TicketCategoryDecision
+from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
+from .state import ChatbotState
 from backend.rag.retrieve_info import retrieve_relevant_entries
-
-from ..api.zammad import add_tag_to_ticket, create_ticket_by_user_email
-from ..llm.llm import AGENT_PROMPT, category_llm, llm, structured_llm
+from ..services.TicketService import TicketService
 from ..llm.prompts import TICKET_CATEGORY_RULES
 from ..services.ProblemService import ProblemService
-from ..services.TicketService import TicketService
-from .models.AdditionalInfoDecision import AdditionalInfoDecision
-from .models.ExtractedTicketData import ExtractedTicketData
+from ..llm.llm import llm, structured_llm, AGENT_PROMPT, category_llm
+from .node_logging import log_node_entry, langgraph_logger, truncate_long_strings_in_dicts_for_logging, visit
+from ..api.zammad import create_ticket_by_user_email, add_tag_to_ticket
 from .models.IntentDecision import IntentDecision
-from .models.TicketCategoryDecision import TICKET_CATEGORIES, TicketCategoryDecision
-from .node_logging import log_node_entry
-from .state import ChatbotState
-
-logger = logging.getLogger(__name__)
+from backend.rag.rag_logging import rag_logger
 
 ticket_service = TicketService()
 problem_service = ProblemService()
@@ -34,13 +31,34 @@ def _append_agent_article_to_ticket(ticket_id, body: str, context: str) -> None:
             sender="Agent",
             internal=True,
         )
-    except Exception as e:
-        print(f"[{context}] Could not append message to ticket {ticket_id}: {e}")
+    except Exception:
+        langgraph_logger.exception(f"[{context}] Could not append message to ticket {ticket_id}")
+
+
+def _build_metadata_context(state: dict) -> str:
+    parts = []
+    if state.get("display_name"):
+        parts.append(f"Name des Nutzers: {state['display_name']}")
+    if state.get("role"):
+        parts.append(f"Rolle: {state['role']}")
+    if state.get("faculty"):
+        parts.append(f"Fakultaet: {state['faculty']}")
+    if state.get("device"):
+        parts.append(f"Geraet: {state['device']}")
+    if state.get("os_name"):
+        parts.append(f"Betriebssystem: {state['os_name']}")
+    if not parts:
+        return ""
+    context = "\n\nBENUTZER-KONTEXT:\n" + "\n".join(parts)
+    if state.get("display_name"):
+        first_name = state["display_name"].split()[0]
+        context += f"\n\nSprich den Nutzer in deiner Antwort mit seinem Vornamen ({first_name}) an."
+    return context
 
 
 def _format_faq_match_for_prompt(match: dict) -> str:
-    """Rendert einen faq_matches-Eintrag (dict mit id, text, similarity,
-    optional extracted_urls) als Prompt-Text."""
+    """Render a faq_matches entry (dict with id, text, similarity,
+    optional extracted_urls) as prompt text."""
     lines = [match.get("text", "")]
     for url_entry in match.get("extracted_urls", []):
         url = url_entry.get("url")
@@ -102,7 +120,10 @@ def classify_ticket(state: ChatbotState):
         list(state.get("additional_info", [])),
         user_messages,
     )
-    return {"category": category}
+    return {
+        **visit("classify_ticket_node"),
+        "category": category
+        }
 
 
 @traceable
@@ -114,11 +135,11 @@ def escalate_incidents(state: ChatbotState):
     returns no state changes.
     """
     if state.get("category") != "Incident":
-        return {}
+        return visit("escalate_incidents_node")
 
     ticket_id = state.get("ticket_id")
     if not ticket_id or ticket_id == -1:
-        return {}
+        return visit("escalate_incidents_node")
 
     try:
         result = problem_service.register_and_check_incident(
@@ -126,17 +147,11 @@ def escalate_incidents(state: ChatbotState):
             issue_description=state.get("issue_description", ""),
             additional_info=list(state.get("additional_info", [])),
         )
-        logger.info(
-            "[escalate_incidents] ticket %s -> escalated=%s problem_id=%s created=%s",
-            ticket_id,
-            result.get("escalated"),
-            result.get("problem_id"),
-            result.get("created"),
-        )
+        langgraph_logger.info(f"Escalating incident for ticket {ticket_id} -> {result}")
     except Exception:
-        logger.exception("[escalate_incidents] failed for ticket %s", ticket_id)
+        langgraph_logger.exception(f"Escalating incident failed for ticket {ticket_id}")
 
-    return {}
+    return visit("escalate_incidents_node")
 
 
 
@@ -146,11 +161,13 @@ intent_llm = llm.with_structured_output(IntentDecision)
 
 @traceable
 def classify_intent(state: ChatbotState):
-    """Workflow node: re-evaluates on every message what the user wants (Issue #161)."""
+    """Workflow node: re-evaluates on every message what the user wants """
     log_node_entry("classify_intent", state)
 
     # 1)
     user_messages = [msg.content for msg in state["messages"] if isinstance(msg, HumanMessage)]
+    ai_messages = [msg.content for msg in state["messages"] if isinstance(msg, AIMessage)]
+    last_bot_message = ai_messages[-1][-400:] if ai_messages else "(keine)"
     conversation = "\n".join(f"- {m}" for m in user_messages) if user_messages else "(keine)"
     previous_intent = state.get("intent") or "(noch keiner)"
 
@@ -158,10 +175,10 @@ def classify_intent(state: ChatbotState):
     system_prompt = SystemMessage(content=f"""Du bist ein Verteiler im IT-Support des ZIM einer Universitaet.
 Entscheide anhand des GESAMTEN Chatverlaufs, was der Nutzer AKTUELL moechte:
 
-- "tutorial": Der Nutzer moechte wissen, WIE etwas geht, und es selbst tun.
-  Typisch: "Wie richte ich ... ein?", "Wo finde ich ...?", "Anleitung fuer ...".
-- "problem": Etwas funktioniert nicht oder der Nutzer moechte, dass der Support
-  sich kuemmert. Typisch: "... ist kaputt", "... geht nicht", "erstellt mir ein Ticket".
+- "tutorial": Der Nutzer sucht nach einer Anleitung, Hilfe zur Selbsthilfe oder einer Loesung, um ein Problem/eine Stoerung SELBST zu beheben.
+  WICHTIG: Auch wenn der Nutzer Formulierungen nutzt wie "Ich habe ein Problem", "X geht nicht", "X funktioniert nicht" oder "Ich komme nicht rein", gilt dies als "tutorial", solange er wissen moechte, wie er es selbst loesen kann (z. B. "Was kann ich tun?", "Wie loese ich das?", "Wie richte ich ... ein?").
+- "problem": Der Nutzer moechte EXPLIZIT, dass der menschliche Support übernimmt / ein Ticket erstellt wird, ODER meldet einen reinen Infrastruktur-Ausfall, den er selbst nicht beheben kann.
+  Typisch: "Erstellt mir ein Ticket", "Ich will mit einem Mitarbeiter sprechen", "WLAN in Raum R14 ist komplett ausgefallen", "Das System ist down".
 - "unclear": Die Absicht ist aus den Nachrichten nicht erkennbar (z. B. nur "Hallo").
 - "solved": NUR waehlen, wenn der Bot zuvor eine Anleitung gegeben hat UND der
   Nutzer jetzt bestaetigt, dass sein Anliegen damit geloest ist.
@@ -177,7 +194,15 @@ REGELN FUER DEN WECHSEL:
   dass der Support uebernimmt (z. B. "erstell mir ein Ticket", "leite es bitte an
   einen Mitarbeiter weiter", "ich will mit einem Menschen sprechen").
 - Eine reine Zwischenantwort (E-Mail-Adresse, Ja/Nein, Detailangabe) ist KEIN Wechsel.
+- AUSNAHME: Endet die LETZTE BOT-NACHRICHT mit der Frage, ob das Problem
+  geloest ist, und antwortet der Nutzer darauf zustimmend (z. B. "Ja", "jo",
+  "passt", "danke"), dann waehle "solved".
+- Ein zustimmendes "Ja" auf eine ANDERE Rueckfrage (z. B. nach Geraet,
+  Standort oder Betriebssystem) bleibt eine Zwischenantwort und ist KEIN Wechsel.
 - Entscheide nach der Hauptabsicht, nicht nach einzelnen Schluesselwoertern.
+
+LETZTE BOT-NACHRICHT (Ende):
+{last_bot_message}
 
 CHATVERLAUF (User-Nachrichten):
 {conversation}""")
@@ -191,14 +216,10 @@ CHATVERLAUF (User-Nachrichten):
 
     state_update = {"intent": intent}
 
-    # 4) Try to extract an e-mail address from the user messages according to the
-    # e-mail format acc. to the RFC 5321
-    if not state.get("user_email") and user_messages:
-        match = re.search(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}", user_messages[-1])
-        if match:
-            state_update["user_email"] = match.group(0)
-
-    return state_update
+    return {
+        **visit("classify_intent_node"),
+        **state_update
+        }
 
 
 
@@ -206,18 +227,22 @@ CHATVERLAUF (User-Nachrichten):
 def ask_intent(state: ChatbotState):
     """Asks whether the user wants a tutorial or needs support."""
     log_node_entry("ask_intent", state)
+    metadata_context = _build_metadata_context(state)
     system_prompt = SystemMessage(content=(
-          AGENT_PROMPT + "\n\n"
+          AGENT_PROMPT + metadata_context + "\n\n"
         "Die Absicht des Nutzers ist noch unklar. Frage kurz und freundlich, ob er eine Schritt-fuer-Schritt-"
         "Anleitung zum Selbermachen moechte oder ob der Support sich um sein Anliegen "
         "kuemmern soll. Beantworte keine anderen Fragen und wechsle nicht das Thema."
     ))
     response = llm.invoke([system_prompt] + state["messages"])
-    return {"messages": [response]}
+    return {
+        **visit("ask_intent_node"),
+        "messages": [response]
+        }
 
 @traceable
 def give_tutorial(state: ChatbotState):
-    """Creates a step-by-step tutorial from the knowledge base (Issue #161)."""
+    """Creates a step-by-step tutorial from the knowledge base"""
     log_node_entry("give_tutorial", state)
     attempts = state.get("tutorial_attempts", 0)
 
@@ -230,7 +255,9 @@ def give_tutorial(state: ChatbotState):
     ticket_context = "\n".join(f"- {m['text']}" for m in rag_results.get("ticket_matches", []))
 
 
-    system_prompt = SystemMessage(content=AGENT_PROMPT + "\n\n" + f"""
+    metadata_context = _build_metadata_context(state)
+
+    system_prompt = SystemMessage(content=AGENT_PROMPT + metadata_context + "\n\n" + f"""
 
     Der Nutzer moechte eine Anleitung, um sein Anliegen SELBST zu loesen.
 
@@ -258,6 +285,7 @@ REGELN:
     response = llm.invoke([system_prompt] + state["messages"])
 
     return {
+        **visit("give_tutorial_node"),
         "messages": [response],
         "tutorial_attempts": attempts + 1
     }
@@ -271,8 +299,9 @@ def finish_tutorial(state: ChatbotState):
     # set ticket tag to AI-solved
     finish_ai_solved_ticket(state)
 
+    metadata_context = _build_metadata_context(state)
     system_prompt = SystemMessage(content=(
-        AGENT_PROMPT + "\n\n"
+        AGENT_PROMPT + metadata_context + "\n\n"
         "Der Nutzer hat gerade bestaetigt, dass deine Anleitung sein Anliegen "
         "geloest hat. Verabschiede dich kurz, freundlich und natuerlich, mit Bezug "
         "auf sein konkretes Anliegen. Maximal 2 Saetze. Erwaehne, dass er sich "
@@ -280,16 +309,20 @@ def finish_tutorial(state: ChatbotState):
     ))
     response = llm.invoke([system_prompt] + state["messages"])
 
-    return {**result, "messages": [response]}
-
+    return {
+        **visit("finish_tutorial_node"),
+        **result,
+        "messages": [response]
+        }
 
 def _build_extraction_system_prompt(
     prior_issue: str,
     prior_infos: list,
     conversation_context: str,
+    metadata_context: str = "",
 ) -> str:
     """Build the structured-extraction system prompt for extract_information."""
-    return AGENT_PROMPT + "\n\n" + ("""Deine Aufgabe ist es, als hochpräziser KI-Daten-Extraktor aus den eingehenden Chat-Nachrichten von Studierenden und Mitarbeitern strukturierte Ticket-Daten zu extrahieren.
+    return AGENT_PROMPT + metadata_context + "\n\n" + ("""Deine Aufgabe ist es, als hochpräziser KI-Daten-Extraktor aus den eingehenden Chat-Nachrichten von Studierenden und Mitarbeitern strukturierte Ticket-Daten zu extrahieren.
 
         BEREITS BEKANNTER KONTEXT:
         Problembeschreibung: {prior_issue}
@@ -298,7 +331,7 @@ def _build_extraction_system_prompt(
         {conversation_context}
 
         EXTRAKTIONS-REGELN:
-        1. Basis-Daten (Textfelder): Suche nach der 'email', der 'matrikelnummer' und dem Haupt-'problem' und speichere diese ausschließlich in ihren jeweiligen Textfeldern.
+        1. Basis-Daten (Textfelder): Suche nach der 'matrikelnummer' und dem Haupt-'problem' und speichere diese ausschließlich in ihren jeweiligen Textfeldern.
         2. Das 'problem' darf ausschließlich gesetzt werden, wenn der Nutzer tatsächlich ein konkretes IT-Problem oder eine Supportanfrage beschreibt.
         2a. Ist in BEREITS BEKANNTER KONTEXT unter "Problembeschreibung" bereits ein Wert vorhanden, setze 'problem' NICHT erneut. Beschreibt die aktuelle Nachricht eine Verfeinerung, Präzisierung oder Detailantwort zum bereits bekannten Problem (z.B. eine Antwort auf eine Rückfrage), ordne diesen Inhalt stattdessen dem Feld 'additional_info' zu.
         3. Zusatzinformationen (Listen-Feld): Extrahiere alle weiteren technischen oder lokalen Details, die für die Lösung des Problems nützlich sein könnten, und weise sie dem Feld 'additional_info' zu.
@@ -309,7 +342,9 @@ def _build_extraction_system_prompt(
         Setze priority auf 1 bei dringenden Problemen wie gesperrtem Account,
         Login nicht möglich, Prüfungs-/Abgabeproblemen oder komplettem Ausfall.
         Setze priority auf 0 bei normalen oder weniger dringenden Problemen.
-        5. Zusammenfassung (full_conversation): Dieses Feld MUSS bei jeder Antwort neu gesetzt werden - auch wenn sich nur wenig geändert hat. Schreibe eine aktualisierte Zusammenfassung des gesamten bisherigen Gesprächs aus der Perspektive eines Support-Agenten, der einem Kollegen den Fall erklärt. Integriere alle bisher bekannten Informationen, einschließlich Antworten auf Rückfragen. Beispiel: "Der Student fragt nach einer kostenlosen Windows 10 Lizenz für sein universitätseigenes Gerät. Er hat bereits ein qualifizierendes Betriebssystem und benötigt eine Vollversion." Maximal 3 Sätze, keine Aufzählung.
+        5. Zusammenfassung (summary): Dieses Feld MUSS bei jeder Antwort neu gesetzt werden - auch wenn sich nur wenig geändert hat. Schreibe eine aktualisierte Zusammenfassung des gesamten bisherigen Gesprächs aus der Perspektive eines Support-Agenten, der einem Kollegen den Fall erklärt. Integriere alle bisher bekannten Informationen, einschließlich Antworten auf Rückfragen. Beispiel: "Der Student fragt nach einer kostenlosen Windows 10 Lizenz für sein universitätseigenes Gerät. Er hat bereits ein qualifizierendes Betriebssystem und benötigt eine Vollversion." Maximal 3 Sätze, keine Aufzählung. Schreib die Zusamenfassung IMMER auf Deutsch.
+        6. Integriere in der Zusammenfassung (summary) die Metadata des Users.
+
         """.format(
         prior_issue=prior_issue or "noch nicht bekannt",
         prior_infos=", ".join(prior_infos) if prior_infos else "keine",
@@ -320,9 +355,8 @@ def _build_extraction_system_prompt(
 def _state_update_from_extracted_data(state: ChatbotState, extracted_data: ExtractedTicketData) -> dict:
     """Map ExtractedTicketData into a state update without overwriting existing fields."""
     state_update = {}
+    state_update["graph_runs"] = state.get("graph_runs", 0) + 1
 
-    if extracted_data.email and not state.get("user_email"):
-        state_update["user_email"] = extracted_data.email
     if extracted_data.matrikelnummer and not state.get("matrikelnummer"):
         state_update["matrikelnummer"] = extracted_data.matrikelnummer
     if extracted_data.problem and not state.get("issue_description"):
@@ -335,7 +369,7 @@ def _state_update_from_extracted_data(state: ChatbotState, extracted_data: Extra
         new_infos = [info for info in extracted_data.additional_info if info not in current_infos]
         if new_infos:
             state_update["additional_info"] = new_infos
-    state_update["full_conversation"] = extracted_data.full_conversation or state.get("full_conversation", "")
+    state_update["summary"] = extracted_data.summary or state.get("summary", "")
 
     return state_update
 
@@ -353,7 +387,7 @@ def _sync_ticket_after_extraction(
     ticket_id = state.get("ticket_id")
     # If ticket already exists: append
     if ticket_id is not None:
-        print(f"[extract_information] Appending customer message to ticket {ticket_id}")
+        langgraph_logger.info(f"Appending customer message to ticket {ticket_id}")
         ticket_service.append_message_to_ticket(ticket_id, last_user_message.content, sender="Customer")
         # Update the ticket title with the latest extracted information
         merged_state = {**state, **state_update}
@@ -372,11 +406,11 @@ def _sync_ticket_after_extraction(
             priority=extracted_data.priority if extracted_data.priority is not None else state["priority"],
             internal=True,
             state="new",
-            kategorie=state.get("category"),
+            category=state.get("category"),
         )
         state_update["ticket_id"] = result
         add_tag_to_ticket(result, "AI-Created")
-        print(f"[extract_information] Created ticket {result}")
+        langgraph_logger.info(f"Created ticket with ID {result}")
 
 
 @traceable
@@ -393,7 +427,10 @@ def extract_information(state: ChatbotState):
     prior_infos = state.get("additional_info", [])
     conversation_context = "\n".join(f"- {msg}" for msg in user_messages)
 
-    system_prompt = _build_extraction_system_prompt(prior_issue, prior_infos, conversation_context)
+    metadata_context = _build_metadata_context(state)
+    system_prompt = _build_extraction_system_prompt(
+        prior_issue, prior_infos, conversation_context, metadata_context
+    )
 
     # Cast structured LLM output to ExtractedTicketData
     extracted_data = cast(ExtractedTicketData, structured_llm.invoke([
@@ -401,46 +438,16 @@ def extract_information(state: ChatbotState):
         last_user_message
     ]))
 
+    langgraph_logger.debug(f"EXTRACTED DATA: {extracted_data}")
+
     state_update = _state_update_from_extracted_data(state, extracted_data)
     _sync_ticket_after_extraction(state, state_update, extracted_data, last_user_message)
 
-    return state_update
+    return {
+        **visit("extractor_node"),
+        **state_update,
+        }
 
-@traceable
-def ask_for_email(state: ChatbotState):
-    """
-    Queries Llama to politely ask the user for their missing email
-    :param state: The current conversation and ticket state
-    :return: A dictionary containing the newly extracted fields to update the state.
-    """
-    log_node_entry("ask_for_email", state)
-    system_prompt = SystemMessage(content=(
-        AGENT_PROMPT + "\n\n" +
-        "Dir fehlt noch die Uni-E-Mail-Adresse des Users (eine private Adresse ist auch in Ordnung). Frage danach."
-    ))
-
-    full_messages = [system_prompt] + state["messages"]
-    response = llm.invoke(full_messages)
-
-    return {"messages": [response]}
-
-@traceable
-def ask_for_matrikelnummer(state: ChatbotState):
-    """
-    Queries Llama to politely ask the user for their missing matrikelnummer
-    :param state: The current conversation and ticket state
-    :return: A dictionary containing the newly extracted fields to update the state.
-    """
-    log_node_entry("ask_for_matrikelnummer", state)
-    system_prompt = SystemMessage(content=(
-        AGENT_PROMPT + "\n\n" +
-        "Dir fehlt noch die 7-stellige Matrikelnummer des Users. Frage danach."
-    ))
-
-    full_messages = [system_prompt] + state["messages"]
-    response = llm.invoke(full_messages)
-
-    return {"messages": [response]}
 
 @traceable
 def ask_for_issue(state: ChatbotState):
@@ -451,8 +458,24 @@ def ask_for_issue(state: ChatbotState):
     """
     log_node_entry("ask_for_issue", state)
     attempts = state.get("ask_issue_attempts", 0) + 1
+
+    if attempts >= 3:
+        final_message = (
+            "Das Anliegen kann leider nicht weiter als ZIM-IT-Support bearbeitet werden, "
+            "da keine eindeutige IT-/ZIM-bezogene Problemstellung erkannt wurde.\n\n"
+            "Bei einem späteren IT-Problem rund um Dienste der Universität "
+            "(z. B. WLAN, VPN, E-Mail, Moodle oder Account-Probleme) hilft der ZIM-IT-Support gerne weiter."
+        )
+        return {
+            **visit("ask_issue_node"),
+            "messages": [AIMessage(content=final_message)],
+            "ask_issue_attempts": attempts,
+            "is_complete": True
+        }
+
+    metadata_context = _build_metadata_context(state)
     system_prompt = SystemMessage(content=(
-        AGENT_PROMPT + "\n\n" +
+        AGENT_PROMPT + metadata_context + "\n\n" +
         "Der Nutzer hat noch kein konkretes IT-Anliegen beschrieben. "
         "Bitte ihn, sein IT-Problem zu schildern."
     ))
@@ -460,17 +483,12 @@ def ask_for_issue(state: ChatbotState):
     full_messages = [system_prompt] + state["messages"]
     response = llm.invoke(full_messages)
 
-    if attempts >= 3:
-        return {
-            "messages": [response],
-            "ask_issue_attempts": attempts,
-            "is_complete": True
-        }
-
     return {
+        **visit("ask_issue_node"),
         "messages": [response],
         "ask_issue_attempts": attempts
     }
+
 
 @traceable
 def ask_for_additional_info(state: ChatbotState):
@@ -484,7 +502,10 @@ def ask_for_additional_info(state: ChatbotState):
     infos = state.get("additional_info", [])
     attempts = state.get("additional_info_attempts", 0)
 
-    additional_info_llm = llm.with_structured_output(AdditionalInfoDecision)
+    langgraph_logger.debug(f"ask_for_additional_info node: attempts: {attempts} ")
+
+    aditionalInfo_llm = llm.with_structured_output(AdditionalInfoDecision)
+
 
     query = f"{issue} + {infos}"
     rag_results = retrieve_relevant_entries(query, n_results=2)
@@ -493,13 +514,24 @@ def ask_for_additional_info(state: ChatbotState):
     ticket_matches = rag_results.get("ticket_matches", [])
 
     if not faq_matches and not ticket_matches:
-        return {"needs_additional_info": False}
+        rag_logger.debug(f"Query {query} returned no result. Skipping follow up question")
+        return {
+            **visit("ask_for_additional_info"),
+            "needs_additional_info": False
+            }
 
     faq_context = "\n".join([f"- {_format_faq_match_for_prompt(match)}" for match in faq_matches])
     ticket_context = "\n".join([f"- {match['text']} (Kategorie: {match['category']})" for match in ticket_matches])
 
+
+    rag_logger.debug(f"faq_matches:\n{truncate_long_strings_in_dicts_for_logging(faq_matches)}")
+    rag_logger.debug(f"faq_context:\n{truncate_long_strings_in_dicts_for_logging(faq_context)}")
+
+
+    metadata_context = _build_metadata_context(state)
+
     system_prompt = SystemMessage(content=(
-        AGENT_PROMPT + "\n\n" +
+        AGENT_PROMPT + metadata_context + "\n\n" +
         f"""
         Dein Ziel ist es zu prüfen, ob die vorliegenden Informationen ausreichen, um das aktuelle Problem eindeutig zu bearbeiten.
 
@@ -546,14 +578,23 @@ def ask_for_additional_info(state: ChatbotState):
         
         9. Stelle niemals Rückfragen über Informationen, die nicht aus dem aktuellen Problem oder der Wissensdatenbank ableitbar sind.
         
-        10. Jede Rückfrage darf nur eine einzige Information abfragen.
-            Kombiniere niemals mehrere unabhängige Fragen oder Attribute in einer Frage
-            (z.B. nicht "Welches Gerät nutzt du und welche Fehlermeldung erscheint?").
+        10. Jede Rückfrage darf nur ein einziges, unabhängiges Thema abfragen.
+            Mische niemals völlig verschiedene Themen in einer Frage 
+            (Frage z.B. NICHT: "Welches Gerät wird genutzt und welche Fehlermeldung erscheint?").
         
-        11. Wenn mehrere Informationen benötigt werden, erstelle mehrere separate Bullet-Fragen.
+        11. Wenn du mehrere unabhängige Themen klären musst, erstelle dafür separate Bullet-Fragen.
             Jede Frage muss genau ein Unterscheidungsmerkmal zwischen den möglichen Lösungen klären.
             
         12. Die Rückfragen dienen NUR dazu, die passenden Lösungen zu klassifizieren. Daher nicht die einzelnen todos der Lösung als Frage formulieren.
+        
+        13. Vermeide Wenn-Dann-Abhängigkeiten zwischen separaten Fragen.
+            Da alle Fragen dem Nutzer GLEICHZEITIG angezeigt werden, dürfen sie logisch nicht aufeinander aufbauen. 
+            Fasse solche Abhängigkeiten stattdessen über inklusive Antwortoptionen in einer einzigen Frage zusammen 
+            (z.B. statt zwei Fragen zu stellen, frage lieber: "Welche Maßnahmen hast du bereits ergriffen?" mit den Optionen: [Maßnahme A], [Maßnahme B], [Bisher noch keine Maßnahmen ergriffen], [Andere]).
+
+        14. Stelle KEINE Rückfragen zu Informationen, die bereits im BENUTZER-KONTEXT bekannt sind (z.B. Betriebssystem, Gerät, Rolle). Diese Daten sind bereits verifiziert und muessen nicht erneut erfragt werden. Nutze sie direkt fuer die Auswahl der passenden Lösung.
+        
+        15. Vermeide die Wiedergabe einer Option mit einem Komma, also vermeide zum Beispiel: "options: Keine Verbindung, Verbindung, aber kein Internet, Verbindungsabbrüche, Keine IP‑Adresse, Andere"
         """
     ))
 
@@ -563,19 +604,36 @@ def ask_for_additional_info(state: ChatbotState):
     # Adding a minimal HumanMessage preserves the existing prompting logic
     # while making the structured-output request compatible with all evaluated models.
 
-    decision = cast(AdditionalInfoDecision, additional_info_llm.invoke([
+    decision = cast(AdditionalInfoDecision, aditionalInfo_llm.invoke([
         system_prompt,
         HumanMessage(
             content="Bitte prüfe anhand des Problems und der Zusatzinfos, ob weitere Informationen benötigt werden.")
     ]))
 
+    langgraph_logger.debug(f"decision.needs_additional_info: {decision.needs_additional_info}")
+    langgraph_logger.debug(f"decision.follow_up_question: {decision.follow_up_question!r}")
+
     # Logic switch if all information needed is collected or not
     follow_up_question = (decision.follow_up_question or "").strip()
     if len(infos) >= 2 or not decision.needs_additional_info or attempts >= 3 or not follow_up_question:
 
-        return {"needs_additional_info": False}
+        return {
+            **visit("ask_for_additional_info"),
+            "needs_additional_info": False
+            }
 
-    llm_msg = f"Ich habe für dich gerade ein Support-Ticket erstellt. Um dich optimal zu unterstützen, beantworte  bitte folgende Fragen:\n{follow_up_question}"
+    known_parts = []
+    if state.get("display_name"):
+        known_parts.append(f"Name: {state['display_name']}")
+    if state.get("device"):
+        known_parts.append(f"Gerät: {state['device']}")
+    if state.get("os_name"):
+        known_parts.append(f"Betriebssystem: {state['os_name']}")
+    known_str = ""
+    if known_parts:
+        known_str = " Folgende Informationen liegen uns bereits vor: " + ", ".join(known_parts) + "."
+
+    llm_msg = f"Ich habe gerade ein Support-Ticket erstellt. Für eine optimale Bearbeitung bitte die folgenden Fragen beantworten:\n{follow_up_question}"
     ticket_id = state.get("ticket_id")
     _append_agent_article_to_ticket(
         ticket_id,
@@ -583,6 +641,7 @@ def ask_for_additional_info(state: ChatbotState):
         "ask_for_additional_info",
     )
     return {
+        **visit("ask_for_additional_info"),
         "needs_additional_info": True,
         "additional_info_attempts": attempts + 1,
         "messages": [AIMessage(content=llm_msg)]
@@ -591,31 +650,48 @@ def ask_for_additional_info(state: ChatbotState):
 @traceable
 def give_solutions(state: ChatbotState):
     """
-    Build a RAG query from issue_description and additional_info,
-    then retrieve and return up to two solutions.
+    Build a RAG query from: history + user_message + issue_description + additional_info
+    (in that exact order), then retrieve and return up to two solutions.
     """
     log_node_entry("give_solutions", state)
+    msgs = state.get("messages", []) or []
+    # history = all messages except the last one
+    history_parts = [m.content for m in msgs[:-1]] if len(msgs) > 1 else []
+    history_text = " ".join(history_parts).strip()
+
+    # user_message = last message if present
+    user_msg = msgs[-1].content.strip() if msgs else ""
+
     issue = (state.get("issue_description") or "").strip()
     additional = " ".join(state.get("additional_info", [])) if state.get("additional_info") else ""
 
     query = f"{issue} + {additional}"
 
     if not issue:
-        return {"messages": [AIMessage(content="Keine ausreichende Anfrage für die Suche.")], "solutions": []}
+        return {
+             **visit("give_solutions_node"),
+             "messages": [AIMessage(content="Keine ausreichende Anfrage für die Suche.")], "solutions": []
+             }
 
     try:
+        rag_logger.info(f"Sending RAG query '{query}'")
         results = retrieve_relevant_entries(query, n_results=2)
-        logger.info(
-            "[give_solutions] RAG result: faq=%s tickets=%s",
-            len(results.get("faq_matches", [])),
-            len(results.get("ticket_matches", [])),
-        )
+
+        rag_logger.info("The RAG query returned following results:")
+        rag_logger.info(f"faq={len(results.get('faq_matches', []))}")
+        rag_logger.info(f"tickets={len(results.get('ticket_matches', []))} ")
+        rag_logger.info(f"inferred={results.get('inferred')}")
+
     except Exception:
-        logger.exception("[give_solutions] RAG retrieval failed")
-        return {"messages": [AIMessage(content="Fehler bei der Suche in der Wissensdatenbank.")], "solutions": []}
+        rag_logger.exception(f"RAG retrieval failed for ticket {state.get('ticket_id')}")
+        return {
+             **visit("give_solutions_node"),
+             "messages": [AIMessage(content="Fehler bei der Suche in der Wissensdatenbank.")],
+             "solutions": []}
 
     faq_matches = results.get("faq_matches", [])
     ticket_matches = results.get("ticket_matches", [])
+    inferred = results.get("inferred", {})
 
     # Build up to 2 solutions (FAQ first)
     solutions = []
@@ -624,57 +700,71 @@ def give_solutions(state: ChatbotState):
     for t in ticket_matches:
         solutions.append(
             {"title": f"Ähnliches Ticket ({t.get('category', 'unknown')})", "description": t.get("text", "")})
+    # Writing a truncated version of the solutions into the logs in the console
+    # while the actual solutions are kept intact
+    truncated_solutions_for_logs = [truncate_long_strings_in_dicts_for_logging(solution) for solution in solutions]
+    langgraph_logger.info(f"give_solutions node returned: {truncated_solutions_for_logs}")
 
     problem = state.get("issue_description", "")
     infos = state.get("additional_info", [])
 
+    tutorial_handover = ""
+    if state.get("tutorial_attempts", 0) > 3:
+        tutorial_handover = (
+            "\nWICHTIG: Die Anleitung wurde bereits mehrfach ausgegeben, das Problem "
+            "besteht weiterhin. Weise zu Beginn der Antwort kurz darauf hin, dass die "
+            "Anleitung offenbar nicht geholfen hat und nun konkrete Loesungen "
+            "vorgeschlagen bzw. das Anliegen an den Support uebergeben wird. "
+            "Formuliere durchgehend neutral, ohne direkte Anrede (weder 'du' noch 'Sie')."
+        )
+
+    metadata_context = _build_metadata_context(state)
+
     system_prompt = SystemMessage(content=(
-        AGENT_PROMPT + "\n\n" +
+        AGENT_PROMPT + "\n\n" + tutorial_handover + "\n\n" + metadata_context + "\n\n" +
         f"""
-            Deine Aufgabe ist es, basierend auf dem 
-            aktuellen Problem und den bereits bekannten Zusatzinfos eine konkrete, direkt umsetzbare Lösung zu geben.
-            
-            AKTUELLES PROBLEM: {problem}
-            BEREITS BEKANNTE ZUSATZINFOS: {infos}
-            LÖSUNGEN (RAG-Kontext): {solutions}
-            
-            REGELN:
-            1. Antworte in einem einzigen zusammenhängenden Fließtext, "...NICHT als Liste, Aufzählung oder mit Zwischenüberschriften. 
-               Bei mehreren aufeinanderfolgenden Handlungsschritten nutze stattdessen Ordinalwörter im Fließtext
-               ('Öffne zunächst...', 'Klicke anschließend...', 'Bestätige abschließend...'), 
-               um die Reihenfolge erkennbar zu machen, ohne Listenformat zu verwenden.
-            2. Formuliere die Lösung so, als würdest du dem Nutzer direkt sagen, was er jetzt tun soll – nicht 
-               "es gibt folgende Lösungsansätze", sondern konkret "Deaktiviere X, dann..." bzw. "Das Problem liegt 
-               an Y, daher solltest du Z tun".
-            3. Wenn mehrere Lösungen im Kontext vorhanden sind, wähle die passensten Lösungen. 
-               Die Lösungen darfst du nicht vermischen. Behandle sie seperat.
-            4. Gib die Lösungen nie wörtlich aus dem Kontext wieder. Interpretiere sie und setze sie in Bezug zum 
-               konkreten Problem des Nutzers.
-            5. Maximal 6 Sätze pro Lösung, auf die du eingehst.
-               Bei mehrschrittigen technischen Anleitungen darf die Satzzahl überschritten werden, 
-               wenn sonst notwendige Schritte fehlen würden – Vollständigkeit (Regel 6) hat Vorrang vor Kürze. 
-               Keine Begrüßungsfloskeln, keine Zusammenfassung am Ende, keine Abschlussfrage wie 'Konnte ich helfen?".
-            6. Die Lösung muss aus sich selbst heraus vollständig verständlich sein. Der Nutzer soll keinen Link 
-               öffnen müssen, um zu verstehen, was ihn dort erwartet. Nenne alle relevanten Schritte/Infos direkt im Text,
-               fasse dabei den Linkinhalt kurz zusammen statt ihn vollständig wiederzugeben.
-               Füge Links an der Stelle im Text ein, zu der sie inhaltlich gehören.
-               - Liegt zu einem Link Content vor: bau den Inhalt des Kontexts in der Lösung ein, sofern dieser relevant für das "AKTUELLE PROBLEM" ist.
-               - Liegt kein Content vor (nur eine Notiz zum Fehlschlag): beschreibe nur, was sich sicher aus 
-                 problem/solution ableiten lässt, erfinde keine Details, und mache transparent, dass der Inhalt 
-                 nicht automatisch abrufbar war.
-               - Ist der Link selbst der auszuführende Schritt (Formular, Login, Download, Zahlung), bleibt er 
-                 Pflichtklick – erkläre vorher, was dort zu tun ist.
-            7. Halluziniere dir keine Lösungen herbei, sondern gebe nah am Kontext die Lösung wieder!.
-            8. Enthält eine Lösung irreversible oder folgenreiche Schritte (z. B. Konto löschen, Daten zurücksetzen, Zahlung auslösen),
-            weise im Text kurz und klar darauf hin, bevor du den Schritt nennst.
-            """
+            Deine Aufgabe ist es, basierend auf dem aktuellen Problem und den bereits bekannten Zusatzinfos eine konkrete, direkt umsetzbare Lösung zu geben.
+
+        AKTUELLES PROBLEM: {problem}
+        BEREITS BEKANNTE ZUSATZINFOS: {infos}
+        LÖSUNGEN (RAG-Kontext): {solutions}
+
+        REGELN:
+        1. Nutze zur Strukturierung AUSSCHLIESSLICH die HTML-Tags `<details>` und `<summary>` für aufklappbare Bereiche. 
+            - Jeder Lösungsansatz MUSS in einem `<details>`-Tag stehen. 
+            - Die Überschrift kommt in ein `<summary>`-Tag (fettgedruckt mit <b>). 
+            - GANZ WICHTIG: Nach dem schließenden `</summary>`-Tag MUSS zwingend eine leere Zeile (Zeilenumbruch) folgen!
+            - Darunter erstellst du eine NUMMERIERTE Schritt-fuer-Schritt-Anleitung (1., 2., 3., ...) basierend auf dem RAG-Kontext.
+            Beispiel-Format:
+            <details>
+            <summary><b>Ansatz 1: eduroam-Profil löschen</b></summary>
+   
+            1. Öffne das Self-Care-Portal und melde dich an.
+            2. Wähle danach "Authentifizierungsserver testen".
+            3. Falls ein Fehler erscheint, sende einen Screenshot an den support.
+            </details>
+        2. Formuliere die Lösung als konkrete Handlungsanweisung – nicht 
+           "es gibt folgende Lösungsansätze", sondern konkret, was zu tun ist, z. B. "X deaktivieren, dann..." 
+           bzw. "Das Problem liegt an Y, daher sollte Z erfolgen".
+        3. Wenn mehrere Lösungen im Kontext vorhanden sind, wähle die passendsten Lösungen. Die Lösungen darfst du nicht vermischen. Behandle sie separat in eigenen aufklappbaren Blöcken.
+        4. Gib die Lösungen nie wörtlich aus dem Kontext wieder. Interpretiere sie und setze sie in Bezug zum konkreten Problem des Nutzers.
+        5. Maximal 6 Sätze pro Lösung, auf die du eingehst. Bei mehrschrittigen technischen Anleitungen darf die Satzzahl überschritten werden, wenn sonst notwendige Schritte fehlen würden – Vollständigkeit (Regel 6) hat Vorrang vor Kürze. Keine Begrüßungsfloskeln, keine Zusammenfassung am Ende, keine Abschlussfrage wie 'Konnte ich helfen?'.
+        6. Die Lösung muss aus sich selbst heraus vollständig verständlich sein. Der Nutzer soll keinen Link öffnen müssen, um zu verstehen, was ihn dort erwartet. Nenne alle relevanten Schritte/Infos direkt im Text, fasse dabei den Linkinhalt kurz zusammen statt ihn vollständig wiederzugeben.
+        Füge Links an der Stelle im Text ein, zu der sie inhaltlich gehören.
+        - Liegt zu einem Link Content vor: bau den Inhalt des Kontexts in der Lösung ein, sofern dieser relevant für das "AKTUELLE PROBLEM" ist.
+        - Liegt kein Content vor (nur eine Notiz zum Fehlschlag): beschreibe nur, was sich sicher aus problem/solution ableiten lässt, erfinde keine Details, und mache transparent, dass der Inhalt nicht automatisch abrufbar war.
+        - Ist der Link selbst der auszuführende Schritt (Formular, Login, Download, Zahlung), bleibt er Pflichtklick – erkläre vorher, was dort zu tun ist.
+        7. Halluziniere dir keine Lösungen herbei, sondern gebe nah am Kontext die Lösung wieder!
+        8. Enthält eine Lösung irreversible oder folgenreiche Schritte (z. B. Konto löschen, Daten zurücksetzen, Zahlung auslösen), weise im Text kurz und klar darauf hin, bevor du den Schritt nennst.
+        """
     ))
-    message_text = llm.invoke([system_prompt, HumanMessage(content="Bitte fasse die Lösungen für den User zusammen.")])
+    message_text = llm.invoke([system_prompt])
 
 
-    final_message = AIMessage(content=message_text.content + "\n\n Konnte ich dir dabei helfen, dein Problem zu lösen?")
+    final_message = AIMessage(content=message_text.content + "\n\n Konnte das Problem damit gelöst werden?")
 
     ticket_id = state.get("ticket_id")
+    langgraph_logger.info(f"appending bot message to ticket {ticket_id}")
     _append_agent_article_to_ticket(
         ticket_id,
         f"[ZIM AI-AGENT]\n\n{final_message.content}",
@@ -682,28 +772,36 @@ def give_solutions(state: ChatbotState):
     )
 
     return {
+        **visit("give_solutions_node"),
         "messages": [final_message],
         "solutions": solutions,
+        # "rag_debug": {
+        #     "query": query,
+        #     "faq_count": len(faq_matches),
+        #     "ticket_count": len(ticket_matches),
+        #     "inferred": inferred
+        # }
     }
 
 @traceable
-def finish_ticket(state):
+def finish_ai_created_ticket(state):
     """
     Finalizes the ticket creation process by generating a concise title
     and preparing the payload for the Zammad API.
     """
-    log_node_entry("finish_ticket", state)
+    log_node_entry("finish_ai_created_ticket", state)
     # If the issue was asked three times, and no problem could be extracted,
     # say instead that the off-topic issue cannot be processed by support
     attempts = state.get("ask_issue_attempts", 0)
     if attempts >= 3:
         final_message = (
-            "Ich kann dein Anliegen leider nicht weiter als ZIM-IT-Support bearbeiten, "
+            "Das Anliegen kann leider nicht weiter als ZIM-IT-Support bearbeitet werden, "
             "da keine eindeutige IT-/ZIM-bezogene Problemstellung erkannt wurde.\n\n"
-            "Falls du später ein IT-Problem rund um Dienste der Universität hast "
-            "(z. B. WLAN, VPN, E-Mail, Moodle oder Account-Probleme), helfe ich dir gerne weiter."
+            "Bei einem späteren IT-Problem rund um Dienste der Universität "
+            "(z. B. WLAN, VPN, E-Mail, Moodle oder Account-Probleme) hilft der ZIM-IT-Support gerne weiter."
         )
         return {
+            **visit("finish_ai_created_ticket_node"),
             "messages": [AIMessage(content=final_message)],
             "is_complete": True
         }
@@ -716,18 +814,22 @@ def finish_ticket(state):
     try:
         bot_message_content = result["messages"][0].content
     except Exception:
-        logger.exception(
-            "[finish_ticket] Could not read bot message to append to ticket %s",
-            ticket_id,
+        langgraph_logger.exception(
+            f"Could not read bot message to append to ticket {ticket_id}"
         )
     else:
+        langgraph_logger.info(f"appending bot message to ticket {ticket_id}")
         _append_agent_article_to_ticket(
             ticket_id,
             f"[ZIM AI-AGENT]\n\n{bot_message_content}",
-            "finish_ticket",
+            "finish_ai_created_ticket",
         )
 
-    return {**result, "category": category}
+    return {
+        **visit("finish_ai_created_ticket_node"),
+        **result,
+        "category": category
+        }
 
 @traceable
 def finish_ai_solved_ticket(state):
@@ -740,4 +842,7 @@ def finish_ai_solved_ticket(state):
     category = _resolve_ticket_category(state)
     state_with_category = {**state, "category": category}
     result = ticket_service.create_ai_solved_ticket(state_with_category)
-    return {**result, "category": category}
+    return {
+        **result,
+        "category": category
+        }

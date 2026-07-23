@@ -2,11 +2,12 @@ from pydantic import BaseModel, Field
 
 
 class IntentDecision(BaseModel):
-    """Schema fuer die Intent-Klassifikation des Nutzeranliegens (Issue #161)."""
+    """Schema for classifying the user's intent (Issue #161)."""
     intent: str = Field(
+        # LLM instruction — kept in German to match product dialogue language
         description='Genau eines von: "tutorial", "problem", "unclear","solved"'
     )
     reason: str = Field(
         default="",
-        description="Kurze Begruendung der Entscheidung (nur fuer Debugging/Tracing)"
+        description="Short justification for the decision (debugging/tracing only)"
     )

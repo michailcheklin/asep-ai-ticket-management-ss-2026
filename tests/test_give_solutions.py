@@ -86,7 +86,7 @@ class GiveSolutionsTests(unittest.TestCase):
             ],
         )
         self.assertIn("Zusammenfassung der Lösungen.", result["messages"][0].content)
-        self.assertIn("Konnte ich dir dabei helfen", result["messages"][0].content)
+        self.assertIn("Konnte das Problem damit gelöst werden?", result["messages"][0].content)
         mock_append.assert_called_once()
 
     @patch("backend.graph.nodes.ticket_service.append_message_to_ticket")
