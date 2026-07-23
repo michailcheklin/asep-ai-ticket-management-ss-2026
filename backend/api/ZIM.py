@@ -111,7 +111,7 @@ async def chat_endpoint(request: ChatRequest):
             "bot_response": f"{reason} Bitte formuliere eine normale Anfrage zu einem ZIM-Thema.",
             "security": complete_evaluation,
             "user_email": request.user_email,
-            "matrikelnummer": request.matrikelnummer,
+            "student_id": request.student_id,
             "issue_description": request.issue_description,
             "needs_additional_info": False,
             "priority": request.priority,
@@ -124,7 +124,7 @@ async def chat_endpoint(request: ChatRequest):
     current_state : ChatbotState = {
         "messages": langchain_messages,
         "user_email": request.user_email,
-        "matrikelnummer": request.matrikelnummer,
+        "student_id": request.student_id,
         "issue_description": request.issue_description,
         "additional_info": request.additional_info,
         "needs_additional_info": False,
@@ -293,7 +293,7 @@ async def solution_feedback(request: ChatRequest):
     current_state: ChatbotState = {
         "messages": langchain_messages,
         "user_email": request.user_email,
-        "matrikelnummer": request.matrikelnummer,
+        "student_id": request.student_id,
         "issue_description": request.issue_description,
         "additional_info": request.additional_info,
         "needs_additional_info": False,
@@ -379,7 +379,7 @@ def run_local_chat():
     current_state = {
         "messages": [],
         "user_email": "",
-        "matrikelnummer": "",
+        "student_id": "",
         "issue_description": "",
         "additional_info": [],
         "additional_info_attempts": 0,
@@ -434,7 +434,7 @@ def run_local_chat():
         print(f"Bot: {bot_response}")
         print(
             f"   [DEBUG STATE] email: {current_state.get('user_email')} | "
-            f"Matrikel: {current_state.get('matrikelnummer')} | "
+            f"Matrikel: {current_state.get('student_id')} | "
             f"Problem: {current_state.get('issue_description')}"
         )
 

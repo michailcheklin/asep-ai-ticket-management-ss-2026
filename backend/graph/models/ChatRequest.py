@@ -10,7 +10,7 @@ class ChatRequest(BaseModel):
     user_message: str
     history: List[Dict[str, str]]
     user_email: str = ""
-    matrikelnummer: str = ""
+    student_id: str = ""
     issue_description: str = ""
     additional_info: List[str] = []
     priority: int = 0

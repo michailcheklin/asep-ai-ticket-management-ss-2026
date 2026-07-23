@@ -115,8 +115,8 @@ def _fetch_and_store_metadata() -> None:
     # Pre-fill the (still-required) form fields so the user doesn't retype known IdP data.
     if metadata.get("email"):
         st.session_state["email_input"] = metadata["email"]
-    if metadata.get("matrikelnummer"):
-        st.session_state["matrikelnummer_input"] = metadata["matrikelnummer"]
+    if metadata.get("student_id"):
+        st.session_state["student_id_input"] = metadata["student_id"]
 
     # Personalize the greeting with the user's first name, but only if the chat hasn't started yet.
     name = metadata.get("display_name", "").split()[0] if metadata.get("display_name") else ""
@@ -142,7 +142,7 @@ def reset_session_state() -> None:
         else:
             st.session_state[key] = copy.deepcopy(value)
     st.session_state["email_input"] = ""
-    st.session_state["matrikelnummer_input"] = ""
+    st.session_state["student_id_input"] = ""
     # Delete the ticket ID out of the frontend's session state completely
     # so that after the click on the "Neu starten" button the backend does not think
     # that a ticket still exists.
@@ -221,10 +221,10 @@ def are_form_fields_valid() -> bool:
     metadata = st.session_state.get("user_metadata")
     if metadata and metadata.get("role") != "student":
         return is_email_valid
-    is_matrikelnummer_valid = bool(
-        re.fullmatch(pattern=r"[0-9]+", string=st.session_state["matrikelnummer_input"])
+    is_student_id_valid = bool(
+        re.fullmatch(pattern=r"[0-9]+", string=st.session_state["student_id_input"])
     )
-    return is_email_valid and is_matrikelnummer_valid
+    return is_email_valid and is_student_id_valid
 
 
 # ── Question parsing & formatting (see frontend.ui.qa_navigation) ─────────────
@@ -256,7 +256,7 @@ def build_chat_payload(user_input: str) -> dict:
         "user_message": user_input,
         "history": st.session_state.chatbot_history,
         "user_email": st.session_state["email_input"],
-        "matrikelnummer": st.session_state["matrikelnummer_input"],
+        "student_id": st.session_state["student_id_input"],
         "issue_description": st.session_state.issue_description,
         "additional_info": st.session_state.additional_info,
         "priority": st.session_state.priority,
@@ -278,7 +278,7 @@ def build_feedback_payload(message_index: int, helpful: bool, user_addendum: str
         "user_message": "",
         "history": st.session_state.chatbot_history,
         "user_email": st.session_state["email_input"],
-        "matrikelnummer": st.session_state["matrikelnummer_input"],
+        "student_id": st.session_state["student_id_input"],
         "issue_description": st.session_state.issue_description,
         "additional_info": st.session_state.additional_info,
         "priority": st.session_state.priority,
@@ -758,7 +758,7 @@ def run_app(client: ChatClient, *, mock_mode: bool = False) -> None:
     is_logged_in = metadata is not None
     st.text_input("E-Mail-Adresse *", key="email_input", disabled=is_logged_in)
     if not metadata or metadata.get("role") == "student":
-        st.text_input("Matrikelnummer *", key="matrikelnummer_input", disabled=is_logged_in)
+        st.text_input("Matrikelnummer *", key="student_id_input", disabled=is_logged_in)
     st.divider()
     st.header("ZIM Helper")
 

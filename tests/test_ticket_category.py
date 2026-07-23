@@ -152,7 +152,7 @@ class ExtractInformationTests(unittest.TestCase):
         mock_update_title,
     ):
         mock_structured_llm.invoke.return_value = ExtractedTicketData(
-            matrikelnummer="7654321",
+            student_id="7654321",
             problem="Neues Problem",
             priority=1,
             additional_info=["eduroam"],
@@ -162,7 +162,7 @@ class ExtractInformationTests(unittest.TestCase):
         state_update = extract_information({
             "messages": [HumanMessage(content="Mein WLAN geht nicht")],
             "user_email": "alt@example.com",
-            "matrikelnummer": "1234567",
+            "student_id": "1234567",
             "issue_description": "Bestehendes Problem",
             "additional_info": ["Gebäude SGW"],
             "priority": 1,
@@ -171,7 +171,7 @@ class ExtractInformationTests(unittest.TestCase):
         })
 
         self.assertNotIn("user_email", state_update)
-        self.assertNotIn("matrikelnummer", state_update)
+        self.assertNotIn("student_id", state_update)
         self.assertNotIn("issue_description", state_update)
         self.assertNotIn("priority", state_update)
         self.assertEqual(state_update["additional_info"], ["eduroam"])
@@ -229,7 +229,7 @@ class ExtractInformationTests(unittest.TestCase):
     ):
         mock_structured_llm.invoke.return_value = ExtractedTicketData(
             problem="WLAN funktioniert nicht",
-            matrikelnummer="1234567",
+            student_id="1234567",
             priority=1,
             summary="Kurzfassung",
         )
@@ -354,7 +354,7 @@ class ClassifyTicketNodeTests(unittest.TestCase):
             result = finish_ai_created_ticket({
                 "messages": [HumanMessage(content="WLAN geht nicht")],
                 "user_email": "user@mail.com",
-                "matrikelnummer": "1234567",
+                "student_id": "1234567",
                 "issue_description": "WLAN funktioniert nicht",
                 "additional_info": [],
                 "priority": 0,

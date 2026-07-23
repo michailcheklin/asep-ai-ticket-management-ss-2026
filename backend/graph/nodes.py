@@ -330,7 +330,7 @@ def _build_extraction_system_prompt(
         {conversation_context}
 
         EXTRAKTIONS-REGELN:
-        1. Basis-Daten (Textfelder): Suche nach der 'matrikelnummer' und dem Haupt-'problem' und speichere diese ausschließlich in ihren jeweiligen Textfeldern.
+        1. Basis-Daten (Textfelder): Suche nach der 'student_id' und dem Haupt-'problem' und speichere diese ausschließlich in ihren jeweiligen Textfeldern.
         2. Das 'problem' darf ausschließlich gesetzt werden, wenn der Nutzer tatsächlich ein konkretes IT-Problem oder eine Supportanfrage beschreibt.
         2a. Ist in BEREITS BEKANNTER KONTEXT unter "Problembeschreibung" bereits ein Wert vorhanden, setze 'problem' NICHT erneut. Beschreibt die aktuelle Nachricht eine Verfeinerung, Präzisierung oder Detailantwort zum bereits bekannten Problem (z.B. eine Antwort auf eine Rückfrage), ordne diesen Inhalt stattdessen dem Feld 'additional_info' zu.
         3. Zusatzinformationen (Listen-Feld): Extrahiere alle weiteren technischen oder lokalen Details, die für die Lösung des Problems nützlich sein könnten, und weise sie dem Feld 'additional_info' zu.
@@ -356,8 +356,8 @@ def _state_update_from_extracted_data(state: ChatbotState, extracted_data: Extra
     state_update = {}
     state_update["graph_runs"] = state.get("graph_runs", 0) + 1
 
-    if extracted_data.matrikelnummer and not state.get("matrikelnummer"):
-        state_update["matrikelnummer"] = extracted_data.matrikelnummer
+    if extracted_data.student_id and not state.get("student_id"):
+        state_update["student_id"] = extracted_data.student_id
     if extracted_data.problem and not state.get("issue_description"):
         state_update["issue_description"] = extracted_data.problem
     if extracted_data.priority is not None and not state.get("priority"):
@@ -396,8 +396,8 @@ def _sync_ticket_after_extraction(
 
     # If this is the first message with a valid issue: create ticket
     elif extracted_data.problem is not None and extracted_data.problem != "":
-        matrikelnummer = extracted_data.matrikelnummer or state.get("matrikelnummer", "unknown")
-        title = f"[{matrikelnummer}] {extracted_data.problem}"
+        student_id = extracted_data.student_id or state.get("student_id", "unknown")
+        title = f"[{student_id}] {extracted_data.problem}"
         result = create_ticket_by_user_email(
             email=state["user_email"],
             title=title,

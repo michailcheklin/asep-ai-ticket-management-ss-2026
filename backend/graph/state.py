@@ -27,7 +27,7 @@ class ChatbotState(TypedDict):
 
     # ticket data
     user_email: str
-    matrikelnummer: str
+    student_id: str
     issue_description: str
     additional_info: Annotated[list[str], operator.add]
     additional_info_attempts: int

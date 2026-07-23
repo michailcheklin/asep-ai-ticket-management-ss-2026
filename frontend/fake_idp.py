@@ -19,21 +19,21 @@ TEST_USERS = {
         "display_name": "Max Mueller",
         "role": "student",
         "faculty": "Informatik",
-        "matrikelnummer": "3078631",
+        "student_id": "3078631",
         "email": "max.mueller@stud.uni-due.de",
     },
     "aschmidt": {
         "display_name": "Anna Schmidt",
         "role": "mitarbeiter",
         "faculty": "BWL",
-        "matrikelnummer": "",
+        "student_id": "",
         "email": "anna.schmidt@uni-due.de",
     },
     "jklein": {
         "display_name": "Julia Klein",
         "role": "student",
         "faculty": "Medizin",
-        "matrikelnummer": "3145982",
+        "student_id": "3145982",
         "email": "julia.klein@stud.uni-due.de",
     },
 }
@@ -48,7 +48,7 @@ def _lookup_user(unikennung: str) -> dict:
         "display_name": unikennung.capitalize(),
         "role": "student",
         "faculty": "Unbekannt",
-        "matrikelnummer": "0000000",
+        "student_id": "0000000",
         "email": f"{unikennung}@uni-due.de",
     }
 
