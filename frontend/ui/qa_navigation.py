@@ -12,8 +12,11 @@ def parse_questions_from_message(content: str) -> list[dict]:
     """Extract top-level bullet-point questions from a bot message.
 
     Supports two formats:
-      MCQ:   "* Question? (options: A, B, C)"
+      MCQ:   "* Question? (options: A | B | C)"
       Open:  "* Question?"
+
+    Options are pipe-separated ("|") rather than comma-separated so that an
+    option's own text may safely contain a comma.
 
     Nested answer bullets (for example lines indented under a question) are
     ignored so they remain visible in the rendered markdown.
@@ -28,7 +31,7 @@ def parse_questions_from_message(content: str) -> list[dict]:
         q_text = bullet_pattern.sub("", line).strip()
         options_match = re.search(r"\s*\(options:\s*(.+?)\)\s*$", q_text)
         if options_match:
-            options = [o.strip().strip("[]") for o in options_match.group(1).split(",")]
+            options = [o.strip().strip("[]") for o in options_match.group(1).split("|")]
             q_clean = q_text[: options_match.start()].strip()
             questions.append({"text": q_clean, "options": options})
         else:

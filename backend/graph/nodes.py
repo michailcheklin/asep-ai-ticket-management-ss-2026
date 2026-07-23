@@ -573,8 +573,9 @@ def ask_for_additional_info(state: ChatbotState):
         
         6. Gib alle Fragen als Bullet-Liste zurück.
         
-           Multiple-Choice-Fragen müssen exakt folgendes Format verwenden:
-           * [Frage]? (options: [Option A], [Option B], [Option C])
+           Multiple-Choice-Fragen müssen exakt folgendes Format verwenden, mit
+           EXAKT "|" (Pipe-Zeichen) als Trenner zwischen den Optionen:
+           * [Frage]? (options: [Option A] | [Option B] | [Option C])
         
         7. Verwende IMMER Multiple-Choice-Fragen, auch wenn es eine offene Frage ist.
             Bei offenen Fragen: gib die bestmöglichen Antwortoptionen an.
@@ -595,11 +596,11 @@ def ask_for_additional_info(state: ChatbotState):
         13. Vermeide Wenn-Dann-Abhängigkeiten zwischen separaten Fragen.
             Da alle Fragen dem Nutzer GLEICHZEITIG angezeigt werden, dürfen sie logisch nicht aufeinander aufbauen. 
             Fasse solche Abhängigkeiten stattdessen über inklusive Antwortoptionen in einer einzigen Frage zusammen 
-            (z.B. statt zwei Fragen zu stellen, frage lieber: "Welche Maßnahmen hast du bereits ergriffen?" mit den Optionen: [Maßnahme A], [Maßnahme B], [Bisher noch keine Maßnahmen ergriffen], [Andere]).
+            (z.B. statt zwei Fragen zu stellen, frage lieber: "Welche Maßnahmen hast du bereits ergriffen?" mit den Optionen: [Maßnahme A] | [Maßnahme B] | [Bisher noch keine Maßnahmen ergriffen] | [Andere]).
 
         14. Stelle KEINE Rückfragen zu Informationen, die bereits im BENUTZER-KONTEXT bekannt sind (z.B. Betriebssystem, Gerät, Rolle). Diese Daten sind bereits verifiziert und muessen nicht erneut erfragt werden. Nutze sie direkt fuer die Auswahl der passenden Lösung.
         
-        15. Vermeide die Wiedergabe einer Option mit einem Komma, also vermeide zum Beispiel: "options: Keine Verbindung, Verbindung, aber kein Internet, Verbindungsabbrüche, Keine IP‑Adresse, Andere"
+        15. Trenne Optionen AUSSCHLIESSLICH mit "|", niemals mit Komma - auch wenn eine Option selbst ein Komma enthaelt (z.B. "options: Keine Verbindung | Verbindung hergestellt, aber kein Internet | Verbindungsabbrüche | Keine IP‑Adresse | Andere").
         """
     ))
 
