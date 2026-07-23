@@ -12,6 +12,7 @@ from ..services.TicketService import TicketService
 from ..llm.prompts import TICKET_CATEGORY_RULES
 from ..services.ProblemService import ProblemService
 from ..llm.llm import llm, structured_llm, AGENT_PROMPT, category_llm, with_structured_fallback
+from ..llm.strings import t
 from .node_logging import log_node_entry, langgraph_logger, truncate_long_strings_in_dicts_for_logging, visit
 from ..api.zammad import create_ticket_by_user_email, add_tag_to_ticket
 from .models.IntentDecision import IntentDecision
@@ -466,11 +467,12 @@ def ask_for_issue(state: ChatbotState):
     attempts = state.get("ask_issue_attempts", 0) + 1
 
     if attempts >= 3:
-        final_message = (
+        final_message = t(
             "Das Anliegen kann leider nicht weiter als ZIM-IT-Support bearbeitet werden, "
             "da keine eindeutige IT-/ZIM-bezogene Problemstellung erkannt wurde.\n\n"
             "Bei einem späteren IT-Problem rund um Dienste der Universität "
-            "(z. B. WLAN, VPN, E-Mail, Moodle oder Account-Probleme) hilft der ZIM-IT-Support gerne weiter."
+            "(z. B. WLAN, VPN, E-Mail, Moodle oder Account-Probleme) hilft der ZIM-IT-Support gerne weiter.",
+            state.get("language", "de"),
         )
         return {
             **visit("ask_issue_node"),
@@ -636,7 +638,11 @@ def ask_for_additional_info(state: ChatbotState):
     if known_parts:
         known_str = " Folgende Informationen liegen uns bereits vor: " + ", ".join(known_parts) + "."
 
-    llm_msg = f"Ich habe gerade ein Support-Ticket erstellt. Für eine optimale Bearbeitung bitte die folgenden Fragen beantworten:\n{follow_up_question}"
+    ticket_intro = t(
+        "Ich habe gerade ein Support-Ticket erstellt. Für eine optimale Bearbeitung bitte die folgenden Fragen beantworten:",
+        state.get("language", "de"),
+    )
+    llm_msg = f"{ticket_intro}\n{follow_up_question}"
     ticket_id = state.get("ticket_id")
     _append_agent_article_to_ticket(
         ticket_id,
@@ -673,7 +679,7 @@ def give_solutions(state: ChatbotState):
     if not issue:
         return {
              **visit("give_solutions_node"),
-             "messages": [AIMessage(content="Keine ausreichende Anfrage für die Suche.")], "solutions": []
+             "messages": [AIMessage(content=t("Keine ausreichende Anfrage für die Suche.", state.get("language", "de")))], "solutions": []
              }
 
     try:
@@ -689,7 +695,7 @@ def give_solutions(state: ChatbotState):
         rag_logger.exception(f"RAG retrieval failed for ticket {state.get('ticket_id')}")
         return {
              **visit("give_solutions_node"),
-             "messages": [AIMessage(content="Fehler bei der Suche in der Wissensdatenbank.")],
+             "messages": [AIMessage(content=t("Fehler bei der Suche in der Wissensdatenbank.", state.get("language", "de")))],
              "solutions": []}
 
     faq_matches = results.get("faq_matches", [])
@@ -700,9 +706,9 @@ def give_solutions(state: ChatbotState):
     solutions = []
     for m in faq_matches[:2]:
         solutions.append({"title": f"FAQ: {m['id']}", "description": _format_faq_match_for_prompt(m)})
-    for t in ticket_matches:
+    for ticket_match in ticket_matches:
         solutions.append(
-            {"title": f"Ähnliches Ticket ({t.get('category', 'unknown')})", "description": t.get("text", "")})
+            {"title": f"Ähnliches Ticket ({ticket_match.get('category', 'unknown')})", "description": ticket_match.get("text", "")})
     # Writing a truncated version of the solutions into the logs in the console
     # while the actual solutions are kept intact
     truncated_solutions_for_logs = [truncate_long_strings_in_dicts_for_logging(solution) for solution in solutions]
@@ -764,7 +770,7 @@ def give_solutions(state: ChatbotState):
     message_text = llm.invoke([system_prompt])
 
 
-    final_message = AIMessage(content=message_text.content + "\n\n Konnte das Problem damit gelöst werden?")
+    final_message = AIMessage(content=message_text.content + t("\n\n Konnte das Problem damit gelöst werden?", state.get("language", "de")))
 
     ticket_id = state.get("ticket_id")
     langgraph_logger.info(f"appending bot message to ticket {ticket_id}")
@@ -797,11 +803,12 @@ def finish_ai_created_ticket(state):
     # say instead that the off-topic issue cannot be processed by support
     attempts = state.get("ask_issue_attempts", 0)
     if attempts >= 3:
-        final_message = (
+        final_message = t(
             "Das Anliegen kann leider nicht weiter als ZIM-IT-Support bearbeitet werden, "
             "da keine eindeutige IT-/ZIM-bezogene Problemstellung erkannt wurde.\n\n"
             "Bei einem späteren IT-Problem rund um Dienste der Universität "
-            "(z. B. WLAN, VPN, E-Mail, Moodle oder Account-Probleme) hilft der ZIM-IT-Support gerne weiter."
+            "(z. B. WLAN, VPN, E-Mail, Moodle oder Account-Probleme) hilft der ZIM-IT-Support gerne weiter.",
+            state.get("language", "de"),
         )
         return {
             **visit("finish_ai_created_ticket_node"),
