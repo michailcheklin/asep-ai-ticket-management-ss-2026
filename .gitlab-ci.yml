@@ -121,6 +121,26 @@ run_test_ticket_escalation:
     - echo "AGENT=ZIM" >> .env
     - pytest ./backend/tests/test_incident_escalation.py -s -v
 
+run_test_llm_fallback:
+  stage: before_deepeval
+  cache:
+    - key: ${CI_COMMIT_REF_SLUG}
+      paths:
+        - $PIP_CACHE_DIR
+        - $VENV_DIR/lib/python*/site-packages/
+      policy: pull
+  tags:
+    - dind
+    - ude-sse
+  script:
+    - python --version
+    - pip install --upgrade pip
+    - python -m venv $VENV_DIR
+    - source $VENV_DIR/bin/activate
+    - if [ -f tests/requirements.txt ]; then pip install -r tests/requirements.txt; fi
+    - echo "AGENT=ZIM" >> .env
+    - PYTHONPATH=. pytest backend/tests/test_llm_fallback.py -v -s
+
 run_test_chat_endpoint_connectivity:
   stage: before_deepeval
   tags:
