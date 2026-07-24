@@ -16,6 +16,7 @@ from frontend.ui.qa_navigation import (
     format_answers_as_message,
     is_other_option,
     navigate_back,
+    normalize_bullet_markers,
     parse_questions_from_message,
     split_stored_mcq_answer,
 )
@@ -344,6 +345,7 @@ def strip_redundant_ticket_intro(content: str) -> str:
     """Remove any duplicated filler text between the fixed ticket-intro
     sentence and the first bullet-point question that follows it.
     """
+    content = normalize_bullet_markers(content)
     idx = -1
     intro = ""
     for variant in TICKET_INTRO_VARIANTS:

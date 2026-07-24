@@ -8,6 +8,17 @@ from __future__ import annotations
 import re
 
 
+def normalize_bullet_markers(content: str) -> str:
+    """Collapse a doubled leading bullet marker (e.g. "- * Question?") into a
+    single one ("* Question?").
+
+    The LLM occasionally emits both a "-" and a "*" at the start of a bullet
+    line. Left as-is, this confuses strip_redundant_ticket_intro()'s
+    line-splitting logic downstream and produces a stray empty question.
+    """
+    return re.sub(r"^\s*[\*\-]\s+(?=[\*\-]\s)", "", content, flags=re.MULTILINE)
+
+
 def parse_questions_from_message(content: str) -> list[dict]:
     """Extract top-level bullet-point questions from a bot message.
 
