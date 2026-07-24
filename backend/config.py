@@ -46,6 +46,11 @@ INCIDENT_RECENCY_WINDOW_HOURS: float = _get_float("INCIDENT_RECENCY_WINDOW_HOURS
 # Similarity threshold (cosine) for semantic similarity between two incidents.
 INCIDENT_SIMILARITY_THRESHOLD: float = _get_float("INCIDENT_SIMILARITY_THRESHOLD", 0.55)
 
+# Scaled-similarity threshold above which a newly submitted FAQ entry counts as
+# "redundant" (already covered by an existing entry). Compared against the top
+# faq_match similarity returned by retrieve_relevant_entries.
+FAQ_REDUNDANCY_THRESHOLD: float = _get_float("FAQ_REDUNDANCY_THRESHOLD", 0.5)
+
 # Sender/customer email for automatically created problem tickets.
 PROBLEM_TICKET_AUTHOR_EMAIL: str = os.getenv(
     "PROBLEM_TICKET_AUTHOR_EMAIL",
