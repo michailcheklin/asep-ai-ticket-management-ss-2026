@@ -78,6 +78,7 @@ def __execute_langchain_workflow(state: ChatbotState):
         "additional_info_attempts": updated_state.get("additional_info_attempts", 0),
         "ask_issue_attempts": updated_state.get("ask_issue_attempts", 0),
         "summary": updated_state.get("summary", ""),
+        "user_summary": updated_state.get("user_summary", ""),
         "intent": updated_state.get("intent", ""),
         "tutorial_attempts": updated_state.get("tutorial_attempts", 0),
         "display_name": updated_state.get("display_name", ""),

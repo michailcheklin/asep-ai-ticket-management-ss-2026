@@ -346,8 +346,9 @@ def _build_extraction_system_prompt(
         Setze priority auf 1 bei dringenden Problemen wie gesperrtem Account,
         Login nicht möglich, Prüfungs-/Abgabeproblemen oder komplettem Ausfall.
         Setze priority auf 0 bei normalen oder weniger dringenden Problemen.
-        5. Zusammenfassung (summary): Dieses Feld MUSS bei jeder Antwort neu gesetzt werden - auch wenn sich nur wenig geändert hat. Schreibe eine aktualisierte Zusammenfassung des gesamten bisherigen Gesprächs aus der Perspektive eines Support-Agenten, der einem Kollegen den Fall erklärt. Integriere alle bisher bekannten Informationen, einschließlich Antworten auf Rückfragen. Beispiel: "Der Student fragt nach einer kostenlosen Windows 10 Lizenz für sein universitätseigenes Gerät. Er hat bereits ein qualifizierendes Betriebssystem und benötigt eine Vollversion." Maximal 3 Sätze, keine Aufzählung. Schreib die Zusamenfassung IMMER auf Deutsch.
-        6. Integriere in der Zusammenfassung (summary) die Metadata des Users.
+        5. Zusammenfassung (summary): Dieses Feld MUSS bei jeder Antwort neu gesetzt werden - auch wenn sich nur wenig geändert hat. Schreibe eine aktualisierte Zusammenfassung des gesamten bisherigen Gesprächs aus der Perspektive eines Support-Agenten, der einem Kollegen den Fall erklärt. Integriere alle bisher bekannten Informationen, einschließlich Antworten auf Rückfragen. Beispiel: "Der Student fragt nach einer kostenlosen Windows 10 Lizenz für sein universitätseigenes Gerät. Er hat bereits ein qualifizierendes Betriebssystem und benötigt eine Vollversion." Maximal 3 Sätze, keine Aufzählung. Schreib die Zusamenfassung IMMER auf Deutsch, unabhaengig von der Antwortsprache - dieses Feld ist nur fuer das Support-Team in Zammad bestimmt, nicht fuer den Nutzer sichtbar.
+        5a. Nutzer-Zusammenfassung (user_summary): Schreibe zusaetzlich dieselbe Zusammenfassung inhaltlich identisch noch einmal in das Feld 'user_summary' - aber in der im BENUTZER-KONTEXT angegebenen Antwortsprache statt zwingend auf Deutsch. Dieses Feld MUSS wie 'summary' bei jeder Antwort neu gesetzt werden und wird dem Nutzer selbst angezeigt.
+        6. Integriere in der Zusammenfassung (summary und user_summary) die Metadata des Users.
         7. Sprache (language): Erkenne die Sprache der aktuellsten Nutzernachricht (der beigefuegten HumanMessage, NICHT dieser Instruktionen) und setze 'language' auf 'de' oder 'en'. Ist die Sprache nicht eindeutig erkennbar (z.B. nur Zahlen, Matrikelnummer, Emojis, einzelnes Wort), setze 'language' auf null.
 
         """.format(
@@ -377,6 +378,7 @@ def _state_update_from_extracted_data(state: ChatbotState, extracted_data: Extra
         if new_infos:
             state_update["additional_info"] = new_infos
     state_update["summary"] = extracted_data.summary or state.get("summary", "")
+    state_update["user_summary"] = extracted_data.user_summary or state.get("user_summary", "")
 
     return state_update
 

@@ -35,3 +35,9 @@ class ExtractedTicketData(BaseModel):
     )
     summary: Optional[str] = Field(None,
                                               description="Eine kurze Zusammenfassung des Problems basierend auf dem gesamten Chatverlauf. Diese Zusammenfassung sollte den Kontext und die wichtigsten Punkte des Problems in bis zu 3 Sätze erfassen.")
+    user_summary: Optional[str] = Field(
+        None,
+        description="Inhaltlich identisch zu 'summary', aber geschrieben in der im "
+                    "BENUTZER-KONTEXT angegebenen Antwortsprache statt zwingend auf Deutsch. "
+                    "Wird dem Nutzer selbst angezeigt (Ticket-Bestaetigung), nicht dem Support-Team."
+    )

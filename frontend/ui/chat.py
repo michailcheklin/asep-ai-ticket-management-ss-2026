@@ -39,6 +39,7 @@ INITIAL_STATES = {
     "additional_info_attempts": 0,
     "ask_issue_attempts": 0,
     "summary": "",
+    "user_summary": "",
     # ── Ticket confirmation (frontend-only, before finalising support ticket) ──
     "pending_ticket_confirmation": None,  # message index with unhelpful solution feedback
     "show_ticket_addendum_form": False,
@@ -293,6 +294,7 @@ def build_chat_payload(user_input: str) -> dict:
         "graph_runs": st.session_state.graph_runs,
         "ticket_id": st.session_state.get("ticket_id"),
         "summary": st.session_state.summary,
+        "user_summary": st.session_state.user_summary,
         **_metadata_fields(),
     }
 
@@ -315,22 +317,33 @@ def build_feedback_payload(message_index: int, helpful: bool, user_addendum: str
         "ask_issue_attempts": st.session_state.ask_issue_attempts,
         "ticket_id": st.session_state.get("ticket_id"),
         "summary": st.session_state.summary,
+        "user_summary": st.session_state.user_summary,
         "user_addendum": user_addendum,
         **_metadata_fields(),
     }
 
 
 def get_issue_summary() -> str:
-    """Return the chatbot summary shown before ticket finalisation."""
-    summary = (st.session_state.summary or "").strip()
-    if summary:
-        return summary
+    """Return the issue summary shown before ticket finalisation.
+
+    Prefers user_summary — the same LLM-written summary as state["summary"],
+    just in the user's own language instead of the German that "summary"
+    always uses (that field also feeds the Zammad ticket title/body for the
+    support team, so it can't simply be localized itself). Falls back to a
+    plain issue_description/additional_info listing for the early turns
+    before any summary has been generated yet.
+    """
+    user_summary = (st.session_state.user_summary or "").strip()
+    if user_summary:
+        return user_summary
     parts = []
     if st.session_state.issue_description:
         parts.append(st.session_state.issue_description)
     if st.session_state.additional_info:
-        parts.append(", ".join(st.session_state.additional_info))
-    return "\n".join(parts) or t("(keine Zusammenfassung vorhanden)", _lang())
+        parts.append("\n".join(f"- {info}" for info in st.session_state.additional_info))
+    # "\n\n" so Streamlit's markdown renderer treats the bullet list as its
+    # own block instead of collapsing a single "\n" into a plain space.
+    return "\n\n".join(parts) or t("(keine Zusammenfassung vorhanden)", _lang())
 
 
 # ── Core message processing ───────────────────────────────────────────────────
@@ -384,6 +397,7 @@ def apply_response_to_session(user_input: str, res_json: dict) -> None:
     st.session_state.ask_issue_attempts = res_json.get("ask_issue_attempts", 0)
     st.session_state.category = res_json.get("category", "")
     st.session_state.summary = res_json.get("summary", "")
+    st.session_state.user_summary = res_json.get("user_summary", "")
     st.session_state.intent = res_json.get("intent", "")
     st.session_state.tutorial_attempts = res_json.get("tutorial_attempts", 0)
     st.session_state.graph_runs = res_json.get("graph_runs", 0)
