@@ -1,32 +1,15 @@
 import json
 
-import chromadb
-from sentence_transformers import SentenceTransformer
-
 """
 This script writes the FAQ entries from a json file into the rag database.
 Usage: python3 rag_store_faq.py
+
+NOTE: The pure helper functions below (build_faq_metadata, extract_faq_contents,
+flatten_faq_entry, make_unique_ids) are imported and reused by the single-entry
+runtime path in faq_submission.py. Keep them free of module-level side effects --
+the wipe-and-rebuild logic lives in main() so importing this module never touches
+the collection.
 """
-
-# --- Setup ---
-faq_embedder = SentenceTransformer("intfloat/multilingual-e5-large")
-
-chroma_client = chromadb.PersistentClient(path="./faq_db")
-
-# Wipe and recreate with cosine metric
-try:
-    chroma_client.delete_collection("faq_entries")
-    print("[INFO] Deleted old faq_entries collection.")
-except Exception as e:
-    print(f"[ERROR] Failed to delete old faq_entries collection: {e}")
-
-faq_collection = chroma_client.create_collection(
-    "faq_entries",
-    metadata={
-        "hnsw:space": "cosine",
-    }
-)
-print("[INFO] Created new faq_entries collection with cosine metric.")
 
 
 def build_faq_metadata(faq_entry: dict) -> dict:
@@ -78,6 +61,26 @@ def flatten_faq_entry(faq_entry: dict) -> str:
     return "\n".join(parts)
 
 
+_FAQ_DOC_PREFIXES = ("context", "problem", "solution", "last_update", "url")
+
+
+def parse_faq_document(text: str) -> dict:
+    """Inverse of flatten_faq_entry: split a flattened FAQ document back into its
+    labelled fields (context, problem, solution, last_update, url). Any line that
+    doesn't start with a known 'prefix: ' label is appended to the previous field,
+    so multi-line values are preserved rather than dropped."""
+    fields: dict = {}
+    current = None
+    for line in text.split("\n"):
+        matched = next((p for p in _FAQ_DOC_PREFIXES if line.startswith(p + ": ")), None)
+        if matched:
+            fields[matched] = line[len(matched) + 2:]
+            current = matched
+        elif current is not None:
+            fields[current] += "\n" + line
+    return fields
+
+
 def make_unique_ids(ids: list) -> list:
     """Disambiguate duplicate FAQ ids (some titles repeat in the source data).
     First occurrence keeps the original id unchanged; subsequent occurrences
@@ -94,49 +97,78 @@ def make_unique_ids(ids: list) -> list:
     return unique_ids
 
 
-with open("./faq_extracted_with_crawled_content.json", "r", encoding="utf-8") as f:
-    faq_data = json.load(f)
+def main():
+    """Wipe the faq_entries collection and rebuild it from the source JSON."""
+    import chromadb
+    from sentence_transformers import SentenceTransformer
 
-faq_entries = faq_data["faq_entries"]
-total = len(faq_entries)
-print(f"\n[INFO] Preparing {total} FAQ entries...\n")
+    # --- Setup ---
+    faq_embedder = SentenceTransformer("intfloat/multilingual-e5-large")
 
-# --- Build everything up front (cheap, CPU-only string ops) ---
-raw_ids = [entry["id"] for entry in faq_entries]
-faq_ids = make_unique_ids(raw_ids)
-faq_texts = [flatten_faq_entry(entry) for entry in faq_entries]
-faq_metadatas = [build_faq_metadata(entry) for entry in faq_entries]
+    chroma_client = chromadb.PersistentClient(path="./faq_db")
 
-dup_count = sum(1 for i, rid in enumerate(faq_ids) if rid != raw_ids[i])
-if dup_count:
-    print(f"[WARN] {dup_count} duplicate id(s) found in source data; disambiguated with suffixes.\n")
+    # Wipe and recreate with cosine metric
+    try:
+        chroma_client.delete_collection("faq_entries")
+        print("[INFO] Deleted old faq_entries collection.")
+    except Exception as e:
+        print(f"[ERROR] Failed to delete old faq_entries collection: {e}")
 
-# --- Encode + store in chunks: gives progress feedback and surfaces
-# errors right after the batch that caused them, instead of only after
-# the full encode finishes. ---
-BATCH_SIZE = 16
-
-for start in range(0, total, BATCH_SIZE):
-    end = min(start + BATCH_SIZE, total)
-
-    chunk_ids = faq_ids[start:end]
-    chunk_texts = faq_texts[start:end]
-    chunk_metadatas = faq_metadatas[start:end]
-
-    embeddings = faq_embedder.encode(
-        ["passage: " + text for text in chunk_texts],
-        batch_size=BATCH_SIZE,
-        normalize_embeddings=True,
-    ).tolist()
-
-    faq_collection.add(
-        ids=chunk_ids,
-        embeddings=embeddings,
-        documents=chunk_texts,
-        metadatas=chunk_metadatas,
+    faq_collection = chroma_client.create_collection(
+        "faq_entries",
+        metadata={
+            "hnsw:space": "cosine",
+        }
     )
+    print("[INFO] Created new faq_entries collection with cosine metric.")
 
-    pct = end / total * 100
-    print(f"[STORED] {end}/{total} ({pct:.1f}%) — last id: {chunk_ids[-1]}")
+    with open("./faq_extracted_with_crawled_content.json", "r", encoding="utf-8") as f:
+        faq_data = json.load(f)
 
-print(f"\n[INFO] Done. {total} FAQ entries stored.\n")
+    faq_entries = faq_data["faq_entries"]
+    total = len(faq_entries)
+    print(f"\n[INFO] Preparing {total} FAQ entries...\n")
+
+    # --- Build everything up front (cheap, CPU-only string ops) ---
+    raw_ids = [entry["id"] for entry in faq_entries]
+    faq_ids = make_unique_ids(raw_ids)
+    faq_texts = [flatten_faq_entry(entry) for entry in faq_entries]
+    faq_metadatas = [build_faq_metadata(entry) for entry in faq_entries]
+
+    dup_count = sum(1 for i, rid in enumerate(faq_ids) if rid != raw_ids[i])
+    if dup_count:
+        print(f"[WARN] {dup_count} duplicate id(s) found in source data; disambiguated with suffixes.\n")
+
+    # --- Encode + store in chunks: gives progress feedback and surfaces
+    # errors right after the batch that caused them, instead of only after
+    # the full encode finishes. ---
+    BATCH_SIZE = 16
+
+    for start in range(0, total, BATCH_SIZE):
+        end = min(start + BATCH_SIZE, total)
+
+        chunk_ids = faq_ids[start:end]
+        chunk_texts = faq_texts[start:end]
+        chunk_metadatas = faq_metadatas[start:end]
+
+        embeddings = faq_embedder.encode(
+            ["passage: " + text for text in chunk_texts],
+            batch_size=BATCH_SIZE,
+            normalize_embeddings=True,
+        ).tolist()
+
+        faq_collection.add(
+            ids=chunk_ids,
+            embeddings=embeddings,
+            documents=chunk_texts,
+            metadatas=chunk_metadatas,
+        )
+
+        pct = end / total * 100
+        print(f"[STORED] {end}/{total} ({pct:.1f}%) — last id: {chunk_ids[-1]}")
+
+    print(f"\n[INFO] Done. {total} FAQ entries stored.\n")
+
+
+if __name__ == "__main__":
+    main()
