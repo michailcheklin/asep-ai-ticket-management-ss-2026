@@ -58,6 +58,7 @@ INITIAL_STATES = {
     "user_metadata": None,      # dict from IdP + browser UA, or None if not logged in
     "metadata_confirmed": False,   # True after user confirms browser-detected device/OS
     "_pending_first_message": None, # first user message held until metadata is confirmed
+    "_last_audio_id": None,         # file_id of the last transcribed recording
 }
 
 def _waiting_message(lang: str) -> str:
@@ -856,7 +857,7 @@ def run_app(client: ChatClient, *, mock_mode: bool = False) -> None:
             _scroll_page_to_bottom(scroll_target)
             st.session_state["scroll_target"] = None
 
-    # Priority 4: normal freeform chat input.
+    # Priority 4: normal freeform chat input, with the audio recorder below it.
     else:
         has_pending_solutions = any(msg.get("solutions") for msg in st.session_state.messages)
         chat_disabled = (
@@ -866,17 +867,44 @@ def run_app(client: ChatClient, *, mock_mode: bool = False) -> None:
             or st.session_state.pending_ticket_confirmation is not None
             or st.session_state.is_complete
         )
-        if user_input := st.chat_input(
-            placeholder=(
-                t("Das Gespräch ist abgeschlossen — bitte über 'Neu starten' ein neues Anliegen beginnen.", lang)
-                if st.session_state.is_complete
-                else t("Bitte E-Mail-Adresse und Matrikelnummer eingeben", lang)
-                if not are_form_fields_valid()
-                else t("Anliegen beschreiben...", lang)
-            ),
-            disabled=chat_disabled,
-            on_submit=bot_starting_thinking,
-        ):
+        placeholder = (
+            t("Das Gespräch ist abgeschlossen — bitte über 'Neu starten' ein neues Anliegen beginnen.", lang)
+            if st.session_state.is_complete
+            else t("Bitte E-Mail-Adresse und Matrikelnummer eingeben", lang)
+            if not are_form_fields_valid()
+            else t("Anliegen beschreiben...", lang)
+        )
+
+        # A placeholder container reserves the text field's visual position
+        # above the audio recorder; it's filled in further down. This lets
+        # the audio widget + transcription run (and write to
+        # session_state["chat_text_input"]) *before* the text_input is
+        # actually instantiated below - Streamlit forbids writing to a
+        # widget's session-state key after that widget has been created in
+        # the same run - while still rendering the recorder underneath.
+        text_container = st.container()
+        recording = st.audio_input(t("Aufnehmen", lang), disabled=chat_disabled)
+
+        if recording is not None and recording.file_id != st.session_state.get("_last_audio_id"):
+            st.session_state["_last_audio_id"] = recording.file_id
+            with st.spinner(t("Wird transkribiert...", lang)):
+                result = client.transcribe_audio(recording.getvalue(), lang)
+            st.session_state["chat_text_input"] = result.get("text", "")
+            st.rerun()
+
+        with text_container:
+            with st.form("chat_form", clear_on_submit=True, border=False):
+                form_col_input, form_col_submit = st.columns([5, 1])
+                user_input = form_col_input.text_area(
+                    placeholder,
+                    key="chat_text_input",
+                    disabled=chat_disabled,
+                    label_visibility="collapsed",
+                )
+                submitted = form_col_submit.form_submit_button(t("Senden", lang), disabled=chat_disabled)
+
+        if submitted and user_input:
+            bot_starting_thinking()
             if metadata_needs_confirm:
                 st.session_state["_pending_first_message"] = user_input
                 st.rerun()

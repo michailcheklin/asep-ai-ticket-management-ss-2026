@@ -11,6 +11,7 @@ Main endpoints
 - `POST /solution-feedback` — receives user feedback about a proposed solution. Depending on the feedback it may create or close a ticket in Zammad and return a confirmation message.
 - `POST /faq` — submit a single new FAQ entry (validated by the `FaqSubmission` model, handled by `rag/faq_submission.py`). Two-phase: a first call returns either `{"status":"redundant", ...}` (a very similar entry already exists) or `{"status":"preview","entry":...}` (language-polished + generated title, **not yet stored**); a second call with `confirmed=true` stores the approved entry and returns `{"status":"created","id":...}`. `force=true` skips the redundancy check ("create anyway").
 - `GET /faq/contexts` — returns the distinct existing FAQ categories (`{"contexts": [...]}`) that populate the submission form's category dropdown.
+- `POST /transcribe` — speech-to-text for the frontend's audio recorder. Accepts base64-encoded audio (`TranscribeRequest`: `audio_base64`, optional `language`), decodes it and runs it through `llm/stt.py`'s faster-whisper model, returns `{"text": ...}`. Invalid base64 is rejected with `400`.
 
 Responsibilities of the API layer
 - Validate incoming requests (Pydantic models)

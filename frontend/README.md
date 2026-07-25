@@ -8,6 +8,16 @@ The form fields are checked for validity in the `all_form_fields_valid` method w
 
 The method `bot_starting_thinking` is called when the user presses the "Send" button in the chat input to send the chat message. This causes the input field to become disabled while the bot is generating the answer. This is to prevent the user from interrupting the bot while it generates the answer.
 
+### Why the freeform input is an `st.form`, not `st.chat_input`
+
+The freeform message box used to be a plain `st.chat_input`. It was replaced with an `st.form` containing an `st.text_input` + submit button so that speech-to-text (see below) can pre-fill the box with the transcribed text before the user sends it: `st.chat_input` has no `value`/session-state-write path, so a transcription could never appear in it for the user to review or edit — only `st.form_submit_button` clicks and Enter-inside-the-form give an explicit, distinguishable "submit" event the same way `st.chat_input` did.
+
+This is a deliberate one-off deviation from Streamlit's purpose-built chat widget, acceptable specifically because this Streamlit frontend is a temporary/prototype UI, not the project's long-term frontend — a rebuild on a different stack wouldn't inherit this trade-off.
+
+### Audio recording (speech-to-text)
+
+Below the text field, `st.audio_input` lets the user record a voice message instead of typing. On each rerun, a new recording (detected via its `file_id`) is sent to the backend's `POST /transcribe` (see `backend/llm/README.md` and `backend/api/README.md`) and the returned text is written into the text field via `st.session_state["chat_text_input"]` — the user still has to press Enter/Send, nothing is sent automatically. The audio widget and the transcription call must run *before* `st.text_input(key="chat_text_input", ...)` is instantiated in the same script run (a `st.container()` placeholder reserves the text field's position above it), because Streamlit forbids writing to a widget's session-state key after that widget has already been created in the same run.
+
 When the user sends a message, the user's input gets displayed in the chat history (`with st.chat_message("user"):`). Additionally, the bot shows first "Please wait... Answer is generated..." first, before the answer is generated. To generate the answer, the frontend sends a POST request to the chat endpoint in the backend along with the current chat's state. 
 
 After the bot has replied, the answer is written into the visible chat history and the updated state that the backend returned is applied to the frontend, so that the next chat message can reuse the new state. Technically all the chat messages are Streamlit containers (`with st.chat_message("assistant"):` and then within the with statement one or more `st.write(...)`, as per https://docs.streamlit.io/develop/api-reference/chat/st.chat_message), so the chat messages can be extended to contain other elements as well.

@@ -45,6 +45,11 @@ Two kinds of models live here: transport models for the API boundary (`ChatReque
   - `intent` — exactly one of: `tutorial`, `problem`, `unclear`, `solved`
   - `reason` — short justification, used only for debugging / tracing
 
+- `TranscribeRequest.py` — request body for `POST /transcribe` (speech-to-text, not part
+  of the graph state). Fields:
+  - `audio_base64` — base64-encoded audio recorded via the frontend's `st.audio_input`
+  - `language` — optional ISO language hint (`"de"`/`"en"`) passed to faster-whisper
+
 ## Guidelines
 
 - Keep models small and domain-focused.

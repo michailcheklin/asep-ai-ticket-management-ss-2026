@@ -1,18 +1,22 @@
 """Backend API for the AI ticket management system with optional Zammad integration."""
+import base64
+import binascii
 import os
 import re
 
 import requests
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from langchain_core.messages import AIMessage, HumanMessage
 
 from ..api.zammad import get_ticket_tags, log_ticket_close_event
 from ..graph.models.ChatRequest import ChatRequest
+from ..graph.models.TranscribeRequest import TranscribeRequest
 from ..graph.models.FaqSubmission import FaqSubmission
 from ..graph.nodes import _resolve_ticket_category
 from ..graph.orchestrator import __execute_langchain_workflow, graph
 from ..graph.state import ChatbotState
+from ..llm.stt import transcribe_audio
 from ..rag import recent_incidents
 from ..rag.faq_submission import list_faq_contexts, submit_faq
 from ..rag.rag_store_tickets import store_ticket_state_to_rag
@@ -341,6 +345,22 @@ async def solution_feedback(request: ChatRequest):
             "category": current_state.get("category", "")
         }
 
+
+@app.post("/transcribe")
+async def transcribe(request: TranscribeRequest):
+    """
+    Transcribe a recorded audio clip to text using faster-whisper.
+
+    :param request: Base64-encoded audio and optional language hint
+    :return: The transcribed text
+    """
+    try:
+        audio_bytes = base64.b64decode(request.audio_base64, validate=True)
+    except binascii.Error:
+        raise HTTPException(status_code=400, detail="Invalid audio_base64")
+
+    text = transcribe_audio(audio_bytes, request.language)
+    return {"text": text}
 
 
 

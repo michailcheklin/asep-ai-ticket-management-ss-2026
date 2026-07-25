@@ -6,6 +6,7 @@ Files
 - `llm.py` — LLM client wrapper. Abstracts the underlying LLM runtime (Ollama, SAIA/OpenAI-compatible endpoint). Provides convenience functions for completions, chat calls and temperature/config overrides. Also loads the shared agent behavior file (see "Agent behavior" below) into `AGENT_PROMPT` at import time.
 - `prompts.py` — central place for prompt templates, system messages and any few-shot examples used across the graph. Keeping prompts here improves consistency and makes prompt-testing easier. Includes `FAQ_POLISH_RULES` (language-only cleanup) and `FAQ_TITLE_RULES` (generate a statement-style FAQ title) used by the FAQ-submission flow (`rag/faq_submission.py`).
 - `strings.py` — DE→EN lookup (`t(text, lang)` + `_EN`, German text as key) for the handful of **hardcoded** (non-LLM) backend messages. Mirrors the frontend's `frontend/ui/i18n.py`; the two are separate because frontend and backend run in separate processes. LLM-generated text is not translated here — the model is asked to answer in the detected `language` directly.
+- `stt.py` — speech-to-text wrapper around `faster-whisper`. Loads the model once at import time (module-level `model`, same pattern as `llm.py`'s `local_llm`) and exposes `transcribe_audio(audio_bytes, language)` for `POST /transcribe`. CPU-only by default — no GPU passthrough is configured anywhere in this project's docker-compose setup.
 - `AGENTS/` — markdown files defining agent-wide LLM behavior (see "Agent behavior" below).
 
 Configuration
@@ -14,6 +15,7 @@ Configuration
   - `USE_SAIA_API`: `true`/`false`- whether to use the SAIA API or not
   - `SAIA_API_KEY`: The API key to be used (here: SAIA)
   - `AGENT`: name of the agent behavior file to load from `AGENTS/`, without the `.md` extension (e.g. `AGENT=ZIM` loads `AGENTS/ZIM.md`). Required — `llm.py` raises an exception at import time if it is unset or the file doesn't exist.
+  - `STT_MODEL_SIZE` / `STT_DEVICE` / `STT_COMPUTE_TYPE`: faster-whisper model size (default `small`), device (default `cpu`) and quantization (default `int8`) used by `stt.py`. See `backend/config.py`.
 
 Agent behavior
 - `AGENTS/<name>.md` holds the behavior that should apply across *all* LangGraph nodes, regardless of which node currently has control — e.g. the bot's identity, its topical scope, how to handle off-topic requests, truthfulness expectations, and tone/conciseness. It is a single flat block of text, not per-node sections.
