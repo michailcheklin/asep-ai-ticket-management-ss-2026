@@ -816,9 +816,19 @@ def run_app(client: ChatClient, *, mock_mode: bool = False) -> None:
 
     st.subheader(t("Kontaktdaten", lang))
     is_logged_in = metadata is not None
-    st.text_input(t("E-Mail-Adresse *", lang), key="email_input", disabled=is_logged_in)
+
+    # For pre-filling the form fields for the email and student id
+    # at the top of the "app" tab. When not logged in,
+    # the fields are not pre-filled
+    extracted_email_from_shibboleth = ""
+    extracted_student_id_from_shibboleth = ""
+    if is_logged_in:
+        extracted_email_from_shibboleth = metadata.get("email", "")
+        extracted_student_id_from_shibboleth = metadata.get("student_id", "")
+
+    st.text_input(t("E-Mail-Adresse *", lang), key="email_input", disabled=is_logged_in, value=extracted_email_from_shibboleth)
     if not metadata or metadata.get("role") == "student":
-        st.text_input(t("Matrikelnummer *", lang), key="student_id_input", disabled=is_logged_in)
+        st.text_input(t("Matrikelnummer *", lang), key="student_id_input", disabled=is_logged_in, value=extracted_student_id_from_shibboleth)
     st.divider()
     st.header(t("ZIM Helper", lang))
 
