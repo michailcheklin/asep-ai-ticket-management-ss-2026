@@ -162,12 +162,13 @@ The test is passed if, for the three relevant queries, a FAQ match reaches `FAQ_
 **Additional notes:**
 The thresholds are imported directly from `backend/rag/retrieve_info.py` instead of being duplicated in the test, so the test always evaluates against the actual production values rather than a possibly stale copy. This test must be run from the project root with `PYTHONPATH=.` set (see exception above), since it imports `backend.rag.retrieve_info` via its full module path.
 
+
 ### LLM chat conversation Benchmark
 **What does this test do:**
-This script benchmarks multiple GWDG/SAIA LLMs by running them through realistic IT-support conversation scenarios and evaluating their response quality using DeepEval's `ConversationCompletenessMetric`. Results are saved to `tests/benchmark_conversation_results.json` and logged to LangSmith.
+This script benchmarks multiple GWDG/SAIA LLMs by running them through realistic IT-support conversation scenarios and evaluating their response quality with four DeepEval metrics. Results are saved to `tests/benchmark_conversation_results.json` and logged to LangSmith.
 
 **Why is this test done:**
-To identify which LLM performs best as the chatbot's underlying model for the ZIM ticket management use case, and to document the strengths and weaknesses of each evaluated model.
+To identify which LLM performs best as the chatbot's underlying model for the ZIM ticket management use case, to document the strengths and weaknesses of each evaluated model, and to check the conversations against several independent quality dimensions rather than completeness alone.
 
 **How is the test done:**
 For each model in `MODEL_CONFIGS`, the chatbot is patched to use that model. Five realistic IT-support conversation scenarios are simulated, each consisting of up to 3 user messages:
@@ -177,54 +178,146 @@ For each model in `MODEL_CONFIGS`, the chatbot is patched to use that model. Fiv
 * A student who cannot connect to the university VPN from home office
 * A university employee who cannot activate their Microsoft Office campus licence
 
-Each scenario produces a `ConversationalTestCase` which is then evaluated by the judge model (Gemma-4-31B) using the `ConversationCompletenessMetric`. Results are collected and written to `benchmark_results.json`. All LLM calls are automatically traced in LangSmith via the LangChain integration.
+Each scenario produces a `ConversationalTestCase` which is evaluated by the judge model against all four metrics. Each scenario is evaluated inside its own `try/except` block, so a single slow or timed-out evaluation does not discard the already-computed scores of the other scenarios — a failed scenario is recorded as an `ERROR` entry and the benchmark continues.
 
-**When is the test passed:**
-The test always passes (it is a benchmarking script, not a pass/fail test). Results are stored for manual analysis.
+**Metrics and thresholds:**
+
+| Metric | Type | Threshold | Passing score means | Threshold justification |
+| --- | --- | --- | --- | --- |
+| Conversation Completeness | `ConversationCompletenessMetric` (built-in) | 0.5 | The conversation reaches a resolution over the whole dialogue. | Multi-turn completeness is partial-credit by nature; 0.5 marks "more complete than not" and matches DeepEval's default, so a model is not failed for a single unresolved turn. |
+| Hallucination Detection | `ConversationalGEval` | 0.7 | Factual/technical claims are consistent and plausible; nothing fabricated. | Set a priori as a quality bar, not fitted to observed scores. Groundedness is high-stakes for an IT-support bot — a wrong instruction is worse than none — so the bar is above the 0.5 completeness bar: the bot must stay factual in the clear majority of turns. |
+| Knowledge Retention | `ConversationalGEval` | 0.7 | The bot reuses details the user already gave and does not re-ask. | Re-asking known information is a clear, easily-judged failure; 0.7 demands the bot get this right in the clear majority of turns. |
+| Answer Relevancy | `ConversationalGEval` | 0.7 | Each reply addresses the user's current request and stays on topic. | On-topic relevancy should hold almost always; 0.7 flags models that drift, stall, or answer evasively. |
+
+All three `ConversationalGEval` metrics use `evaluation_params=[MultiTurnParams.CONTENT]`, `model=SAIA_JUDGE_MODEL`, `async_mode=False`, and are phrased so that a **high** score = good behaviour.
+
+**Judge model — decision:**
+The judge model is **`qwen3.6-35b-a3b`** (configured as `SAIA_JUDGE_MODEL` in `tests/setup.py`). All documented figures were produced under this judge. Several judges were trialled before it, and each rejection is itself part of the selection:
+* `gemma-4-31b-it` (31B, the original judge) was too small to reason reliably about the multi-turn `ConversationalGEval` criteria; its verdicts on the same conversation were inconsistent across re-runs, which makes it unsuitable once more than the built-in completeness metric is used.
+* `qwen3.5-397b-a17b` was trialled as the strongest available SAIA model, but timed out on essentially every scenario evaluation (~3 min per call, exceeding the client timeout), so the benchmark returned no scores at all. Rejected on latency grounds.
+* `qwen3.5-122b-a10b` was trialled next and initially looked viable, but under real SAIA load it too exceeded the timeout on most evaluations. Rejected for the same reason as the 397B model.
+* `mistral-medium-3.5-128b` was trialled briefly and completed evaluations, but was set aside in favour of the qwen model to keep the judge in a single family for comparability across all runs.
+* `qwen3.6-35b-a3b` (selected) is a mixture-of-experts model with only ~3B active parameters per token, which is why it stays well inside the timeout while still reasoning competently about multi-turn criteria. A full five-scenario evaluation completes in well under ten minutes, which is what finally made complete runs possible at all.
+
+**Judge and metric caveats:**
+* The judge only sees the conversation turns (`MultiTurnParams.CONTENT`), not the RAG/FAQ context that grounded the bot's answers, so correctly-grounded facts can be flagged as "unsupported". Hallucination Detection scores should be read as "the judge could not verify these claims from the visible turns alone", not as proof the model invents facts — and used for relative comparison between models, not as an absolute groundedness measure.
+* An LLM judge has known biases (self-preference toward its own model family, verbosity/position bias). To keep this controlled, the judge is deliberately taken from a model family that is not itself a chatbot candidate: no evaluated model ever judges itself or a competitor. All figures documented below come from runs under the same judge, so scores are comparable with each other — but they are not absolute quality measures and should not be compared against scores produced under a different judge.
 
 **Evaluated models and findings:**
 
-**deepseek-r1-distill-llama-70b** (70B):
-- Score (5-scenario run): 1.00 (VPN scenario), 0.67 (Office scenario); scenarios 1–3 could not be evaluated due to API server errors (InternalServerError)
-- Strength: Strong reasoning capabilities and detailed step-by-step solutions. Produces the most structured, helpful responses for technical IT problems.
-- Weakness: Writes long reasoning chains inside `<think>...</think>` tags before the actual answer, which required a custom wrapper class (`ThinkStripChatOpenAI`) to strip these tags before JSON parsing. Frequently hits API rate limits and server errors under load.
+Six models were benchmarked. Each entry below is backed by exactly one archived run in `tests/logs/`; the log name is given per model. All runs used the judge `qwen3.6-35b-a3b` and the same five scenarios, so the figures are directly comparable.
 
-**apertus-70b-instruct-2509** (70B):
-- Score (preliminary 2-scenario run): 0.83 (WLAN scenario), 0.67 (Account scenario)
-- Score (5-scenario run): could not be evaluated — HTTP 500 error during evaluation phase
-- Strength: Answers directly and concisely without excessive follow-up questions. Best overall completeness scores in completed evaluations.
-- Weakness: Unstable under high server load — when used as chatbot model while the judge model runs simultaneously, it produced `RetryError` and HTTP 500 responses. Cannot serve as both chatbot and judge at the same time.
+| Model | Size | Completeness | Hallucination | Knowledge Retention | Answer Relevancy | Overall | Scenarios scored |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| gpt-oss-120b | 120B | 0.93 | 0.98 | 0.70 | 0.96 | **0.89** | 5 / 5 |
+| glm-4.7 | — | 0.80 | 0.98 | 0.64 | 0.84 | **0.82** | 5 / 5 |
+| deepseek-r1-70b | 70B | 0.87 | 0.68 | 0.58 | 0.64 | **0.69** | 5 / 5 |
+| llama-3.1-8b | 8B | 0.60 | 0.62 | 0.46 | 0.50 | **0.55** | 5 / 5 |
+| gemma-4-31b-it | 31B | 0.33 | 0.42 | 0.48 | 0.42 | **0.41** | 5 / 5 |
+| apertus-70b | 70B | 0.00 | 0.20 | 0.03 | 0.17 | **0.10** | 3 / 5 |
 
-**gemma-4-31b-it** (31B):
-- Score (preliminary 2-scenario run): 0.00 (WLAN scenario), 0.33 (Account scenario)
-- Score (5-scenario run): could not be evaluated — API rate limit exceeded (429)
-- Strength: Stable and compatible with the system; no technical parsing errors or JSON format issues.
-- Weakness: Tends to ask multiple follow-up questions before offering any solution, causing conversations to end before a solution is reached. Low completeness scores as a result.
+Per-scenario scores are given in the order Completeness / Hallucination / Knowledge Retention / Answer Relevancy (thresholds 0.5 / 0.7 / 0.7 / 0.7).
 
-**meta-llama-3.1-8b-instruct** (8B – small model):
-- Score (5-scenario run): could not be evaluated — API rate limit exceeded (429)
-- Strength: Smallest and fastest model tested; lowest server demand of all evaluated models. Suitable as a lightweight fallback.
-- Weakness: Returns unexpected JSON structures for some extraction steps (`needs_additional_info` field sometimes missing or misformatted), which caused parsing errors. Model quality is noticeably lower than the 70B models.
+**gpt-oss-120b** (120B — current production chatbot model). Evidence: `tests/logs/gpt-oss-120b_2026-07-25_10-39.log`, runtime 8:28 min.
+- Scenario 1 (WLAN not in network list): 1.00 / 1.00 / 1.00 / 1.00
+- Scenario 2 (university account locked): 0.67 / 1.00 / 0.90 / 1.00
+- Scenario 3 (forgot password, no reset link): 1.00 / 1.00 / 0.10 / 0.80
+- Scenario 4 (cannot connect to VPN): 1.00 / 1.00 / 1.00 / 1.00
+- Scenario 5 (Office campus licence): 1.00 / 0.90 / 0.50 / 1.00
+- Strength: the best model in the field on every metric. Perfect scores in three of five scenarios, and the only model with no factual complaints from the judge (Hallucination 0.98 average). Answers are structured, cite the correct ZIM URLs and hotline details, and stay on topic throughout.
+- Weakness: Knowledge Retention is its only metric below threshold (0.70, exactly at the bar). It is caused by two scenarios — in the password scenario (0.10) the bot re-asks for the username the user had already given and restarts the dialogue, and in the Office scenario (0.50) it partially repeats its own earlier questions.
+- Conclusion: confirmed as the production model. No candidate came close enough to justify a switch.
+
+**glm-4.7** — Evidence: `tests/logs/glm-4.7_2026-07-25_10-00.log`, runtime 6:46 min.
+- Scenario 1 (WLAN): 1.00 / 1.00 / 1.00 / 1.00
+- Scenario 2 (account locked): 1.00 / 1.00 / 1.00 / 1.00
+- Scenario 3 (forgot password): 1.00 / 0.90 / 0.80 / 0.90
+- Scenario 4 (VPN): 0.00 / 1.00 / 0.20 / 0.30
+- Scenario 5 (Office licence): 1.00 / 1.00 / 0.20 / 1.00
+- Strength: the fastest of the large models (6:46 min for a full five-scenario run) and factually the joint-best (Hallucination 0.98). Four of five scenarios pass on Completeness with 1.00, two of them perfectly on all four metrics.
+- Weakness: one scenario collapses completely. In the VPN scenario the bot loses the thread and restarts with a generic greeting, which drags Completeness to 0.00 and Answer Relevancy to 0.30. Knowledge Retention is the weakest metric overall (0.64), driven by the same restart pattern in scenarios 4 and 5.
+- Note on reproducibility: two identical glm-4.7 runs 17 minutes apart produced materially different per-scenario scores despite `temperature=0.2`. Single-run figures for this model should be treated as indicative rather than exact.
+- Conclusion: the strongest alternative to gpt-oss-120b and the recommended fallback, on the condition that the conversation-restart problem is addressed in the graph (see cross-model findings).
+
+**deepseek-r1-70b** (70B) — Evidence: `tests/logs/deepseek-r1-70b_2026-07-25_12-51.log`, runtime 9:08 min.
+- Scenario 1 (WLAN): 1.00 / 1.00 / 1.00 / 1.00
+- Scenario 2 (account locked): 1.00 / 0.50 / 0.80 / 1.00
+- Scenario 3 (forgot password): 0.33 / 0.10 / 0.10 / 0.00
+- Scenario 4 (VPN): 1.00 / 1.00 / 1.00 / 1.00
+- Scenario 5 (Office licence): 1.00 / 0.80 / 0.00 / 0.20
+- Strength: two scenarios (WLAN, VPN) are perfect on all four metrics, and Completeness stays high overall (0.87). Its reasoning-model nature shows in well-argued step-by-step instructions when it stays on track.
+- Weakness: strongly inconsistent. The password scenario fails on every metric at once (0.33 / 0.10 / 0.10 / 0.00) — the bot answers a question the user did not ask and never returns to the actual problem. The Office scenario loses all user context (Knowledge Retention 0.00). The `<think>` reasoning tags also require the `ThinkStripChatOpenAI` wrapper; without it the raw reasoning leaks into user-facing answers.
+- Conclusion: not recommended. The variance between a perfect scenario and a total failure is too high for a support bot, and the reasoning tags add an extra failure mode.
+
+**llama-3.1-8b** (8B — smallest model, candidate lightweight fallback) — Evidence: `tests/logs/llama-3.1-8b_2026-07-25_09-19.log`, runtime 8:16 min.
+- Scenario 1 (WLAN): 1.00 / 1.00 / 1.00 / 1.00
+- Scenario 2 (account locked): 1.00 / 0.80 / 1.00 / 1.00
+- Scenario 3 (forgot password): 0.00 / 0.20 / 0.10 / 0.00
+- Scenario 4 (VPN): 1.00 / 0.90 / 0.20 / 0.50
+- Scenario 5 (Office licence): 0.00 / 0.20 / 0.00 / 0.00
+- Strength: it handles the two simplest scenarios genuinely well — WLAN is perfect on all four metrics and the account-lockout scenario is close behind. For its size (8B, the smallest and cheapest model tested) that is a respectable result, and it shows the RAG context does most of the work in straightforward cases.
+- Weakness: it breaks down as soon as the scenario needs more than one coherent step. Two of five scenarios score 0.00 on Completeness — the bot never reaches a resolution, dumps retrieved content wholesale, and falls back to generic "please contact ZIM support" replies. Structured-output reliability is also a risk: in an earlier run it violated the `IntentDecision` schema (returned a `GESAMTCHATVERLAUF` field instead of `intent`), aborting the conversation build.
+- Conclusion: unsuitable as the production model. Defensible only as an emergency fallback where availability matters more than answer quality, and only with additional schema-validation guards on the `classify_intent` / `classify_ticket` nodes.
+
+**gemma-4-31b-it** (31B — the former judge model, tested here as a chatbot candidate) — Evidence: `tests/logs/gemma-4-31b_2026-07-25_11-07.log`, runtime 9:56 min.
+- Scenario 1 (WLAN): 1.00 / 0.90 / 1.00 / 1.00
+- Scenario 2 (account locked): 0.00 / 0.00 / 0.00 / 0.00
+- Scenario 3 (forgot password): 0.67 / 1.00 / 1.00 / 0.90
+- Scenario 4 (VPN): 0.00 / 0.00 / 0.20 / 0.10
+- Scenario 5 (Office licence): 0.00 / 0.20 / 0.20 / 0.10
+- Strength: when it works it works well — the WLAN and password scenarios are among the better results in the whole benchmark, with correct grounding in the given context and Hallucination at 0.90 / 1.00.
+- Weakness (disqualifying): in three of five scenarios the model leaks its own system prompt into the user-facing answer instead of answering the user. All four metrics collapse to near-zero in those scenarios because there is no usable reply at all. This is not a judging artefact — the leaked instructions are visible verbatim in the log.
+- Conclusion: rejected as a chatbot candidate. A model that exposes its system prompt to end users is not deployable regardless of its quality in the remaining scenarios. Note that this is also the model that was replaced as the *judge*, for a different reason (too inconsistent for multi-turn GEval judging).
+
+**apertus-70b** (70B) — Evidence: `tests/logs/apertus-70b_2026-07-25_11-21.log`, runtime 19:31 min, only 3 of 5 scenarios scored.
+- Scenario 2 (account locked): 0.00 / 0.20 / 0.00 / 0.10
+- Scenario 3 (forgot password): 0.00 / 0.20 / 0.10 / 0.20
+- Scenario 5 (Office licence): 0.00 / 0.20 / 0.00 / 0.20
+- Scenarios 1 and 4 (WLAN, VPN): not evaluated — the model itself failed to produce a response during the conversation build, so no test case could be constructed.
+- Weakness: the worst result of the benchmark by a wide margin, and the only model that never once reached a resolution (Completeness 0.00 in every scored scenario). It is also by far the slowest — 19:31 min for three scenarios, more than twice the time gpt-oss-120b needed for five. Four separate runs were attempted and none completed all five scenarios.
+- Conclusion: rejected. Neither the answer quality nor the latency is acceptable, and it is the only candidate whose failures originate in the model itself rather than in the judge step.
+
+**Cross-model findings:**
+* **Knowledge Retention is the weakest metric for every single model**, from 8B to 120B (best: gpt-oss-120b at 0.70, exactly at threshold). The failure is always the same pattern: the bot re-asks for information the user already gave, or restarts the dialogue with a generic greeting mid-conversation. Because the pattern is identical across six models of very different sizes and families, the cause is more likely the intent / additional-info loop in the LangGraph flow than the models themselves. 
+**Improving the graph should therefore yield more than switching the model**
+
+**Improving the graph:**
+The benchmark results also validate the current graph design: even the smallest model (8B) achieves perfect scores in the simpler scenarios, which shows that the graph's RAG grounding and prompt structure carry most of the answer quality, and three of the four metrics score high across the strong models. The one remaining weakness — Knowledge Retention — appears to be a localized issue rather than an architectural flaw: code inspection of `backend/graph/nodes.py` (`ask_for_additional_info`) found conditions that are consistent with the observed failure pattern and suggest four candidate improvements. These are working hypotheses, not confirmed root causes — other contributing factors (prompt wording, graph routing) cannot be ruled out from the benchmark data alone:
+  * Pass the conversation history to the follow-up-question LLM call: the node currently builds its prompt only from `issue_description` and `additional_info` — `state["messages"]` is never included, so the model cannot know what has already been asked and answered. This is the most important fix.
+  * Include `student_id` and `user_email` in the BENUTZER-KONTEXT block: both exist in `ChatbotState` but are omitted by `_build_metadata_context`, which is exactly the information the judge flagged as "forgotten" in the logs.
+  * Track already-asked follow-up questions in the state (e.g. an `asked_questions` list) and explicitly forbid repeating them in the prompt.
+  * Prevent the ticket-intro block from being sent twice: the logs show the "Ich habe gerade ein Support-Ticket erstellt…" message repeated verbatim, i.e. the node fires twice — a state flag such as `ticket_intro_sent` would prevent this.
+
+Whether these changes actually raise the Knowledge Retention scores — and whether they are the primary cause at all — must be validated by a before/after benchmark run before further conclusions are drawn.
+
+* **Run reliability is the limiting factor, not model quality.** The benchmark was started roughly 50 times in total (51 shell-history entries, a few of which were not actual runs); 19 runs were archived as logs, and only 6 of those produced usable results — plus 2 complete runs documented before this rework, i.e. about 8 usable runs overall. The remaining runs were lost to judge timeouts, `InternalServerError` (500) and rate limits (429) on the SAIA side. That these are server-side and not code-side is shown by the deepseek run at 12:51, which completed all five scenarios with the identical script minutes after an aborted run. Runs in the early morning are markedly more reliable.
+* **Results are not deterministic even at `temperature=0.2`.** Two identical glm-4.7 runs 17 minutes apart produced materially different per-scenario scores. Rankings should therefore be read as coarse tiers (gpt-oss and glm clearly ahead; deepseek and llama behind; gemma and apertus rejected), not as exact figures.
+* **Model selection:** gpt-oss-120b is confirmed as the production chatbot model, with **glm-4.7 recommended as fallback** (recommendation only — no fallback mechanism is implemented in the system yet) — it is the only other model that completed all five scenarios with a comparable hallucination score, and it is the fastest of the large models.
+
+* **Run reliability is the limiting factor, not model quality.** The benchmark was started rought 50 times in total (shell-history count); 19 runs were archived as logs, and only 6 of those produced usable results — plus 2 complete runs documented before this rework, i.e. about 8 usable runs overall. The remaining runs were lost to judge timeouts, `InternalServerError` (500) and rate limits (429) on the SAIA side. That these are server-side and not code-side is shown by the deepseek run at 12:51, which completed all five scenarios with the identical script minutes after an aborted run. Runs in the early morning are markedly more reliable.
+* **Results are not deterministic even at `temperature=0.2`.** Two identical glm-4.7 runs 17 minutes apart produced materially different per-scenario scores. Rankings should therefore be read as coarse tiers (gpt-oss and glm clearly ahead; deepseek and llama behind; gemma and apertus rejected), not as exact figures.
+* **Model selection:** gpt-oss-120b is confirmed as the production chatbot model, with **glm-4.7 recommended as fallback** (recommendation only — no fallback mechanism is implemented in the system yet) — it is the only other model that completed all five scenarios with a comparable hallucination score, and it is the fastest of the large models.
+
+**When is the test passed:**
+The test always passes (it is a benchmarking script, not a pass/fail test). The thresholds above only mark each scenario/metric as PASS or FAIL in the report; results are stored for manual analysis.
 
 **Additional notes:**
-* The LLM Model Benchmark is only available if for the feature branch a merge request already exists. Additionally, the benchmark is optional (i.e. it does not contribute to the pass/fail of the entire pipeline) and has to be activated manually. For more info about manual and optional CI tests, refer to https://docs.gitlab.com/ci/jobs/job_control/#create-a-job-that-must-be-run-manually in the Gitlab documentation.
-This change was done to give the option to do these tests only when our application's LLM generation was changed substantially and there only once, which conserves API credits. To start the test in the CI, do these steps:
-  1. Go to Gitlab
-  2. Click Build > Pipelines
-  3. Find the most recent pipeline that is tagged with "Merge Request" and the corresponding merge request number
-  4. Click on the "Play" button
-
-* All models are accessed via the GWDG/SAIA API (`https://chat-ai.academiccloud.de/v1/`) which is OpenAI-compatible. The `demand` field in the API response indicates current server load (0 = free, higher = busy).
-* The judge model is **Gemma-4-31B** (`gemma-4-31b-it`). It was chosen to avoid server overload — using the same model as both chatbot and judge simultaneously caused `RetryError` for Apertus.
+* The LLM Model Benchmark is only available once a merge request exists for the feature branch. It is optional (does not contribute to pipeline pass/fail) and must be started manually. To start it in CI: Gitlab → Build > Pipelines → find the most recent pipeline tagged "Merge Request" → click the "Play" button.
+* All models are accessed via the GWDG/SAIA API (`https://chat-ai.academiccloud.de/v1/`), which is OpenAI-compatible. The `demand` field in the API response indicates current server load (0 = free, higher = busy).
 * DeepSeek's `<think>...</think>` reasoning tags are stripped automatically by the `ThinkStripChatOpenAI` wrapper class before responses are parsed.
-* Some models (especially Gemma and Llama) require up to 3 conversation turns before offering a solution. Scenarios therefore consist of 3 messages so that conservative models have enough turns to complete the conversation.
-* Rate limits (`429`) occur after many API calls in one session. Wait for the rate limit to reset before re-running the benchmark.
-* The benchmark must be run from the **project root** (not from the `tests/` folder): `PYTHONPATH=. pytest tests/test_llm_benchmark.py -v -s`
-* * In the CI/CD pipeline, view the console output to view the results after the test has finished.
-* If the test hangs for a long time, it is most likely due to server overload on SAIA's side
-* To add more models, add entries into the `MODEL_CONFIGS` dictionary in `test_llm_benchmark.py` in the following format: `"model_name_that_appears_on_console:":"saia_internal_model_name"`, e. g. `"llama-3.1-8b": "meta-llama-3.1-8b-instruct",`.
+* Some models require up to 3 conversation turns before offering a solution. Scenarios therefore consist of 3 messages so that conservative models have enough turns to complete the conversation.
+* Rate limits (`429`) can occur after many API calls in one session. Wait for the rate limit to reset before re-running the benchmark.
+* The benchmark must be run from the **project root** (not from the `tests/` folder): `PYTHONPATH=. pytest tests/test_llm_conversation_benchmark.py -v -s`
+* If the test hangs for a long time, it is most likely due to server overload on SAIA's side, or the one-time HuggingFace download of the RAG embedder model on first run.
+* To add more models, add entries to the `MODEL_CONFIGS` dictionary in `test_llm_conversation_benchmark.py` in the format `"model_name_shown_on_console": "saia_internal_model_name"`, e.g. `"llama-3.1-8b": "meta-llama-3.1-8b-instruct",`.
 
+* Benchmark one model at a time. Running several models in one invocation multiplies the exposure to SAIA timeouts, and a failure late in the run costs all preceding models their log.
+* Console output is archived per run with `tee`, so every documented score can be traced back to its raw run:
+  `PYTHONPATH=. pytest tests/test_llm_conversation_benchmark.py -v -s 2>&1 | tee tests/logs/<model>_$(date +%Y-%m-%d_%H-%M).log`
+  **Update the log filename whenever you change `MODEL_CONFIGS`** — two archived runs were misnamed because the filename still carried the previous model's name while `MODEL_CONFIGS` had already been changed.
+* `tests/logs/` holds exactly one reference run per evaluated model — the run the figures above are taken from. Incomplete or superseded runs are kept outside the repository and are not part of the documentation.
 
+* Benchmark availability depends heavily on GWDG/SAIA server load. During afternoon/evening hours the judge model frequently returns `InternalServerError` or times out, so only a subset of scenarios gets scored per run (the per-scenario `try/except` records these as ERROR entries and lets the rest complete). Runs in the early morning are markedly more reliable. Results should therefore be accumulated across several runs rather than expected from a single one.
 
 ### LLM off-topic reaction test
 **What does this test do:**
@@ -236,7 +329,7 @@ To identify which LLM complies the best to its agent.md file when rejecting off-
 **How is the test done:**
 For each model in `MODEL_CONFIGS`, the chatbot is patched to use that model. 3 off-topic messages are sent in separate chats to simulate how the user sends an off-topic message as the first message.
 
-Each scenario produces a `ConversationalTestCase` which is then evaluated by the judge model (Gemma-4-31B) using the `ConversationalGEval`. Results are collected and written to `off_topic_reactions_results.json`. All LLM calls are automatically traced in LangSmith via the LangChain integration.
+Each scenario produces a `ConversationalTestCase` which is then evaluated by the judge model (qwen3.6-35b -a3b, imported from tests/setup.py) using the `ConversationalGEval`. Results are collected and written to `off_topic_reactions_results.json`. All LLM calls are automatically traced in LangSmith via the LangChain integration.
 
 **When is the test passed:**
 The test always passes (it is a benchmarking script, not a pass/fail test). Results are stored for manual analysis.

@@ -1,0 +1,1036 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.12.13, pytest-9.1.1, pluggy-1.6.0 -- /Users/ikramhulich/Dev/ai-ticket-management-sprint2/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/ikramhulich/Dev/ai-ticket-management-sprint2/tests
+plugins: rerunfailures-16.4, repeat-0.9.4, xdist-3.8.0, asyncio-1.4.0, deepeval-4.0.10, langsmith-0.8.5, anyio-4.13.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... 2026-07-25 09:19:46,728: [INFO]: RAG: Loading FAQ embedder...
+Loading weights:   0%|          | 0/391 [00:00<?, ?it/s]Loading weights: 100%|██████████| 391/391 [00:00<00:00, 6691.42it/s]
+2026-07-25 09:19:56,521: [INFO]: RAG: Loading FAQ re-ranker...
+Loading weights:   0%|          | 0/201 [00:00<?, ?it/s]Loading weights: 100%|██████████| 201/201 [00:00<00:00, 6064.10it/s]
+2026-07-25 09:20:02,043: [INFO]: RAG: Loading ticket embedder...
+Loading weights:   0%|          | 0/391 [00:00<?, ?it/s]Loading weights: 100%|██████████| 391/391 [00:00<00:00, 32978.86it/s]
+2026-07-25 09:20:08,389: [INFO]: RAG: Connecting to databases...
+2026-07-25 09:20:08,630: [INFO]: RAG: Ready.
+
+collected 1 item
+
+tests/test_llm_conversation_benchmark.py::test_conversation_benchmark 2026-07-25 09:20:09,093: [INFO]: ZIM: Received request to the chat endpoint
+user_message='Ich bin in der Bibliothek mit einem Windows 10 Laptop, das Uni-WLAN wird nicht in der Netzwerkliste angezeigt' history=[] user_email='a@example.com' matrikelnummer='1234567' issue_description='' additional_info=[] priority=0 category='' helpful=False solutions=[] bot_message='' additional_info_attempts=0 ask_issue_attempts=0 ticket_id=None full_conversation='' user_addendum='' intent='' tutorial_attempts=0 graph_runs=0 display_name='' role='' faculty='' device='' os_name=''
+2026-07-25 09:20:09,328: [DEBUG]: Langgraph: Entered extract_information
+2026-07-25 09:20:09,328: [DEBUG]: Langgraph: Current state:
+{'messages': [HumanMessage(content='Ich bin in der Bibliothek mit einem Windows 10 Laptop, das Uni-WLAN wird nicht in der Netzwerkliste angezeigt', additional_kwargs={}, response_metadata={}, id='023ff14c-3a6f-46fb-90eb-a80a87f35adf')], 'ask_issue_attempts': 0, 'intent': '', 'tutorial_attempts': 0, 'visited_nodes': [], 'graph_runs': 0, 'user_email': 'a@example.com', 'matrikelnummer': '1234567', 'issue_description': '', 'additional_info': [], 'additional_info_attempts': 0, 'ticket_id': None, 'full_conversation': '', 'priority': 0, 'category': '', 'needs_additional_info': False, 'is_complete': False, 'solutions': [], 'display_name': '', 'role': '', 'faculty': '', 'device': '', 'os_name': ''}
+2026-07-25 09:20:11,239: [DEBUG]: Langgraph: EXTRACTED DATA: matrikelnummer=None problem='Das Uni-WLAN wird nicht in der Netzwerkliste angezeigt' additional_info=['Bibliothek', 'Windows 10'] priority=0 full_conversation='Der Student hat ein Problem mit dem Uni-WLAN in der Bibliothek. Er verwendet einen Windows 10 Laptop und kann das Uni-WLAN nicht in der Netzwerkliste finden.'
+2026-07-25 09:20:11,240: [ERROR]: Zammad: Invalid URL for Zammad provided: Could not reach Zammad to create ticket
+2026-07-25 09:20:11,240: [ERROR]: Zammad: Invalid URL for Zammad provided: Could not reach Zammad to add tag to ticket
+2026-07-25 09:20:11,240: [INFO]: Langgraph: Created ticket with ID -1 for the state update: {'graph_runs': 1, 'issue_description': 'Das Uni-WLAN wird nicht in der Netzwerkliste angezeigt', 'priority': 0, 'additional_info': ['Bibliothek', 'Windows 10'], 'full_conversation': 'Der Student hat ein Problem mit dem Uni-WLAN in der Bibliothek. Er verwendet einen Windows 10 Laptop und kann das Uni-WLAN nicht in der Netzwerkliste finden.', 'ticket_id': -1}
+2026-07-25 09:20:11,242: [DEBUG]: Langgraph: Entered classify_intent
+2026-07-25 09:20:11,242: [DEBUG]: Langgraph: Current state:
+{'messages': [HumanMessage(content='Ich bin in der Bibliothek mit einem Windows 10 Laptop, das Uni-WLAN wird nicht in der Netzwerkliste angezeigt', additional_kwargs={}, response_metadata={}, id='023ff14c-3a6f-46fb-90eb-a80a87f35adf')], 'ask_issue_attempts': 0, 'intent': '', 'tutorial_attempts': 0, 'visited_nodes': ['extractor_node'], 'graph_runs': 1, 'user_email': 'a@example.com', 'matrikelnummer': '1234567', 'issue_description': 'Das Uni-WLAN wird nicht in der Netzwerkliste angezeigt', 'additional_info': ['Bibliothek', 'Windows 10'], 'additional_info_attempts': 0, 'ticket_id': -1, 'full_conversation': 'Der Student hat ein Problem mit dem Uni-WLAN in der Bibliothek. Er verwendet einen Windows 10 Laptop und kann das Uni-WLAN nicht in der Netzwerkliste finden.', 'priority': 0, 'category': '', 'needs_additional_info': False, 'is_complete': False, 'solutions': [], 'display_name': '', 'role': '', 'faculty': '', 'device': '', 'os_name': ''}
+2026-07-25 09:20:12,345: [DEBUG]: Langgraph: Entered ask_for_additional_info
+2026-07-25 09:20:12,346: [DEBUG]: Langgraph: Current state:
+{'messages': [HumanMessage(content='Ich bin in der Bibliothek mit einem Windows 10 Laptop, das Uni-WLAN wird nicht in der Netzwerkliste angezeigt', additional_kwargs={}, response_metadata={}, id='023ff14c-3a6f-46fb-90eb-a80a87f35adf')], 'ask_issue_attempts': 0, 'intent': 'problem', 'tutorial_attempts': 0, 'visited_nodes': ['extractor_node', 'classify_intent_node'], 'graph_runs': 1, 'user_email': 'a@example.com', 'matrikelnummer': '1234567', 'issue_description': 'Das Uni-WLAN wird nicht in der Netzwerkliste angezeigt', 'additional_info': ['Bibliothek', 'Windows 10'], 'additional_info_attempts': 0, 'ticket_id': -1, 'full_conversation': 'Der Student hat ein Problem mit dem Uni-WLAN in der Bibliothek. Er verwendet einen Windows 10 Laptop und kann das Uni-WLAN nicht in der Netzwerkliste finden.', 'priority': 0, 'category': '', 'needs_additional_info': False, 'is_complete': False, 'solutions': [], 'display_name': '', 'role': '', 'faculty': '', 'device': '', 'os_name': ''}
+2026-07-25 09:20:12,346: [DEBUG]: Langgraph: ask_for_additional_info node: attempts: 0 
+2026-07-25 09:20:12,348: [INFO]: RAG: Encoding FAQ query...
+2026-07-25 09:20:13,125: [INFO]: RAG: Running cross-encoder re-ranking on 10 FAQ candidates...
+2026-07-25 09:20:13,956: [INFO]: RAG: FAQ re-ranking results (converting from cosine to sigmoid):
+2026-07-25 09:20:13,956: [INFO]: RAG: Title                                                                           |before              |after (raw)         |after (sigmoid)     
+2026-07-25 09:20:13,957: [INFO]: RAG: Keine Funkverbindung                                                            |0.8724              |-1.9345             |0.2937              
+2026-07-25 09:20:13,957: [INFO]: RAG: WLAN Konnektivitätsprobleme am Uniklinikum                                      |0.8561              |-2.0093             |0.2893              
+2026-07-25 09:20:13,957: [INFO]: RAG: Keine Verbindung zu eduroam                                                     |0.8593              |-3.5563             |0.2089              
+2026-07-25 09:20:13,957: [INFO]: RAG: Keine Verbindung zum Netz                                                       |0.8545              |-3.6272             |0.2056              
+2026-07-25 09:20:13,957: [INFO]: RAG: Zugang zur Domäne von extern                                                    |0.8532              |-3.8040             |0.1976              
+2026-07-25 09:20:13,957: [INFO]: RAG: E-Mails verschicken über WLAN Router funktioniert nicht                         |0.8530              |-4.0185             |0.1883              
+2026-07-25 09:20:13,957: [INFO]: RAG: Keine Verbindung unter Win 8.1                                                  |0.8645              |-4.1112             |0.1844              
+2026-07-25 09:20:13,957: [INFO]: RAG: eduroam auf iOS 13.x                                                            |0.8553              |-4.1557             |0.1825              
+2026-07-25 09:20:13,957: [INFO]: RAG: IP-Adresse wird nicht zugewiesen                                                |0.8621              |-4.8639             |0.1547              
+2026-07-25 09:20:13,957: [INFO]: RAG: Zugang zum WLAN an der UDE                                                      |0.8540              |-5.2912             |0.1397              
+2026-07-25 09:20:13,957: [INFO]: RAG: FAQ tier 2 matched: returning 2 results above 0.2
+2026-07-25 09:20:13,957: [INFO]: RAG: Encoding ticket query...
+2026-07-25 09:20:14,027: [INFO]: RAG: [RAG]   [ticket_016] similarity: 0.6106
+2026-07-25 09:20:14,027: [INFO]: RAG: [RAG]   [ticket_049] similarity: 0.5888
+2026-07-25 09:20:14,027: [INFO]: RAG: Final: 2 FAQ matches, 2 ticket matches
+2026-07-25 09:20:14,027: [INFO]: RAG: Inferred category: {'category': 'unknown', 'confidence': 0.3108}
+2026-07-25 09:20:14,028: [DEBUG]: RAG: faq_matches:
+[{'id': 'Keine Funkverbindung', 'text': 'context: 20 WLAN > 20.02 Verbindungsprobleme\nproblem: Ich habe auf dem Campus keine Funkverbindung.\nsolution: - Befinden Sie sich in einem Bereich, der prinzipiell Funkversorgung besitzt? Wo Sie an de...', 'similarity': 0.2937, 'extracted_urls': [{'url': 'http://www.uni-due.de/zim/quick/wlan_ausbau', 'domain': 'www.uni-due.de', 'status': 'success', 'content': 'Informationen zum WLAN-Ausbau\nInformationen zum WLAN-Ausbau\n\u200b\n\u200b\n\u200bWLAN bietet einen ortsunabhängigen Netzzugang sowohl für Studierende as auch für Mitarbeiter*innen und Gäste. Durch die zunehmende\xa0Verb...', 'content_length': 7983, 'type': None, 'error': None}]}, {'id': 'WLAN Konnektivitätsprobleme am Uniklinikum', 'text': 'context: 20 WLAN > 20.02 Verbindungsprobleme\nproblem: Am Uniklinikum ist die Verbindung zum WLAN sehr schlecht.\nsolution: Das WLAN in der Klinik (Mit Ausnahme der Bibliothek) wird von der dortigen Zen...', 'similarity': 0.2893, 'extracted_urls': []}]
+2026-07-25 09:20:14,028: [DEBUG]: RAG: faq_context:
+- context: 20 WLAN > 20.02 Verbindungsprobleme
+problem: Ich habe auf dem Campus keine Funkverbindung.
+solution: - Befinden Sie sich in einem Bereich, der prinzipiell Funkversorgung besitzt? Wo Sie an ...
+2026-07-25 09:20:14,772: [DEBUG]: Langgraph: decision.needs_additional_info: True
+2026-07-25 09:20:14,772: [DEBUG]: Langgraph: decision.follow_up_question: '• Was ist der Standort, an dem das Problem auftritt? (options: Bibliothek, Hörsaal, Büro, Campus, Andere)\n• Welches Betriebssystem wird auf dem Gerät verwendet? (options: Windows 10, macOS, Linux, Andere)\n• Gibt es weitere Details zum Problem, wie z.B. eine Fehlermeldung oder ein bestimmtes Verhalten?'
+2026-07-25 09:20:15,504: [DEBUG]: Langgraph: Entered give_solutions
+2026-07-25 09:20:15,504: [DEBUG]: Langgraph: Current state:
+{'messages': [HumanMessage(content='Ich bin in der Bibliothek mit einem Windows 10 Laptop, das Uni-WLAN wird nicht in der Netzwerkliste angezeigt', additional_kwargs={}, response_metadata={}, id='023ff14c-3a6f-46fb-90eb-a80a87f35adf')], 'ask_issue_attempts': 0, 'intent': 'problem', 'tutorial_attempts': 0, 'visited_nodes': ['extractor_node', 'classify_intent_node', 'ask_for_additional_info', 'classify_ticket_node', 'escalate_incidents_node'], 'graph_runs': 1, 'user_email': 'a@example.com', 'matrikelnummer': '1234567', 'issue_description': 'Das Uni-WLAN wird nicht in der Netzwerkliste angezeigt', 'additional_info': ['Bibliothek', 'Windows 10'], 'additional_info_attempts': 0, 'ticket_id': -1, 'full_conversation': 'Der Student hat ein Problem mit dem Uni-WLAN in der Bibliothek. Er verwendet einen Windows 10 Laptop und kann das Uni-WLAN nicht in der Netzwerkliste finden.', 'priority': 0, 'category': 'Incident', 'needs_additional_info': False, 'is_complete': False, 'solutions': [], 'display_name': '', 'role': '', 'faculty': '', 'device': '', 'os_name': ''}
+2026-07-25 09:20:15,504: [INFO]: RAG: Sending RAG query 'Das Uni-WLAN wird nicht in der Netzwerkliste angezeigt + Bibliothek Windows 10'
+2026-07-25 09:20:15,505: [INFO]: RAG: Encoding FAQ query...
+2026-07-25 09:20:15,697: [INFO]: RAG: Running cross-encoder re-ranking on 10 FAQ candidates...
+2026-07-25 09:20:16,465: [INFO]: RAG: FAQ re-ranking results (converting from cosine to sigmoid):
+2026-07-25 09:20:16,465: [INFO]: RAG: Title                                                                           |before              |after (raw)         |after (sigmoid)     
+2026-07-25 09:20:16,465: [INFO]: RAG: Keine Funkverbindung                                                            |0.8636              |-1.1299             |0.3425              
+2026-07-25 09:20:16,465: [INFO]: RAG: WLAN Konnektivitätsprobleme am Uniklinikum                                      |0.8445              |-1.9540             |0.2925              
+2026-07-25 09:20:16,465: [INFO]: RAG: Zugang für Studierende der FOM                                                  |0.8442              |-2.7866             |0.2467              
+2026-07-25 09:20:16,465: [INFO]: RAG: Keine Verbindung zum Netz                                                       |0.8477              |-3.0182             |0.2349              
+2026-07-25 09:20:16,465: [INFO]: RAG: Keine Verbindung zu eduroam                                                     |0.8507              |-3.0251             |0.2345              
+2026-07-25 09:20:16,465: [INFO]: RAG: eduroam auf iOS 13.x                                                            |0.8486              |-3.2833             |0.2218              
+2026-07-25 09:20:16,465: [INFO]: RAG: Keine Verbindung unter Win 8.1                                                  |0.8566              |-3.6786             |0.2033              
+2026-07-25 09:20:16,465: [INFO]: RAG: IP-Adresse wird nicht zugewiesen                                                |0.8519              |-3.8621             |0.1951              
+2026-07-25 09:20:16,465: [INFO]: RAG: Homeverzeichnis auf dem Fileserver ist nicht erreichbar                         |0.8444              |-4.3591             |0.1741              
+2026-07-25 09:20:16,465: [INFO]: RAG: Zugang zum WLAN an der UDE                                                      |0.8436              |-4.9079             |0.1531              
+2026-07-25 09:20:16,465: [INFO]: RAG: FAQ tier 2 matched: returning 2 results above 0.2
+2026-07-25 09:20:16,465: [INFO]: RAG: Encoding ticket query...
+2026-07-25 09:20:16,536: [INFO]: RAG: [RAG]   [ticket_049] similarity: 0.6370
+2026-07-25 09:20:16,536: [INFO]: RAG: [RAG]   [ticket_016] similarity: 0.5981
+2026-07-25 09:20:16,536: [INFO]: RAG: Final: 2 FAQ matches, 2 ticket matches
+2026-07-25 09:20:16,536: [INFO]: RAG: Inferred category: {'category': 'unknown', 'confidence': 0.3285}
+2026-07-25 09:20:16,537: [INFO]: RAG: The RAG query returned following results:
+2026-07-25 09:20:16,537: [INFO]: RAG: faq=2
+2026-07-25 09:20:16,537: [INFO]: RAG: tickets=2 
+2026-07-25 09:20:16,537: [INFO]: RAG: inferred={'category': 'unknown', 'confidence': 0.3285}
+2026-07-25 09:20:16,538: [INFO]: Langgraph: give_solutions node returned: [{'title': 'FAQ: Keine Funkverbindung', 'description': 'context: 20 WLAN > 20.02 Verbindungsprobleme\nproblem: Ich habe auf dem Campus keine Funkverbindung.\nsolution: - Befinden Sie sich in einem Bereich, der prinzipiell Funkversorgung besitzt? Wo Sie an de...'}, {'title': 'FAQ: WLAN Konnektivitätsprobleme am Uniklinikum', 'description': 'context: 20 WLAN > 20.02 Verbindungsprobleme\nproblem: Am Uniklinikum ist die Verbindung zum WLAN sehr schlecht.\nsolution: Das WLAN in der Klinik (Mit Ausnahme der Bibliothek) wird von der dortigen Zen...'}, {'title': 'Ähnliches Ticket (Complaint)', 'description': 'ticket: I find it unacceptable that the Wi-Fi in the library keeps disconnecting during online exams.\nsolution: Document the complaint and forward the case to network support for analysis of the libra...'}, {'title': 'Ähnliches Ticket (Incident)', 'description': 'ticket: The central VPN gateway seems to be unavailable. Many staff members cannot access internal systems from outside the campus.\nsolution: Escalate to network operations and check the VPN gateway i...'}]
+2026-07-25 09:20:18,277: [INFO]: Langgraph: appending bot message to ticket -1
+2026-07-25 09:20:18,278: [ERROR]: Ticket Service: Failed to append article: Invalid URL 'None/api/v1/ticket_articles': No scheme supplied. Perhaps you meant https://None/api/v1/ticket_articles?
+2026-07-25 09:20:18,293: [DEBUG]: Langgraph: Final updated state:
+{'messages': [HumanMessage(content='Ich bin in der Bibliothek mit einem Windows 10 Laptop, das Uni-WLAN wird nicht in der Netzwerkliste angezeigt', additional_kwargs={}, response_metadata={}, id='023ff14c-3a6f-46fb-90eb-a80a87f35adf'), AIMessage(content="Um das Problem mit dem Uni-WLAN zu lösen, sollten Sie zunächst prüfen, ob Sie sich in einem Bereich befinden, der prinzipiell Funkversorgung besitzt. Wenn ja, sollten Sie überprüfen, ob die WLAN-Karte in den Netzwerkeinstellungen deaktiviert ist. Viele Notebooks können den WLAN-Adapter per Schalter am Gehäuse oder Funktionstaste (FN-Taste) deaktivieren. \n\nIst die Karte korrekt installiert und konfiguriert, sollten Sie als Service Set Identifier (SSID, Netzwerkname) 'eduroam' eingetragen haben. Deaktivieren Sie die WEP-Verschlüsselung und stellen Sie als Netzwerktyp 'Infrastructure' ein. Die Einstellung ad-hoc dient nur dazu, mehrere Funkkarten ohne Access-Point zu verbinden. \n\nWenn Sie Windows 10 verwenden, sollten Sie in den Netzwerkverbindungen die verfügbaren drahtlosen Netze anzeigen und das Kästchen 'Verbindungsherstellung mit dem Drahtlosen Netzwerk ermöglichen, auch wenn das Netzwerk nicht sicher ist' aktivieren.\n\n Konnte das Problem damit gelöst werden?", additional_kwargs={}, response_metadata={}, id='9bca5472-e034-4850-8931-b4cd1911ae00', tool_calls=[], invalid_tool_calls=[])], 'ask_issue_attempts': 0, 'intent': 'problem', 'tutorial_attempts': 0, 'visited_nodes': ['extractor_node', 'classify_intent_node', 'ask_for_additional_info', 'classify_ticket_node', 'escalate_incidents_node', 'give_solutions_node'], 'graph_runs': 1, 'user_email': 'a@example.com', 'matrikelnummer': '1234567', 'issue_description': 'Das Uni-WLAN wird nicht in der Netzwerkliste angezeigt', 'additional_info': ['Bibliothek', 'Windows 10'], 'additional_info_attempts': 0, 'ticket_id': -1, 'full_conversation': 'Der Student hat ein Problem mit dem Uni-WLAN in der Bibliothek. Er verwendet einen Windows 10 Laptop und kann das Uni-WLAN nicht in der Netzwerkliste finden.', 'priority': 0, 'category': 'Incident', 'needs_additional_info': False, 'is_complete': False, 'solutions': [{'title': 'FAQ: Keine Funkverbindung', 'description': 'context: 20 WLAN > 20.02 Verbindungsprobleme\nproblem: Ich habe auf dem Campus keine Funkverbindung.\nsolution: - Befinden Sie sich in einem Bereich, der prinzipiell Funkversorgung besitzt? Wo Sie an de...'}, {'title': 'FAQ: WLAN Konnektivitätsprobleme am Uniklinikum', 'description': 'context: 20 WLAN > 20.02 Verbindungsprobleme\nproblem: Am Uniklinikum ist die Verbindung zum WLAN sehr schlecht.\nsolution: Das WLAN in der Klinik (Mit Ausnahme der Bibliothek) wird von der dortigen Zen...'}, {'title': 'Ähnliches Ticket (Complaint)', 'description': 'ticket: I find it unacceptable that the Wi-Fi in the library keeps disconnecting during online exams.\nsolution: Document the complaint and forward the case to network support for analysis of the libra...'}, {'title': 'Ähnliches Ticket (Incident)', 'description': 'ticket: The central VPN gateway seems to be unavailable. Many staff members cannot access internal systems from outside the campus.\nsolution: Escalate to network operations and check the VPN gateway i...'}], 'display_name': '', 'role': '', 'faculty': '', 'device': '', 'os_name': ''}
+2026-07-25 09:20:18,293: [DEBUG]: Langgraph: Run #1 — path: extractor_node -> classify_intent_node -> ask_for_additional_info -> classify_ticket_node -> escalate_incidents_node -> give_solutions_node
+2026-07-25 09:20:18,294: [INFO]: ZIM: Received request to the chat endpoint
+user_message='Mein Uni-Account ist gesperrt, ich kann mich weder im Portal noch per Mail einloggen' history=[] user_email='a@example.com' matrikelnummer='1234567' issue_description='' additional_info=[] priority=0 category='' helpful=False solutions=[] bot_message='' additional_info_attempts=0 ask_issue_attempts=0 ticket_id=None full_conversation='' user_addendum='' intent='' tutorial_attempts=0 graph_runs=0 display_name='' role='' faculty='' device='' os_name=''
+2026-07-25 09:20:18,297: [DEBUG]: Langgraph: Entered extract_information
+2026-07-25 09:20:18,297: [DEBUG]: Langgraph: Current state:
+{'messages': [HumanMessage(content='Mein Uni-Account ist gesperrt, ich kann mich weder im Portal noch per Mail einloggen', additional_kwargs={}, response_metadata={}, id='d1d7a280-e07e-47d2-a140-0fd78e080571')], 'ask_issue_attempts': 0, 'intent': '', 'tutorial_attempts': 0, 'visited_nodes': [], 'graph_runs': 0, 'user_email': 'a@example.com', 'matrikelnummer': '1234567', 'issue_description': '', 'additional_info': [], 'additional_info_attempts': 0, 'ticket_id': None, 'full_conversation': '', 'priority': 0, 'category': '', 'needs_additional_info': False, 'is_complete': False, 'solutions': [], 'display_name': '', 'role': '', 'faculty': '', 'device': '', 'os_name': ''}
+2026-07-25 09:20:18,938: [DEBUG]: Langgraph: EXTRACTED DATA: matrikelnummer=None problem='gesperrter Uni-Account' additional_info=['Portal', 'Mail'] priority=1 full_conversation='Der Student meldet, dass sein Uni-Account gesperrt ist und er sich weder im Portal noch per Mail einloggen kann. Er hat noch keine Matrikelnummer genannt.'
+2026-07-25 09:20:18,939: [ERROR]: Zammad: Invalid URL for Zammad provided: Could not reach Zammad to create ticket
+2026-07-25 09:20:18,939: [ERROR]: Zammad: Invalid URL for Zammad provided: Could not reach Zammad to add tag to ticket
+2026-07-25 09:20:18,939: [INFO]: Langgraph: Created ticket with ID -1 for the state update: {'graph_runs': 1, 'issue_description': 'gesperrter Uni-Account', 'priority': 1, 'additional_info': ['Portal', 'Mail'], 'full_conversation': 'Der Student meldet, dass sein Uni-Account gesperrt ist und er sich weder im Portal noch per Mail einloggen kann. Er hat noch keine Matrikelnummer genannt.', 'ticket_id': -1}
+2026-07-25 09:20:18,944: [DEBUG]: Langgraph: Entered classify_intent
+2026-07-25 09:20:18,944: [DEBUG]: Langgraph: Current state:
+{'messages': [HumanMessage(content='Mein Uni-Account ist gesperrt, ich kann mich weder im Portal noch per Mail einloggen', additional_kwargs={}, response_metadata={}, id='d1d7a280-e07e-47d2-a140-0fd78e080571')], 'ask_issue_attempts': 0, 'intent': '', 'tutorial_attempts': 0, 'visited_nodes': ['extractor_node'], 'graph_runs': 1, 'user_email': 'a@example.com', 'matrikelnummer': '1234567', 'issue_description': 'gesperrter Uni-Account', 'additional_info': ['Portal', 'Mail'], 'additional_info_attempts': 0, 'ticket_id': -1, 'full_conversation': 'Der Student meldet, dass sein Uni-Account gesperrt ist und er sich weder im Portal noch per Mail einloggen kann. Er hat noch keine Matrikelnummer genannt.', 'priority': 1, 'category': '', 'needs_additional_info': False, 'is_complete': False, 'solutions': [], 'display_name': '', 'role': '', 'faculty': '', 'device': '', 'os_name': ''}
+2026-07-25 09:20:19,922: [DEBUG]: Langgraph: Entered ask_for_additional_info
+2026-07-25 09:20:19,922: [DEBUG]: Langgraph: Current state:
+{'messages': [HumanMessage(content='Mein Uni-Account ist gesperrt, ich kann mich weder im Portal noch per Mail einloggen', additional_kwargs={}, response_metadata={}, id='d1d7a280-e07e-47d2-a140-0fd78e080571')], 'ask_issue_attempts': 0, 'intent': 'problem', 'tutorial_attempts': 0, 'visited_nodes': ['extractor_node', 'classify_intent_node'], 'graph_runs': 1, 'user_email': 'a@example.com', 'matrikelnummer': '1234567', 'issue_description': 'gesperrter Uni-Account', 'additional_info': ['Portal', 'Mail'], 'additional_info_attempts': 0, 'ticket_id': -1, 'full_conversation': 'Der Student meldet, dass sein Uni-Account gesperrt ist und er sich weder im Portal noch per Mail einloggen kann. Er hat noch keine Matrikelnummer genannt.', 'priority': 1, 'category': '', 'needs_additional_info': False, 'is_complete': False, 'solutions': [], 'display_name': '', 'role': '', 'faculty': '', 'device': '', 'os_name': ''}
+2026-07-25 09:20:19,922: [DEBUG]: Langgraph: ask_for_additional_info node: attempts: 0 
+2026-07-25 09:20:19,924: [INFO]: RAG: Encoding FAQ query...
+2026-07-25 09:20:20,092: [INFO]: RAG: Running cross-encoder re-ranking on 10 FAQ candidates...
+2026-07-25 09:20:20,349: [INFO]: RAG: FAQ re-ranking results (converting from cosine to sigmoid):
+2026-07-25 09:20:20,349: [INFO]: RAG: Title                                                                           |before              |after (raw)         |after (sigmoid)     
+2026-07-25 09:20:20,349: [INFO]: RAG: Anmeldung funktioniert nicht                                                    |0.8603              |-0.9715             |0.3525              
+2026-07-25 09:20:20,349: [INFO]: RAG: Benutzerkonto ist gesperrt                                                      |0.8628              |-1.0569             |0.3471              
+2026-07-25 09:20:20,349: [INFO]: RAG: Warum kann ich mich mit meiner Funktionskennung nicht im Selfcare Portal anmelden?|0.8640              |-1.1356             |0.3421              
+2026-07-25 09:20:20,349: [INFO]: RAG: Unikennung ist für E-Mail gesperrt                                              |0.8757              |-1.2009             |0.3380              
+2026-07-25 09:20:20,349: [INFO]: RAG: Webmail-Zugang gesperrt                                                         |0.8667              |-1.2857             |0.3327              
+2026-07-25 09:20:20,349: [INFO]: RAG: Anmeldung funktioniert nicht__2                                                 |0.8601              |-1.7634             |0.3037              
+2026-07-25 09:20:20,349: [INFO]: RAG: E-Mails werden nicht verschickt                                                 |0.8609              |-1.8714             |0.2973              
+2026-07-25 09:20:20,349: [INFO]: RAG: Passwort / Benutzername vergessen für ausländische Bewerber (Uni-Assist)        |0.8577              |-3.6892             |0.2028              
+2026-07-25 09:20:20,349: [INFO]: RAG: E-Mail-Adresse                                                                  |0.8632              |-4.1999             |0.1806              
+2026-07-25 09:20:20,349: [INFO]: RAG: Im Studienservice wird mir eine Sperre angezeigt                                |0.8599              |-4.6649             |0.1622              
+2026-07-25 09:20:20,349: [INFO]: RAG: FAQ tier 2 matched: returning 2 results above 0.2
+2026-07-25 09:20:20,349: [INFO]: RAG: Encoding ticket query...
+2026-07-25 09:20:20,383: [INFO]: RAG: [RAG]   [ticket_010] similarity: 0.5690
+2026-07-25 09:20:20,383: [INFO]: RAG: [RAG]   [ticket_001] similarity: 0.5428
+2026-07-25 09:20:20,383: [INFO]: RAG: Final: 2 FAQ matches, 2 ticket matches
+2026-07-25 09:20:20,383: [INFO]: RAG: Inferred category: {'category': 'Incident', 'confidence': 0.5559}
+2026-07-25 09:20:20,384: [DEBUG]: RAG: faq_matches:
+[{'id': 'Anmeldung funktioniert nicht', 'text': 'context: 01 AD (Active Directory) > 01.01 Zugang/Authentifizierung\nproblem: Ich kann mich nicht mehr an der Domäne anmelden.\nsolution: Wird das Kennwort mehrmals (max. 5-mal) falsch angegeben, bleibt ...', 'similarity': 0.3525, 'extracted_urls': [{'url': 'http://owa.uni-due.de', 'domain': 'owa.uni-due.de', 'status': 'success', 'content': 'UniversitÃ¤t Duisburg-Essen - Outlook Web App\nJavascript deaktiviert\nUm den LoadMaster ESP Login zu benutzen muss JavaScript in Ihrem Browser aktiviert sein.\nO\nutlook\nW\neb\nA\npp', 'content_length': 176, 'type': None, 'error': None}, {'url': 'https://selfcare.uni-due.de/', 'domain': 'selfcare.uni-due.de', 'status': 'success', 'content': 'UDE.Portal | Login\nIP: 92.209.152.231\nextern\nPasswort vergessen\nAktuell steht keine Methode zum automatischen Passwort-Reset zur Verfügung. Bitten wenden Sie sich an unseren ePoint.\nHilfe\nSchließen', 'content_length': 197, 'type': None, 'error': None}, {'url': 'https://www.uni-due.de/zim/hilfecenter/hotline.php', 'domain': 'www.uni-due.de', 'status': 'success', 'content': 'ZIM-Hotline - Schnelle Hilfe bei Problemen\nZIM-Hotline - Schnelle Hilfe bei Problemen\n\u200b\n\u200bUnsere Hotline hilft Ihnen schnell und unkompliziert wenn es doch einmal eine Störung der ZIM-Dienste geben sol...', 'content_length': 2310, 'type': None, 'error': None}]}, {'id': 'Benutzerkonto ist gesperrt', 'text': "context: 05 FSV (Finanz- und Sachmittelverwaltung) > 05.02 Login/Nutzerkennung\nproblem: Beim Loginversuch im ersten Fenster (Anmeldung am Terminal-Server) bekomme ich sinngemäß eine Fehlermeldung: 'Ih...", 'similarity': 0.3471, 'extracted_urls': []}]
+2026-07-25 09:20:20,384: [DEBUG]: RAG: faq_context:
+- context: 01 AD (Active Directory) > 01.01 Zugang/Authentifizierung
+problem: Ich kann mich nicht mehr an der Domäne anmelden.
+solution: Wird das Kennwort mehrmals (max. 5-mal) falsch angegeben, bleib...
+2026-07-25 09:20:20,837: [DEBUG]: Langgraph: decision.needs_additional_info: True
+2026-07-25 09:20:20,837: [DEBUG]: Langgraph: decision.follow_up_question: 'Hier sind einige Fragen, um das Problem zu klären:\n'
+2026-07-25 09:20:21,704: [DEBUG]: Langgraph: Entered give_solutions
+2026-07-25 09:20:21,704: [DEBUG]: Langgraph: Current state:
+{'messages': [HumanMessage(content='Mein Uni-Account ist gesperrt, ich kann mich weder im Portal noch per Mail einloggen', additional_kwargs={}, response_metadata={}, id='d1d7a280-e07e-47d2-a140-0fd78e080571')], 'ask_issue_attempts': 0, 'intent': 'problem', 'tutorial_attempts': 0, 'visited_nodes': ['extractor_node', 'classify_intent_node', 'ask_for_additional_info', 'classify_ticket_node', 'escalate_incidents_node'], 'graph_runs': 1, 'user_email': 'a@example.com', 'matrikelnummer': '1234567', 'issue_description': 'gesperrter Uni-Account', 'additional_info': ['Portal', 'Mail'], 'additional_info_attempts': 0, 'ticket_id': -1, 'full_conversation': 'Der Student meldet, dass sein Uni-Account gesperrt ist und er sich weder im Portal noch per Mail einloggen kann. Er hat noch keine Matrikelnummer genannt.', 'priority': 1, 'category': 'Incident', 'needs_additional_info': False, 'is_complete': False, 'solutions': [], 'display_name': '', 'role': '', 'faculty': '', 'device': '', 'os_name': ''}
+2026-07-25 09:20:21,704: [INFO]: RAG: Sending RAG query 'gesperrter Uni-Account + Portal Mail'
+2026-07-25 09:20:21,705: [INFO]: RAG: Encoding FAQ query...
+2026-07-25 09:20:21,872: [INFO]: RAG: Running cross-encoder re-ranking on 10 FAQ candidates...
+2026-07-25 09:20:22,281: [INFO]: RAG: FAQ re-ranking results (converting from cosine to sigmoid):
+2026-07-25 09:20:22,281: [INFO]: RAG: Title                                                                           |before              |after (raw)         |after (sigmoid)     
+2026-07-25 09:20:22,281: [INFO]: RAG: Unikennung ist für E-Mail gesperrt                                              |0.8734              |2.7140              |0.6044              
+2026-07-25 09:20:22,281: [INFO]: RAG: Webmail-Zugang gesperrt                                                         |0.8628              |2.0438              |0.5588              
+2026-07-25 09:20:22,281: [INFO]: RAG: Warum kann ich mich mit meiner Funktionskennung nicht im Selfcare Portal anmelden?|0.8585              |0.7801              |0.4706              
+2026-07-25 09:20:22,281: [INFO]: RAG: Anmeldung funktioniert nicht                                                    |0.8568              |0.5759              |0.4564              
+2026-07-25 09:20:22,281: [INFO]: RAG: E-Mails werden nicht verschickt                                                 |0.8567              |0.3622              |0.4416              
+2026-07-25 09:20:22,281: [INFO]: RAG: Anmeldung funktioniert nicht__2                                                 |0.8567              |0.1445              |0.4266              
+2026-07-25 09:20:22,281: [INFO]: RAG: Benutzerkonto ist gesperrt                                                      |0.8552              |-0.6419             |0.3739              
+2026-07-25 09:20:22,281: [INFO]: RAG: Passwort / Benutzername vergessen für ausländische Bewerber (Uni-Assist)        |0.8578              |-2.0687             |0.2859              
+2026-07-25 09:20:22,281: [INFO]: RAG: E-Mail-Adresse                                                                  |0.8567              |-2.9043             |0.2406              
+2026-07-25 09:20:22,281: [INFO]: RAG: Shibboleth Error                                                                |0.8557              |-3.2881             |0.2215              
+2026-07-25 09:20:22,281: [INFO]: RAG: FAQ tier 1 matched: returning 4 results above 0.4
+2026-07-25 09:20:22,282: [INFO]: RAG: Encoding ticket query...
+2026-07-25 09:20:22,342: [INFO]: RAG: [RAG]   [ticket_010] similarity: 0.5896
+2026-07-25 09:20:22,343: [INFO]: RAG: [RAG]   [ticket_001] similarity: 0.5608
+2026-07-25 09:20:22,343: [INFO]: RAG: Final: 4 FAQ matches, 2 ticket matches
+2026-07-25 09:20:22,343: [INFO]: RAG: Inferred category: {'category': 'Incident', 'confidence': 0.5752}
+2026-07-25 09:20:22,344: [INFO]: RAG: The RAG query returned following results:
+2026-07-25 09:20:22,344: [INFO]: RAG: faq=4
+2026-07-25 09:20:22,344: [INFO]: RAG: tickets=2 
+2026-07-25 09:20:22,344: [INFO]: RAG: inferred={'category': 'Incident', 'confidence': 0.5752}
+2026-07-25 09:20:22,344: [INFO]: Langgraph: give_solutions node returned: [{'title': 'FAQ: Unikennung ist für E-Mail gesperrt', 'description': 'context: 04 E-Mail / Groupware > 04.03 Probleme > 04.03.02 Probleme mit der Authentifizierung\nproblem: Im Selfcareportal wird angezeigt, dass meine Unikennung für den Versand von E-Mails gesperrt ist....'}, {'title': 'FAQ: Webmail-Zugang gesperrt', 'description': 'context: 04 E-Mail / Groupware > 04.04 Webmail / OWA\nproblem: Wenn ich über Webmail eine E-Mail verschicken möchte, bekomme ich die Meldung :„Entschuldigung, aber Ihr Webmail-Zugang wurde aufgrund mer...'}, {'title': 'Ähnliches Ticket (Incident)', 'description': 'ticket: The login system shows an error message for many students in my course. None of us can access the exam registration portal.\nsolution: Escalate to identity management and check the availability...'}, {'title': 'Ähnliches Ticket (Incident)', 'description': 'ticket: I cannot log in to the campus portal although I reset my password yesterday.\nsolution: Check whether the account is locked and reset the login credentials if necessary.\ncategory: Incident'}]
+2026-07-25 09:20:24,216: [INFO]: Langgraph: appending bot message to ticket -1
+2026-07-25 09:20:24,217: [ERROR]: Ticket Service: Failed to append article: Invalid URL 'None/api/v1/ticket_articles': No scheme supplied. Perhaps you meant https://None/api/v1/ticket_articles?
+2026-07-25 09:20:24,227: [DEBUG]: Langgraph: Final updated state:
+{'messages': [HumanMessage(content='Mein Uni-Account ist gesperrt, ich kann mich weder im Portal noch per Mail einloggen', additional_kwargs={}, response_metadata={}, id='d1d7a280-e07e-47d2-a140-0fd78e080571'), AIMessage(content='Um den gesperrten Uni-Account zu lösen, empfehlen wir folgende Schritte:\n\nZunächst sollten Sie sich an das Selfcare-Portal wenden und prüfen, ob Ihre Unikennung gesperrt ist. Wenn ja, müssen Sie zunächst ein neues Passwort setzen, um die Sperrung aufzuheben. Anschließend können Sie Ihre E-Mails weiter lesen und neue E-Mails werden auch zugestellt.\n\nWenn Sie keine Sperrung im Selfcare-Portal finden, sollten Sie sich an die Hotline wenden, um weitere Unterstützung zu erhalten.\n\nEs ist wichtig zu beachten, dass die Sperrung Ihrer Unikennung aufgrund von Spam-Versendungen oder anderen missbräuchlichen Aktivitäten erfolgen kann. Um solche Probleme zu vermeiden, sollten Sie sich an die Nutzungsrichtlinien für den Webmail- und SMTP-Dienst halten, die auf der Uni-Website erhältlich sind.\n\nWenn Sie weitere Fragen oder Probleme haben, können Sie sich an die Hotline wenden oder sich an das Selfcare-Portal wenden, um Ihre Unikennung zu verwalten.\n\n Konnte das Problem damit gelöst werden?', additional_kwargs={}, response_metadata={}, id='bbf16486-bf8d-47f8-b57d-e99e5d5406c5', tool_calls=[], invalid_tool_calls=[])], 'ask_issue_attempts': 0, 'intent': 'problem', 'tutorial_attempts': 0, 'visited_nodes': ['extractor_node', 'classify_intent_node', 'ask_for_additional_info', 'classify_ticket_node', 'escalate_incidents_node', 'give_solutions_node'], 'graph_runs': 1, 'user_email': 'a@example.com', 'matrikelnummer': '1234567', 'issue_description': 'gesperrter Uni-Account', 'additional_info': ['Portal', 'Mail'], 'additional_info_attempts': 0, 'ticket_id': -1, 'full_conversation': 'Der Student meldet, dass sein Uni-Account gesperrt ist und er sich weder im Portal noch per Mail einloggen kann. Er hat noch keine Matrikelnummer genannt.', 'priority': 1, 'category': 'Incident', 'needs_additional_info': False, 'is_complete': False, 'solutions': [{'title': 'FAQ: Unikennung ist für E-Mail gesperrt', 'description': 'context: 04 E-Mail / Groupware > 04.03 Probleme > 04.03.02 Probleme mit der Authentifizierung\nproblem: Im Selfcareportal wird angezeigt, dass meine Unikennung für den Versand von E-Mails gesperrt ist....'}, {'title': 'FAQ: Webmail-Zugang gesperrt', 'description': 'context: 04 E-Mail / Groupware > 04.04 Webmail / OWA\nproblem: Wenn ich über Webmail eine E-Mail verschicken möchte, bekomme ich die Meldung :„Entschuldigung, aber Ihr Webmail-Zugang wurde aufgrund mer...'}, {'title': 'Ähnliches Ticket (Incident)', 'description': 'ticket: The login system shows an error message for many students in my course. None of us can access the exam registration portal.\nsolution: Escalate to identity management and check the availability...'}, {'title': 'Ähnliches Ticket (Incident)', 'description': 'ticket: I cannot log in to the campus portal although I reset my password yesterday.\nsolution: Check whether the account is locked and reset the login credentials if necessary.\ncategory: Incident'}], 'display_name': '', 'role': '', 'faculty': '', 'device': '', 'os_name': ''}
+2026-07-25 09:20:24,227: [DEBUG]: Langgraph: Run #1 — path: extractor_node -> classify_intent_node -> ask_for_additional_info -> classify_ticket_node -> escalate_incidents_node -> give_solutions_node
+2026-07-25 09:20:24,227: [INFO]: ZIM: Received request to the chat endpoint
+user_message='Ich habe mein Passwort vergessen und kann mich nicht mehr einloggen' history=[] user_email='a@example.com' matrikelnummer='1234567' issue_description='' additional_info=[] priority=0 category='' helpful=False solutions=[] bot_message='' additional_info_attempts=0 ask_issue_attempts=0 ticket_id=None full_conversation='' user_addendum='' intent='' tutorial_attempts=0 graph_runs=0 display_name='' role='' faculty='' device='' os_name=''
+2026-07-25 09:20:24,230: [DEBUG]: Langgraph: Entered extract_information
+2026-07-25 09:20:24,230: [DEBUG]: Langgraph: Current state:
+{'messages': [HumanMessage(content='Ich habe mein Passwort vergessen und kann mich nicht mehr einloggen', additional_kwargs={}, response_metadata={}, id='6a99814a-b203-4d28-a93b-4cd25812dba9')], 'ask_issue_attempts': 0, 'intent': '', 'tutorial_attempts': 0, 'visited_nodes': [], 'graph_runs': 0, 'user_email': 'a@example.com', 'matrikelnummer': '1234567', 'issue_description': '', 'additional_info': [], 'additional_info_attempts': 0, 'ticket_id': None, 'full_conversation': '', 'priority': 0, 'category': '', 'needs_additional_info': False, 'is_complete': False, 'solutions': [], 'display_name': '', 'role': '', 'faculty': '', 'device': '', 'os_name': ''}
+2026-07-25 09:20:24,798: [DEBUG]: Langgraph: EXTRACTED DATA: matrikelnummer=None problem='Passwort vergessen' additional_info=[] priority=1 full_conversation='Der Student meldet, dass er sein Passwort vergessen hat und sich nicht mehr einloggen kann.'
+2026-07-25 09:20:24,798: [ERROR]: Zammad: Invalid URL for Zammad provided: Could not reach Zammad to create ticket
+2026-07-25 09:20:24,799: [ERROR]: Zammad: Invalid URL for Zammad provided: Could not reach Zammad to add tag to ticket
+2026-07-25 09:20:24,799: [INFO]: Langgraph: Created ticket with ID -1 for the state update: {'graph_runs': 1, 'issue_description': 'Passwort vergessen', 'priority': 1, 'full_conversation': 'Der Student meldet, dass er sein Passwort vergessen hat und sich nicht mehr einloggen kann.', 'ticket_id': -1}
+2026-07-25 09:20:24,802: [DEBUG]: Langgraph: Entered classify_intent
+2026-07-25 09:20:24,802: [DEBUG]: Langgraph: Current state:
+{'messages': [HumanMessage(content='Ich habe mein Passwort vergessen und kann mich nicht mehr einloggen', additional_kwargs={}, response_metadata={}, id='6a99814a-b203-4d28-a93b-4cd25812dba9')], 'ask_issue_attempts': 0, 'intent': '', 'tutorial_attempts': 0, 'visited_nodes': ['extractor_node'], 'graph_runs': 1, 'user_email': 'a@example.com', 'matrikelnummer': '1234567', 'issue_description': 'Passwort vergessen', 'additional_info': [], 'additional_info_attempts': 0, 'ticket_id': -1, 'full_conversation': 'Der Student meldet, dass er sein Passwort vergessen hat und sich nicht mehr einloggen kann.', 'priority': 1, 'category': '', 'needs_additional_info': False, 'is_complete': False, 'solutions': [], 'display_name': '', 'role': '', 'faculty': '', 'device': '', 'os_name': ''}
+2026-07-25 09:20:25,556: [DEBUG]: Langgraph: Entered ask_for_additional_info
+2026-07-25 09:20:25,556: [DEBUG]: Langgraph: Current state:
+{'messages': [HumanMessage(content='Ich habe mein Passwort vergessen und kann mich nicht mehr einloggen', additional_kwargs={}, response_metadata={}, id='6a99814a-b203-4d28-a93b-4cd25812dba9')], 'ask_issue_attempts': 0, 'intent': 'problem', 'tutorial_attempts': 0, 'visited_nodes': ['extractor_node', 'classify_intent_node'], 'graph_runs': 1, 'user_email': 'a@example.com', 'matrikelnummer': '1234567', 'issue_description': 'Passwort vergessen', 'additional_info': [], 'additional_info_attempts': 0, 'ticket_id': -1, 'full_conversation': 'Der Student meldet, dass er sein Passwort vergessen hat und sich nicht mehr einloggen kann.', 'priority': 1, 'category': '', 'needs_additional_info': False, 'is_complete': False, 'solutions': [], 'display_name': '', 'role': '', 'faculty': '', 'device': '', 'os_name': ''}
+2026-07-25 09:20:25,557: [DEBUG]: Langgraph: ask_for_additional_info node: attempts: 0 
+2026-07-25 09:20:25,559: [INFO]: RAG: Encoding FAQ query...
+2026-07-25 09:20:25,716: [INFO]: RAG: Running cross-encoder re-ranking on 10 FAQ candidates...
+2026-07-25 09:20:26,508: [INFO]: RAG: FAQ re-ranking results (converting from cosine to sigmoid):
+2026-07-25 09:20:26,508: [INFO]: RAG: Title                                                                           |before              |after (raw)         |after (sigmoid)     
+2026-07-25 09:20:26,508: [INFO]: RAG: Benutzername / Passwort für Moodle vergessen                                    |0.8569              |0.1564              |0.4275              
+2026-07-25 09:20:26,508: [INFO]: RAG: Passwort für Online-Bewerbung vergessen                                         |0.8541              |0.0977              |0.4234              
+2026-07-25 09:20:26,509: [INFO]: RAG: Passwort zur Aktivierung vergessen                                              |0.8628              |-0.5702             |0.3786              
+2026-07-25 09:20:26,509: [INFO]: RAG: Passwort / Benutzername vergessen für ausländische Bewerber (Uni-Assist)        |0.8513              |-0.6054             |0.3762              
+2026-07-25 09:20:26,509: [INFO]: RAG: Passwort vergessen                                                              |0.8520              |-1.3298             |0.3300              
+2026-07-25 09:20:26,509: [INFO]: RAG: Passwort im Fujitsu Portal funktioniert nicht                                   |0.8506              |-2.1792             |0.2797              
+2026-07-25 09:20:26,509: [INFO]: RAG: WLAN Passwort vergessen                                                         |0.8671              |-2.5095             |0.2614              
+2026-07-25 09:20:26,509: [INFO]: RAG: Ich habe mein Sciebo-Passwort vergessen                                         |0.8536              |-2.6676             |0.2530              
+2026-07-25 09:20:26,509: [INFO]: RAG: Nutzerkennung für Online-Bewerbung vergessen                                    |0.8518              |-2.7618             |0.2480              
+2026-07-25 09:20:26,509: [INFO]: RAG: Ständige Passwortabfrage bei OWA bei der Anmeldung                              |0.8507              |-5.5291             |0.1319              
+2026-07-25 09:20:26,509: [INFO]: RAG: FAQ tier 1 matched: returning 2 results above 0.4
+2026-07-25 09:20:26,509: [INFO]: RAG: Encoding ticket query...
+2026-07-25 09:20:26,574: [INFO]: RAG: [RAG]   [ticket_003] similarity: 0.4200
+2026-07-25 09:20:26,574: [INFO]: RAG: [RAG]   [ticket_007] similarity: 0.4074
+2026-07-25 09:20:26,574: [INFO]: RAG: Final: 2 FAQ matches, 2 ticket matches
+2026-07-25 09:20:26,575: [INFO]: RAG: Inferred category: {'category': 'unknown', 'confidence': 0.4137}
+2026-07-25 09:20:26,576: [DEBUG]: RAG: faq_matches:
+[{'id': 'Benutzername / Passwort für Moodle vergessen', 'text': 'context: 08 Lernplattformen > 08.02 Moodle\nproblem: Ich habe mein Passwort/Benutzernamen für Moodle vergessen.\nsolution: Sie können sich mit Ihrer Unikennung am Moodle-Server anmelden. Falls Sie für I...', 'similarity': 0.4275, 'extracted_urls': [{'url': 'https://www.uni-due.de/zim/soforthilfe/', 'domain': 'www.uni-due.de', 'status': 'success', 'content': 'Servicestellen\nServicestellen\nWir helfen Ihnen gerne\nSie benötigen Hilfe bei Computerfragen oder wollen eine Störung melden?\nIm Hörsaal funktioniert die Medientechnik nicht?\n\u200b\nUnsere\nHotline\nnimmt Ihr...', 'content_length': 4869, 'type': None, 'error': None}, {'url': 'http://www.uni-due.de/zim/soforthilfe/faqs/knowledgebase-public.php?id=312#a_312', 'domain': 'www.uni-due.de', 'status': 'success', 'content': 'Servicestellen\nServicestellen\nWir helfen Ihnen gerne\nSie benötigen Hilfe bei Computerfragen oder wollen eine Störung melden?\nIm Hörsaal funktioniert die Medientechnik nicht?\n\u200b\nUnsere\nHotline\nnimmt Ihr...', 'content_length': 4869, 'type': None, 'error': None}, {'url': 'http://moodle.uni-due.de/login/forgot_password.php', 'domain': 'moodle.uni-due.de', 'status': 'success', 'content': 'Kennwort vergessen\nZum Hauptinhalt\nUm Ihr Kennwort zurückzusetzen, tragen Sie bitte entweder Ihren Anmeldenamen oder Ihre E-Mail-Adresse ein. Wenn Sie in der Datenbank zu finden sind, wird eine Mittei...', 'content_length': 306, 'type': None, 'error': None}]}, {'id': 'Passwort für Online-Bewerbung vergessen', 'text': 'context: 06 HISinOne > 06.01 Zulassung & Bewerbung (CM/APP)\nproblem: Ich habe mich an der Universität Duisburg-Essen für einen Studienplatz beworben, habe aber nun mein Passwort vergessen.\nsolution: D...', 'similarity': 0.4234, 'extracted_urls': [{'url': 'https://www.uni-due.de/zim/soforthilfe/faqs/knowledgebase-public.php?id=748#a_748', 'domain': 'www.uni-due.de', 'status': 'success', 'content': 'Servicestellen\nServicestellen\nWir helfen Ihnen gerne\nSie benötigen Hilfe bei Computerfragen oder wollen eine Störung melden?\nIm Hörsaal funktioniert die Medientechnik nicht?\n\u200b\nUnsere\nHotline\nnimmt Ihr...', 'content_length': 4869, 'type': None, 'error': None}, {'url': 'https://campus.uni-due.de/cm', 'domain': 'campus.uni-due.de', 'status': 'success', 'content': 'Weiterleitung\nWeiterleitung...', 'content_length': 30, 'type': None, 'error': None}, {'url': 'http://www.uni-due.de/zim/soforthilfe/faqs/knowledgebase-public.php?id=374#a_374', 'domain': 'www.uni-due.de', 'status': 'success', 'content': 'Servicestellen\nServicestellen\nWir helfen Ihnen gerne\nSie benötigen Hilfe bei Computerfragen oder wollen eine Störung melden?\nIm Hörsaal funktioniert die Medientechnik nicht?\n\u200b\nUnsere\nHotline\nnimmt Ihr...', 'content_length': 4869, 'type': None, 'error': None}]}]
+2026-07-25 09:20:26,576: [DEBUG]: RAG: faq_context:
+- context: 08 Lernplattformen > 08.02 Moodle
+problem: Ich habe mein Passwort/Benutzernamen für Moodle vergessen.
+solution: Sie können sich mit Ihrer Unikennung am Moodle-Server anmelden. Falls Sie für...
+2026-07-25 09:20:27,140: [DEBUG]: Langgraph: decision.needs_additional_info: True
+2026-07-25 09:20:27,140: [DEBUG]: Langgraph: decision.follow_up_question: 'Welche Art von Passwort ist vergessen worden (Universitätskennung, Moodle-Kennung, HISinOne-Kennung, etc.)?'
+2026-07-25 09:20:27,141: [ERROR]: Ticket Service: Failed to append article: Invalid URL 'None/api/v1/ticket_articles': No scheme supplied. Perhaps you meant https://None/api/v1/ticket_articles?
+2026-07-25 09:20:27,146: [DEBUG]: Langgraph: Final updated state:
+{'messages': [HumanMessage(content='Ich habe mein Passwort vergessen und kann mich nicht mehr einloggen', additional_kwargs={}, response_metadata={}, id='6a99814a-b203-4d28-a93b-4cd25812dba9'), AIMessage(content='Ich habe gerade ein Support-Ticket erstellt. Für eine optimale Bearbeitung bitte die folgenden Fragen beantworten:\nWelche Art von Passwort ist vergessen worden (Universitätskennung, Moodle-Kennung, HISinOne-Kennung, etc.)?', additional_kwargs={}, response_metadata={}, id='c52c4eef-6da1-41bd-96a1-075f6285067c', tool_calls=[], invalid_tool_calls=[])], 'ask_issue_attempts': 0, 'intent': 'problem', 'tutorial_attempts': 0, 'visited_nodes': ['extractor_node', 'classify_intent_node', 'ask_for_additional_info'], 'graph_runs': 1, 'user_email': 'a@example.com', 'matrikelnummer': '1234567', 'issue_description': 'Passwort vergessen', 'additional_info': [], 'additional_info_attempts': 1, 'ticket_id': -1, 'full_conversation': 'Der Student meldet, dass er sein Passwort vergessen hat und sich nicht mehr einloggen kann.', 'priority': 1, 'category': '', 'needs_additional_info': True, 'is_complete': False, 'solutions': [], 'display_name': '', 'role': '', 'faculty': '', 'device': '', 'os_name': ''}
+2026-07-25 09:20:27,146: [DEBUG]: Langgraph: Run #1 — path: extractor_node -> classify_intent_node -> ask_for_additional_info
+2026-07-25 09:20:27,146: [INFO]: ZIM: Received request to the chat endpoint
+user_message='Ich bin Student im 3. Semester, meine Matrikelnummer ist 1234567' history=[] user_email='a@example.com' matrikelnummer='1234567' issue_description='Passwort vergessen' additional_info=[] priority=1 category='' helpful=False solutions=[] bot_message='' additional_info_attempts=1 ask_issue_attempts=0 ticket_id=None full_conversation='' user_addendum='' intent='' tutorial_attempts=0 graph_runs=0 display_name='' role='' faculty='' device='' os_name=''
+2026-07-25 09:20:27,149: [DEBUG]: Langgraph: Entered extract_information
+2026-07-25 09:20:27,149: [DEBUG]: Langgraph: Current state:
+{'messages': [HumanMessage(content='Ich bin Student im 3. Semester, meine Matrikelnummer ist 1234567', additional_kwargs={}, response_metadata={}, id='76cd1221-8613-4df5-8ac4-ab1218a93553')], 'ask_issue_attempts': 0, 'intent': '', 'tutorial_attempts': 0, 'visited_nodes': [], 'graph_runs': 0, 'user_email': 'a@example.com', 'matrikelnummer': '1234567', 'issue_description': 'Passwort vergessen', 'additional_info': [], 'additional_info_attempts': 1, 'ticket_id': None, 'full_conversation': '', 'priority': 1, 'category': '', 'needs_additional_info': False, 'is_complete': False, 'solutions': [], 'display_name': '', 'role': '', 'faculty': '', 'device': '', 'os_name': ''}
+2026-07-25 09:20:27,800: [DEBUG]: Langgraph: EXTRACTED DATA: matrikelnummer='1234567' problem=None additional_info=[] priority=0 full_conversation='Ein Student im 3. Semester meldet sich, seine Matrikelnummer ist 1234567. Er hat noch kein Problem beschrieben.'
+2026-07-25 09:20:27,805: [DEBUG]: Langgraph: Entered classify_intent
+2026-07-25 09:20:27,805: [DEBUG]: Langgraph: Current state:
+{'messages': [HumanMessage(content='Ich bin Student im 3. Semester, meine Matrikelnummer ist 1234567', additional_kwargs={}, response_metadata={}, id='76cd1221-8613-4df5-8ac4-ab1218a93553')], 'ask_issue_attempts': 0, 'intent': '', 'tutorial_attempts': 0, 'visited_nodes': ['extractor_node'], 'graph_runs': 1, 'user_email': 'a@example.com', 'matrikelnummer': '1234567', 'issue_description': 'Passwort vergessen', 'additional_info': [], 'additional_info_attempts': 1, 'ticket_id': None, 'full_conversation': 'Ein Student im 3. Semester meldet sich, seine Matrikelnummer ist 1234567. Er hat noch kein Problem beschrieben.', 'priority': 1, 'category': '', 'needs_additional_info': False, 'is_complete': False, 'solutions': [], 'display_name': '', 'role': '', 'faculty': '', 'device': '', 'os_name': ''}
+2026-07-25 09:20:28,615: [DEBUG]: Langgraph: Entered ask_intent
+2026-07-25 09:20:28,616: [DEBUG]: Langgraph: Current state:
+{'messages': [HumanMessage(content='Ich bin Student im 3. Semester, meine Matrikelnummer ist 1234567', additional_kwargs={}, response_metadata={}, id='76cd1221-8613-4df5-8ac4-ab1218a93553')], 'ask_issue_attempts': 0, 'intent': 'unclear', 'tutorial_attempts': 0, 'visited_nodes': ['extractor_node', 'classify_intent_node'], 'graph_runs': 1, 'user_email': 'a@example.com', 'matrikelnummer': '1234567', 'issue_description': 'Passwort vergessen', 'additional_info': [], 'additional_info_attempts': 1, 'ticket_id': None, 'full_conversation': 'Ein Student im 3. Semester meldet sich, seine Matrikelnummer ist 1234567. Er hat noch kein Problem beschrieben.', 'priority': 1, 'category': '', 'needs_additional_info': False, 'is_complete': False, 'solutions': [], 'display_name': '', 'role': '', 'faculty': '', 'device': '', 'os_name': ''}
+2026-07-25 09:20:29,278: [DEBUG]: Langgraph: Final updated state:
+{'messages': [HumanMessage(content='Ich bin Student im 3. Semester, meine Matrikelnummer ist 1234567', additional_kwargs={}, response_metadata={}, id='76cd1221-8613-4df5-8ac4-ab1218a93553'), AIMessage(content='Willkommen bei der ZIM-Support-Hilfe. Ich bin hier, um Ihnen bei universitären IT-Angelegenheiten zu helfen.\n\nUm Ihnen besser helfen zu können, benötige ich ein bisschen mehr Informationen über Ihr Anliegen. Können Sie mir bitte mitteilen, was Sie aktuell benötigen oder was Ihr Problem ist? Möchten Sie eine Schritt-für-Schritt-Anleitung zum Selbermachen oder soll ich mich um Ihr Anliegen kümmern?', additional_kwargs={'refusal': None}, response_metadata={'token_usage': {'completion_tokens': 105, 'prompt_tokens': 1118, 'total_tokens': 1223, 'completion_tokens_details': None, 'prompt_tokens_details': None}, 'model_provider': 'openai', 'model_name': 'meta-llama-3.1-8b-instruct', 'system_fingerprint': 'vllm-0.22.1-8b7e788a', 'id': 'chatcmpl-92c0b4b36bbd65f4', 'finish_reason': 'stop', 'logprobs': None}, id='lc_run--019f9825-98c8-7300-abd8-f299d99a527e-0', tool_calls=[], invalid_tool_calls=[], usage_metadata={'input_tokens': 1118, 'output_tokens': 105, 'total_tokens': 1223, 'input_token_details': {}, 'output_token_details': {}})], 'ask_issue_attempts': 0, 'intent': 'unclear', 'tutorial_attempts': 0, 'visited_nodes': ['extractor_node', 'classify_intent_node', 'ask_intent_node'], 'graph_runs': 1, 'user_email': 'a@example.com', 'matrikelnummer': '1234567', 'issue_description': 'Passwort vergessen', 'additional_info': [], 'additional_info_attempts': 1, 'ticket_id': None, 'full_conversation': 'Ein Student im 3. Semester meldet sich, seine Matrikelnummer ist 1234567. Er hat noch kein Problem beschrieben.', 'priority': 1, 'category': '', 'needs_additional_info': False, 'is_complete': False, 'solutions': [], 'display_name': '', 'role': '', 'faculty': '', 'device': '', 'os_name': ''}
+2026-07-25 09:20:29,278: [DEBUG]: Langgraph: Run #1 — path: extractor_node -> classify_intent_node -> ask_intent_node
+2026-07-25 09:20:29,279: [INFO]: ZIM: Received request to the chat endpoint
+user_message='Ich habe keinen Zugriff mehr auf meine Uni-Mail, ich kann den Reset-Link nicht empfangen' history=[] user_email='a@example.com' matrikelnummer='1234567' issue_description='Passwort vergessen' additional_info=[] priority=1 category='' helpful=False solutions=[] bot_message='' additional_info_attempts=1 ask_issue_attempts=0 ticket_id=None full_conversation='' user_addendum='' intent='' tutorial_attempts=0 graph_runs=0 display_name='' role='' faculty='' device='' os_name=''
+2026-07-25 09:20:29,282: [DEBUG]: Langgraph: Entered extract_information
+2026-07-25 09:20:29,282: [DEBUG]: Langgraph: Current state:
+{'messages': [HumanMessage(content='Ich habe keinen Zugriff mehr auf meine Uni-Mail, ich kann den Reset-Link nicht empfangen', additional_kwargs={}, response_metadata={}, id='e8ab4a62-f31a-4355-84e6-7287b6d2dc16')], 'ask_issue_attempts': 0, 'intent': '', 'tutorial_attempts': 0, 'visited_nodes': [], 'graph_runs': 0, 'user_email': 'a@example.com', 'matrikelnummer': '1234567', 'issue_description': 'Passwort vergessen', 'additional_info': [], 'additional_info_attempts': 1, 'ticket_id': None, 'full_conversation': '', 'priority': 1, 'category': '', 'needs_additional_info': False, 'is_complete': False, 'solutions': [], 'display_name': '', 'role': '', 'faculty': '', 'device': '', 'os_name': ''}
+2026-07-25 09:20:29,919: [DEBUG]: Langgraph: EXTRACTED DATA: matrikelnummer=None problem='Kein Zugriff auf Uni-Mail, Reset-Link nicht empfangen' additional_info=[] priority=1 full_conversation=None
+2026-07-25 09:20:29,920: [ERROR]: Zammad: Invalid URL for Zammad provided: Could not reach Zammad to create ticket
+2026-07-25 09:20:29,920: [ERROR]: Zammad: Invalid URL for Zammad provided: Could not reach Zammad to add tag to ticket
+2026-07-25 09:20:29,920: [INFO]: Langgraph: Created ticket with ID -1 for the state update: {'graph_runs': 1, 'full_conversation': '', 'ticket_id': -1}
+2026-07-25 09:20:29,925: [DEBUG]: Langgraph: Entered classify_intent
+2026-07-25 09:20:29,925: [DEBUG]: Langgraph: Current state:
+{'messages': [HumanMessage(content='Ich habe keinen Zugriff mehr auf meine Uni-Mail, ich kann den Reset-Link nicht empfangen', additional_kwargs={}, response_metadata={}, id='e8ab4a62-f31a-4355-84e6-7287b6d2dc16')], 'ask_issue_attempts': 0, 'intent': '', 'tutorial_attempts': 0, 'visited_nodes': ['extractor_node'], 'graph_runs': 1, 'user_email': 'a@example.com', 'matrikelnummer': '1234567', 'issue_description': 'Passwort vergessen', 'additional_info': [], 'additional_info_attempts': 1, 'ticket_id': -1, 'full_conversation': '', 'priority': 1, 'category': '', 'needs_additional_info': False, 'is_complete': False, 'solutions': [], 'display_name': '', 'role': '', 'faculty': '', 'device': '', 'os_name': ''}
+2026-07-25 09:20:30,878: [DEBUG]: Langgraph: Entered ask_for_additional_info
+2026-07-25 09:20:30,879: [DEBUG]: Langgraph: Current state:
+{'messages': [HumanMessage(content='Ich habe keinen Zugriff mehr auf meine Uni-Mail, ich kann den Reset-Link nicht empfangen', additional_kwargs={}, response_metadata={}, id='e8ab4a62-f31a-4355-84e6-7287b6d2dc16')], 'ask_issue_attempts': 0, 'intent': 'problem', 'tutorial_attempts': 0, 'visited_nodes': ['extractor_node', 'classify_intent_node'], 'graph_runs': 1, 'user_email': 'a@example.com', 'matrikelnummer': '1234567', 'issue_description': 'Passwort vergessen', 'additional_info': [], 'additional_info_attempts': 1, 'ticket_id': -1, 'full_conversation': '', 'priority': 1, 'category': '', 'needs_additional_info': False, 'is_complete': False, 'solutions': [], 'display_name': '', 'role': '', 'faculty': '', 'device': '', 'os_name': ''}
+2026-07-25 09:20:30,879: [DEBUG]: Langgraph: ask_for_additional_info node: attempts: 1 
+2026-07-25 09:20:30,880: [INFO]: RAG: Encoding FAQ query...
+2026-07-25 09:20:31,024: [INFO]: RAG: Running cross-encoder re-ranking on 10 FAQ candidates...
+2026-07-25 09:20:31,794: [INFO]: RAG: FAQ re-ranking results (converting from cosine to sigmoid):
+2026-07-25 09:20:31,794: [INFO]: RAG: Title                                                                           |before              |after (raw)         |after (sigmoid)     
+2026-07-25 09:20:31,794: [INFO]: RAG: Benutzername / Passwort für Moodle vergessen                                    |0.8569              |0.1564              |0.4275              
+2026-07-25 09:20:31,794: [INFO]: RAG: Passwort für Online-Bewerbung vergessen                                         |0.8541              |0.0977              |0.4234              
+2026-07-25 09:20:31,794: [INFO]: RAG: Passwort zur Aktivierung vergessen                                              |0.8628              |-0.5702             |0.3786              
+2026-07-25 09:20:31,794: [INFO]: RAG: Passwort / Benutzername vergessen für ausländische Bewerber (Uni-Assist)        |0.8513              |-0.6054             |0.3762              
+2026-07-25 09:20:31,794: [INFO]: RAG: Passwort vergessen                                                              |0.8520              |-1.3298             |0.3300              
+2026-07-25 09:20:31,794: [INFO]: RAG: Passwort im Fujitsu Portal funktioniert nicht                                   |0.8506              |-2.1792             |0.2797              
+2026-07-25 09:20:31,794: [INFO]: RAG: WLAN Passwort vergessen                                                         |0.8671              |-2.5095             |0.2614              
+2026-07-25 09:20:31,794: [INFO]: RAG: Ich habe mein Sciebo-Passwort vergessen                                         |0.8536              |-2.6676             |0.2530              
+2026-07-25 09:20:31,794: [INFO]: RAG: Nutzerkennung für Online-Bewerbung vergessen                                    |0.8518              |-2.7618             |0.2480              
+2026-07-25 09:20:31,794: [INFO]: RAG: Ständige Passwortabfrage bei OWA bei der Anmeldung                              |0.8507              |-5.5291             |0.1319              
+2026-07-25 09:20:31,795: [INFO]: RAG: FAQ tier 1 matched: returning 2 results above 0.4
+2026-07-25 09:20:31,795: [INFO]: RAG: Encoding ticket query...
+2026-07-25 09:20:31,858: [INFO]: RAG: [RAG]   [ticket_003] similarity: 0.4200
+2026-07-25 09:20:31,858: [INFO]: RAG: [RAG]   [ticket_007] similarity: 0.4074
+2026-07-25 09:20:31,858: [INFO]: RAG: Final: 2 FAQ matches, 2 ticket matches
+2026-07-25 09:20:31,858: [INFO]: RAG: Inferred category: {'category': 'unknown', 'confidence': 0.4137}
+2026-07-25 09:20:31,860: [DEBUG]: RAG: faq_matches:
+[{'id': 'Benutzername / Passwort für Moodle vergessen', 'text': 'context: 08 Lernplattformen > 08.02 Moodle\nproblem: Ich habe mein Passwort/Benutzernamen für Moodle vergessen.\nsolution: Sie können sich mit Ihrer Unikennung am Moodle-Server anmelden. Falls Sie für I...', 'similarity': 0.4275, 'extracted_urls': [{'url': 'https://www.uni-due.de/zim/soforthilfe/', 'domain': 'www.uni-due.de', 'status': 'success', 'content': 'Servicestellen\nServicestellen\nWir helfen Ihnen gerne\nSie benötigen Hilfe bei Computerfragen oder wollen eine Störung melden?\nIm Hörsaal funktioniert die Medientechnik nicht?\n\u200b\nUnsere\nHotline\nnimmt Ihr...', 'content_length': 4869, 'type': None, 'error': None}, {'url': 'http://www.uni-due.de/zim/soforthilfe/faqs/knowledgebase-public.php?id=312#a_312', 'domain': 'www.uni-due.de', 'status': 'success', 'content': 'Servicestellen\nServicestellen\nWir helfen Ihnen gerne\nSie benötigen Hilfe bei Computerfragen oder wollen eine Störung melden?\nIm Hörsaal funktioniert die Medientechnik nicht?\n\u200b\nUnsere\nHotline\nnimmt Ihr...', 'content_length': 4869, 'type': None, 'error': None}, {'url': 'http://moodle.uni-due.de/login/forgot_password.php', 'domain': 'moodle.uni-due.de', 'status': 'success', 'content': 'Kennwort vergessen\nZum Hauptinhalt\nUm Ihr Kennwort zurückzusetzen, tragen Sie bitte entweder Ihren Anmeldenamen oder Ihre E-Mail-Adresse ein. Wenn Sie in der Datenbank zu finden sind, wird eine Mittei...', 'content_length': 306, 'type': None, 'error': None}]}, {'id': 'Passwort für Online-Bewerbung vergessen', 'text': 'context: 06 HISinOne > 06.01 Zulassung & Bewerbung (CM/APP)\nproblem: Ich habe mich an der Universität Duisburg-Essen für einen Studienplatz beworben, habe aber nun mein Passwort vergessen.\nsolution: D...', 'similarity': 0.4234, 'extracted_urls': [{'url': 'https://www.uni-due.de/zim/soforthilfe/faqs/knowledgebase-public.php?id=748#a_748', 'domain': 'www.uni-due.de', 'status': 'success', 'content': 'Servicestellen\nServicestellen\nWir helfen Ihnen gerne\nSie benötigen Hilfe bei Computerfragen oder wollen eine Störung melden?\nIm Hörsaal funktioniert die Medientechnik nicht?\n\u200b\nUnsere\nHotline\nnimmt Ihr...', 'content_length': 4869, 'type': None, 'error': None}, {'url': 'https://campus.uni-due.de/cm', 'domain': 'campus.uni-due.de', 'status': 'success', 'content': 'Weiterleitung\nWeiterleitung...', 'content_length': 30, 'type': None, 'error': None}, {'url': 'http://www.uni-due.de/zim/soforthilfe/faqs/knowledgebase-public.php?id=374#a_374', 'domain': 'www.uni-due.de', 'status': 'success', 'content': 'Servicestellen\nServicestellen\nWir helfen Ihnen gerne\nSie benötigen Hilfe bei Computerfragen oder wollen eine Störung melden?\nIm Hörsaal funktioniert die Medientechnik nicht?\n\u200b\nUnsere\nHotline\nnimmt Ihr...', 'content_length': 4869, 'type': None, 'error': None}]}]
+2026-07-25 09:20:31,860: [DEBUG]: RAG: faq_context:
+- context: 08 Lernplattformen > 08.02 Moodle
+problem: Ich habe mein Passwort/Benutzernamen für Moodle vergessen.
+solution: Sie können sich mit Ihrer Unikennung am Moodle-Server anmelden. Falls Sie für...
+2026-07-25 09:20:32,315: [DEBUG]: Langgraph: decision.needs_additional_info: True
+2026-07-25 09:20:32,315: [DEBUG]: Langgraph: decision.follow_up_question: 'Welche Art von Passwort haben Sie vergessen (z.B. Moodle, Universitäts-E-Mail, HISinOne, ...)?'
+2026-07-25 09:20:32,315: [ERROR]: Ticket Service: Failed to append article: Invalid URL 'None/api/v1/ticket_articles': No scheme supplied. Perhaps you meant https://None/api/v1/ticket_articles?
+2026-07-25 09:20:32,320: [DEBUG]: Langgraph: Final updated state:
+{'messages': [HumanMessage(content='Ich habe keinen Zugriff mehr auf meine Uni-Mail, ich kann den Reset-Link nicht empfangen', additional_kwargs={}, response_metadata={}, id='e8ab4a62-f31a-4355-84e6-7287b6d2dc16'), AIMessage(content='Ich habe gerade ein Support-Ticket erstellt. Für eine optimale Bearbeitung bitte die folgenden Fragen beantworten:\nWelche Art von Passwort haben Sie vergessen (z.B. Moodle, Universitäts-E-Mail, HISinOne, ...)?', additional_kwargs={}, response_metadata={}, id='a9dd91ac-9b51-4fbb-9d61-f166b927e1e1', tool_calls=[], invalid_tool_calls=[])], 'ask_issue_attempts': 0, 'intent': 'problem', 'tutorial_attempts': 0, 'visited_nodes': ['extractor_node', 'classify_intent_node', 'ask_for_additional_info'], 'graph_runs': 1, 'user_email': 'a@example.com', 'matrikelnummer': '1234567', 'issue_description': 'Passwort vergessen', 'additional_info': [], 'additional_info_attempts': 2, 'ticket_id': -1, 'full_conversation': '', 'priority': 1, 'category': '', 'needs_additional_info': True, 'is_complete': False, 'solutions': [], 'display_name': '', 'role': '', 'faculty': '', 'device': '', 'os_name': ''}
+2026-07-25 09:20:32,320: [DEBUG]: Langgraph: Run #1 — path: extractor_node -> classify_intent_node -> ask_for_additional_info
+2026-07-25 09:20:32,320: [INFO]: ZIM: Received request to the chat endpoint
+user_message='Ich kann mich nicht mit dem Uni-VPN verbinden, ich brauche das für mein Homeoffice' history=[] user_email='a@example.com' matrikelnummer='1234567' issue_description='' additional_info=[] priority=0 category='' helpful=False solutions=[] bot_message='' additional_info_attempts=0 ask_issue_attempts=0 ticket_id=None full_conversation='' user_addendum='' intent='' tutorial_attempts=0 graph_runs=0 display_name='' role='' faculty='' device='' os_name=''
+2026-07-25 09:20:32,322: [DEBUG]: Langgraph: Entered extract_information
+2026-07-25 09:20:32,322: [DEBUG]: Langgraph: Current state:
+{'messages': [HumanMessage(content='Ich kann mich nicht mit dem Uni-VPN verbinden, ich brauche das für mein Homeoffice', additional_kwargs={}, response_metadata={}, id='6b24c6ab-3bef-447c-ae24-15e8e4d4f107')], 'ask_issue_attempts': 0, 'intent': '', 'tutorial_attempts': 0, 'visited_nodes': [], 'graph_runs': 0, 'user_email': 'a@example.com', 'matrikelnummer': '1234567', 'issue_description': '', 'additional_info': [], 'additional_info_attempts': 0, 'ticket_id': None, 'full_conversation': '', 'priority': 0, 'category': '', 'needs_additional_info': False, 'is_complete': False, 'solutions': [], 'display_name': '', 'role': '', 'faculty': '', 'device': '', 'os_name': ''}
+2026-07-25 09:20:32,702: [DEBUG]: Langgraph: EXTRACTED DATA: matrikelnummer=None problem='Keine Verbindung zum Uni-VPN möglich' additional_info=['Homeoffice'] priority=0 full_conversation=None
+2026-07-25 09:20:32,703: [ERROR]: Zammad: Invalid URL for Zammad provided: Could not reach Zammad to create ticket
+2026-07-25 09:20:32,703: [ERROR]: Zammad: Invalid URL for Zammad provided: Could not reach Zammad to add tag to ticket
+2026-07-25 09:20:32,703: [INFO]: Langgraph: Created ticket with ID -1 for the state update: {'graph_runs': 1, 'issue_description': 'Keine Verbindung zum Uni-VPN möglich', 'priority': 0, 'additional_info': ['Homeoffice'], 'full_conversation': '', 'ticket_id': -1}
+2026-07-25 09:20:32,707: [DEBUG]: Langgraph: Entered classify_intent
+2026-07-25 09:20:32,707: [DEBUG]: Langgraph: Current state:
+{'messages': [HumanMessage(content='Ich kann mich nicht mit dem Uni-VPN verbinden, ich brauche das für mein Homeoffice', additional_kwargs={}, response_metadata={}, id='6b24c6ab-3bef-447c-ae24-15e8e4d4f107')], 'ask_issue_attempts': 0, 'intent': '', 'tutorial_attempts': 0, 'visited_nodes': ['extractor_node'], 'graph_runs': 1, 'user_email': 'a@example.com', 'matrikelnummer': '1234567', 'issue_description': 'Keine Verbindung zum Uni-VPN möglich', 'additional_info': ['Homeoffice'], 'additional_info_attempts': 0, 'ticket_id': -1, 'full_conversation': '', 'priority': 0, 'category': '', 'needs_additional_info': False, 'is_complete': False, 'solutions': [], 'display_name': '', 'role': '', 'faculty': '', 'device': '', 'os_name': ''}
+2026-07-25 09:20:33,624: [DEBUG]: Langgraph: Entered ask_for_additional_info
+2026-07-25 09:20:33,624: [DEBUG]: Langgraph: Current state:
+{'messages': [HumanMessage(content='Ich kann mich nicht mit dem Uni-VPN verbinden, ich brauche das für mein Homeoffice', additional_kwargs={}, response_metadata={}, id='6b24c6ab-3bef-447c-ae24-15e8e4d4f107')], 'ask_issue_attempts': 0, 'intent': 'problem', 'tutorial_attempts': 0, 'visited_nodes': ['extractor_node', 'classify_intent_node'], 'graph_runs': 1, 'user_email': 'a@example.com', 'matrikelnummer': '1234567', 'issue_description': 'Keine Verbindung zum Uni-VPN möglich', 'additional_info': ['Homeoffice'], 'additional_info_attempts': 0, 'ticket_id': -1, 'full_conversation': '', 'priority': 0, 'category': '', 'needs_additional_info': False, 'is_complete': False, 'solutions': [], 'display_name': '', 'role': '', 'faculty': '', 'device': '', 'os_name': ''}
+2026-07-25 09:20:33,624: [DEBUG]: Langgraph: ask_for_additional_info node: attempts: 0 
+2026-07-25 09:20:33,626: [INFO]: RAG: Encoding FAQ query...
+2026-07-25 09:20:33,796: [INFO]: RAG: Running cross-encoder re-ranking on 10 FAQ candidates...
+2026-07-25 09:20:34,664: [INFO]: RAG: FAQ re-ranking results (converting from cosine to sigmoid):
+2026-07-25 09:20:34,664: [INFO]: RAG: Title                                                                           |before              |after (raw)         |after (sigmoid)     
+2026-07-25 09:20:34,664: [INFO]: RAG: SAP Zugriff von extern funktioniert nicht                                       |0.8830              |2.7411              |0.6062              
+2026-07-25 09:20:34,664: [INFO]: RAG: DFN@Home wurde eingestellt                                                      |0.8587              |1.6763              |0.5333              
+2026-07-25 09:20:34,664: [INFO]: RAG: Zugriff auf das Portal von extern                                               |0.8667              |-0.2545             |0.3996              
+2026-07-25 09:20:34,665: [INFO]: RAG: Zugang über DSL                                                                 |0.8633              |-0.6956             |0.3703              
+2026-07-25 09:20:34,665: [INFO]: RAG: Keine Verbindung zum Netz                                                       |0.8608              |-1.3030             |0.3316              
+2026-07-25 09:20:34,665: [INFO]: RAG: 19.03 Warum kann ich aus dem Forcepoint-VPN meine Server nicht administrieren?  |0.8674              |-1.7238             |0.3060              
+2026-07-25 09:20:34,665: [INFO]: RAG: Zugriff von extern funktioniert nicht                                           |0.8726              |-1.9093             |0.2951              
+2026-07-25 09:20:34,665: [INFO]: RAG: Keine Verbindung zu eduroam                                                     |0.8624              |-2.5092             |0.2614              
+2026-07-25 09:20:34,665: [INFO]: RAG: Prüferrolle in HISinOne                                                         |0.8609              |-2.8875             |0.2415              
+2026-07-25 09:20:34,665: [INFO]: RAG: Zugang zur Domäne von extern                                                    |0.8683              |-3.4294             |0.2148              
+2026-07-25 09:20:34,665: [INFO]: RAG: FAQ tier 1 matched: returning 2 results above 0.4
+2026-07-25 09:20:34,665: [INFO]: RAG: Encoding ticket query...
+2026-07-25 09:20:34,732: [INFO]: RAG: [RAG]   [ticket_016] similarity: 0.6548
+2026-07-25 09:20:34,732: [INFO]: RAG: [RAG]   [ticket_011] similarity: 0.6175
+2026-07-25 09:20:34,732: [INFO]: RAG: Final: 2 FAQ matches, 2 ticket matches
+2026-07-25 09:20:34,732: [INFO]: RAG: Inferred category: {'category': 'Incident', 'confidence': 0.6361}
+2026-07-25 09:20:34,733: [DEBUG]: RAG: faq_matches:
+[{'id': 'SAP Zugriff von extern funktioniert nicht', 'text': 'context: 14 SAP > 14.03 SAP-GUI\nproblem: Ich kann von zu Hause keine Verbindung zum VPN-Tunnel aufbauen, um SAP nutzen zu können.\nsolution: Falls Sie sich nicht im Uni-Netz befinden, müssen Sie den VP...', 'similarity': 0.6062, 'extracted_urls': [{'url': 'http://www.uni-due.de/zim/quick/vpn', 'domain': 'www.uni-due.de', 'status': 'success', 'content': 'Internetzugang über VPN\nInternetzugang über VPN\nVPN\nMit Hilfe eines Zugangs über VPN (Virtual Private Network), mit dem Sie einen Tunnel zum Netz der Universität aufbauen, läuft ihr gesamter Datenverk...', 'content_length': 3855, 'type': None, 'error': None}, {'url': 'http://www.uni-due.de/imperia/md/content/zim/services/internetzugang/vpn-extern-nat.pcf', 'domain': 'www.uni-due.de', 'status': 'none', 'content': None, 'content_length': None, 'type': '.pcf', 'error': None, 'note': 'Die URL ist eine .pcf, welche das VPN‑Profil „extern‑nat“ für die Nutzung des VPN‑Tunnels von zu Hause aus bereitstellt.'}]}, {'id': 'DFN@Home wurde eingestellt', 'text': 'context: 12 Netzzugang > 12.01 Zugang\nproblem: Ich kann über DFN@Home keine Verbindung mehr aufbauen.\nsolution: Die Dienste DFN@home wurden zum 28.2.2017 eingestellt.\nurl: https://www.uni-due.de/zim/h...', 'similarity': 0.5333, 'extracted_urls': []}]
+2026-07-25 09:20:34,733: [DEBUG]: RAG: faq_context:
+- context: 14 SAP > 14.03 SAP-GUI
+problem: Ich kann von zu Hause keine Verbindung zum VPN-Tunnel aufbauen, um SAP nutzen zu können.
+solution: Falls Sie sich nicht im Uni-Netz befinden, müssen Sie den ...
+2026-07-25 09:20:35,155: [DEBUG]: Langgraph: decision.needs_additional_info: True
+2026-07-25 09:20:35,155: [DEBUG]: Langgraph: decision.follow_up_question: '• Was ist der genaue Fehlercode oder die Fehlermeldung, die Sie bei der Verbindungsherstellung zum Uni-VPN sehen?'
+2026-07-25 09:20:35,156: [ERROR]: Ticket Service: Failed to append article: Invalid URL 'None/api/v1/ticket_articles': No scheme supplied. Perhaps you meant https://None/api/v1/ticket_articles?
+2026-07-25 09:20:35,161: [DEBUG]: Langgraph: Final updated state:
+{'messages': [HumanMessage(content='Ich kann mich nicht mit dem Uni-VPN verbinden, ich brauche das für mein Homeoffice', additional_kwargs={}, response_metadata={}, id='6b24c6ab-3bef-447c-ae24-15e8e4d4f107'), AIMessage(content='Ich habe gerade ein Support-Ticket erstellt. Für eine optimale Bearbeitung bitte die folgenden Fragen beantworten:\n• Was ist der genaue Fehlercode oder die Fehlermeldung, die Sie bei der Verbindungsherstellung zum Uni-VPN sehen?', additional_kwargs={}, response_metadata={}, id='292ed570-5fdf-45a5-a211-7745cd2cad71', tool_calls=[], invalid_tool_calls=[])], 'ask_issue_attempts': 0, 'intent': 'problem', 'tutorial_attempts': 0, 'visited_nodes': ['extractor_node', 'classify_intent_node', 'ask_for_additional_info'], 'graph_runs': 1, 'user_email': 'a@example.com', 'matrikelnummer': '1234567', 'issue_description': 'Keine Verbindung zum Uni-VPN möglich', 'additional_info': ['Homeoffice'], 'additional_info_attempts': 1, 'ticket_id': -1, 'full_conversation': '', 'priority': 0, 'category': '', 'needs_additional_info': True, 'is_complete': False, 'solutions': [], 'display_name': '', 'role': '', 'faculty': '', 'device': '', 'os_name': ''}
+2026-07-25 09:20:35,161: [DEBUG]: Langgraph: Run #1 — path: extractor_node -> classify_intent_node -> ask_for_additional_info
+2026-07-25 09:20:35,161: [INFO]: ZIM: Received request to the chat endpoint
+user_message='Ich nutze Windows 11 und habe den Cisco AnyConnect Client installiert' history=[] user_email='a@example.com' matrikelnummer='1234567' issue_description='Keine Verbindung zum Uni-VPN möglich' additional_info=['Homeoffice'] priority=0 category='' helpful=False solutions=[] bot_message='' additional_info_attempts=1 ask_issue_attempts=0 ticket_id=None full_conversation='' user_addendum='' intent='' tutorial_attempts=0 graph_runs=0 display_name='' role='' faculty='' device='' os_name=''
+2026-07-25 09:20:35,163: [DEBUG]: Langgraph: Entered extract_information
+2026-07-25 09:20:35,164: [DEBUG]: Langgraph: Current state:
+{'messages': [HumanMessage(content='Ich nutze Windows 11 und habe den Cisco AnyConnect Client installiert', additional_kwargs={}, response_metadata={}, id='080ec840-2010-4a4f-b912-c947b74ee886')], 'ask_issue_attempts': 0, 'intent': '', 'tutorial_attempts': 0, 'visited_nodes': [], 'graph_runs': 0, 'user_email': 'a@example.com', 'matrikelnummer': '1234567', 'issue_description': 'Keine Verbindung zum Uni-VPN möglich', 'additional_info': ['Homeoffice'], 'additional_info_attempts': 1, 'ticket_id': None, 'full_conversation': '', 'priority': 0, 'category': '', 'needs_additional_info': False, 'is_complete': False, 'solutions': [], 'display_name': '', 'role': '', 'faculty': '', 'device': '', 'os_name': ''}
+2026-07-25 09:20:35,732: [DEBUG]: Langgraph: EXTRACTED DATA: matrikelnummer=None problem=None additional_info=['Windows 11', 'Cisco AnyConnect Client'] priority=0 full_conversation='Der Student nutzt Windows 11 und hat den Cisco AnyConnect Client installiert, aber die Verbindung zum Uni-VPN ist nicht möglich.'
+2026-07-25 09:20:35,734: [DEBUG]: Langgraph: Entered classify_intent
+2026-07-25 09:20:35,734: [DEBUG]: Langgraph: Current state:
+{'messages': [HumanMessage(content='Ich nutze Windows 11 und habe den Cisco AnyConnect Client installiert', additional_kwargs={}, response_metadata={}, id='080ec840-2010-4a4f-b912-c947b74ee886')], 'ask_issue_attempts': 0, 'intent': '', 'tutorial_attempts': 0, 'visited_nodes': ['extractor_node'], 'graph_runs': 1, 'user_email': 'a@example.com', 'matrikelnummer': '1234567', 'issue_description': 'Keine Verbindung zum Uni-VPN möglich', 'additional_info': ['Homeoffice', 'Windows 11', 'Cisco AnyConnect Client'], 'additional_info_attempts': 1, 'ticket_id': None, 'full_conversation': 'Der Student nutzt Windows 11 und hat den Cisco AnyConnect Client installiert, aber die Verbindung zum Uni-VPN ist nicht möglich.', 'priority': 0, 'category': '', 'needs_additional_info': False, 'is_complete': False, 'solutions': [], 'display_name': '', 'role': '', 'faculty': '', 'device': '', 'os_name': ''}
+2026-07-25 09:20:36,588: [DEBUG]: Langgraph: Entered ask_intent
+2026-07-25 09:20:36,589: [DEBUG]: Langgraph: Current state:
+{'messages': [HumanMessage(content='Ich nutze Windows 11 und habe den Cisco AnyConnect Client installiert', additional_kwargs={}, response_metadata={}, id='080ec840-2010-4a4f-b912-c947b74ee886')], 'ask_issue_attempts': 0, 'intent': 'unclear', 'tutorial_attempts': 0, 'visited_nodes': ['extractor_node', 'classify_intent_node'], 'graph_runs': 1, 'user_email': 'a@example.com', 'matrikelnummer': '1234567', 'issue_description': 'Keine Verbindung zum Uni-VPN möglich', 'additional_info': ['Homeoffice', 'Windows 11', 'Cisco AnyConnect Client'], 'additional_info_attempts': 1, 'ticket_id': None, 'full_conversation': 'Der Student nutzt Windows 11 und hat den Cisco AnyConnect Client installiert, aber die Verbindung zum Uni-VPN ist nicht möglich.', 'priority': 0, 'category': '', 'needs_additional_info': False, 'is_complete': False, 'solutions': [], 'display_name': '', 'role': '', 'faculty': '', 'device': '', 'os_name': ''}
+2026-07-25 09:20:37,185: [DEBUG]: Langgraph: Final updated state:
+{'messages': [HumanMessage(content='Ich nutze Windows 11 und habe den Cisco AnyConnect Client installiert', additional_kwargs={}, response_metadata={}, id='080ec840-2010-4a4f-b912-c947b74ee886'), AIMessage(content='Das Cisco AnyConnect Client ist ein VPN-Client, der es dir ermöglicht, über ein sicheres Netzwerk auf die Universitätsnetzwerke zuzugreifen. Wenn du Probleme mit dem Client hast, kannst du mir gerne sagen, was genau nicht funktioniert, z.B. ob du dich nicht anmelden kannst, ob das Netzwerk nicht stabil ist oder ob du andere Probleme hast.', additional_kwargs={'refusal': None}, response_metadata={'token_usage': {'completion_tokens': 86, 'prompt_tokens': 1114, 'total_tokens': 1200, 'completion_tokens_details': None, 'prompt_tokens_details': None}, 'model_provider': 'openai', 'model_name': 'meta-llama-3.1-8b-instruct', 'system_fingerprint': 'vllm-0.22.1-8b7e788a', 'id': 'chatcmpl-a69f3e785b9099b8', 'finish_reason': 'stop', 'logprobs': None}, id='lc_run--019f9825-b7ed-79c2-a37d-ac73b3fd4774-0', tool_calls=[], invalid_tool_calls=[], usage_metadata={'input_tokens': 1114, 'output_tokens': 86, 'total_tokens': 1200, 'input_token_details': {}, 'output_token_details': {}})], 'ask_issue_attempts': 0, 'intent': 'unclear', 'tutorial_attempts': 0, 'visited_nodes': ['extractor_node', 'classify_intent_node', 'ask_intent_node'], 'graph_runs': 1, 'user_email': 'a@example.com', 'matrikelnummer': '1234567', 'issue_description': 'Keine Verbindung zum Uni-VPN möglich', 'additional_info': ['Homeoffice', 'Windows 11', 'Cisco AnyConnect Client'], 'additional_info_attempts': 1, 'ticket_id': None, 'full_conversation': 'Der Student nutzt Windows 11 und hat den Cisco AnyConnect Client installiert, aber die Verbindung zum Uni-VPN ist nicht möglich.', 'priority': 0, 'category': '', 'needs_additional_info': False, 'is_complete': False, 'solutions': [], 'display_name': '', 'role': '', 'faculty': '', 'device': '', 'os_name': ''}
+2026-07-25 09:20:37,185: [DEBUG]: Langgraph: Run #1 — path: extractor_node -> classify_intent_node -> ask_intent_node
+2026-07-25 09:20:37,186: [INFO]: ZIM: Received request to the chat endpoint
+user_message="Die Fehlermeldung lautet: 'Connection attempt has failed'" history=[] user_email='a@example.com' matrikelnummer='1234567' issue_description='Keine Verbindung zum Uni-VPN möglich' additional_info=['Homeoffice', 'Windows 11', 'Cisco AnyConnect Client'] priority=0 category='' helpful=False solutions=[] bot_message='' additional_info_attempts=1 ask_issue_attempts=0 ticket_id=None full_conversation='' user_addendum='' intent='' tutorial_attempts=0 graph_runs=0 display_name='' role='' faculty='' device='' os_name=''
+2026-07-25 09:20:37,189: [DEBUG]: Langgraph: Entered extract_information
+2026-07-25 09:20:37,189: [DEBUG]: Langgraph: Current state:
+{'messages': [HumanMessage(content="Die Fehlermeldung lautet: 'Connection attempt has failed'", additional_kwargs={}, response_metadata={}, id='9eb5cbd8-0717-4f7b-ba7c-05b39baa9f5c')], 'ask_issue_attempts': 0, 'intent': '', 'tutorial_attempts': 0, 'visited_nodes': [], 'graph_runs': 0, 'user_email': 'a@example.com', 'matrikelnummer': '1234567', 'issue_description': 'Keine Verbindung zum Uni-VPN möglich', 'additional_info': ['Homeoffice', 'Windows 11', 'Cisco AnyConnect Client'], 'additional_info_attempts': 1, 'ticket_id': None, 'full_conversation': '', 'priority': 0, 'category': '', 'needs_additional_info': False, 'is_complete': False, 'solutions': [], 'display_name': '', 'role': '', 'faculty': '', 'device': '', 'os_name': ''}
+2026-07-25 09:20:38,244: [DEBUG]: Langgraph: EXTRACTED DATA: matrikelnummer=None problem='Keine Verbindung zum Uni-VPN möglich' additional_info=['Homeoffice', 'Windows 11', 'Cisco AnyConnect Client', "Fehlermeldung: 'Connection attempt has failed'"] priority=0 full_conversation="Der Student hat Probleme mit der Verbindung zum Uni-VPN. Er arbeitet von zu Hause aus und verwendet Windows 11 mit dem Cisco AnyConnect Client. Die Fehlermeldung lautet 'Connection attempt has failed'."
+2026-07-25 09:20:38,244: [ERROR]: Zammad: Invalid URL for Zammad provided: Could not reach Zammad to create ticket
+2026-07-25 09:20:38,245: [ERROR]: Zammad: Invalid URL for Zammad provided: Could not reach Zammad to add tag to ticket
+2026-07-25 09:20:38,245: [INFO]: Langgraph: Created ticket with ID -1 for the state update: {'graph_runs': 1, 'priority': 0, 'additional_info': ["Fehlermeldung: 'Connection attempt has failed'"], 'full_conversation': "Der Student hat Probleme mit der Verbindung zum Uni-VPN. Er arbeitet von zu Hause aus und verwendet Windows 11 mit dem Cisco AnyConnect Client. Die Fehlermeldung lautet 'Connection attempt has failed'.", 'ticket_id': -1}
+2026-07-25 09:20:38,246: [DEBUG]: Langgraph: Entered classify_intent
+2026-07-25 09:20:38,246: [DEBUG]: Langgraph: Current state:
+{'messages': [HumanMessage(content="Die Fehlermeldung lautet: 'Connection attempt has failed'", additional_kwargs={}, response_metadata={}, id='9eb5cbd8-0717-4f7b-ba7c-05b39baa9f5c')], 'ask_issue_attempts': 0, 'intent': '', 'tutorial_attempts': 0, 'visited_nodes': ['extractor_node'], 'graph_runs': 1, 'user_email': 'a@example.com', 'matrikelnummer': '1234567', 'issue_description': 'Keine Verbindung zum Uni-VPN möglich', 'additional_info': ['Homeoffice', 'Windows 11', 'Cisco AnyConnect Client', "Fehlermeldung: 'Connection attempt has failed'"], 'additional_info_attempts': 1, 'ticket_id': -1, 'full_conversation': "Der Student hat Probleme mit der Verbindung zum Uni-VPN. Er arbeitet von zu Hause aus und verwendet Windows 11 mit dem Cisco AnyConnect Client. Die Fehlermeldung lautet 'Connection attempt has failed'.", 'priority': 0, 'category': '', 'needs_additional_info': False, 'is_complete': False, 'solutions': [], 'display_name': '', 'role': '', 'faculty': '', 'device': '', 'os_name': ''}
+2026-07-25 09:20:39,383: [DEBUG]: Langgraph: Entered ask_for_additional_info
+2026-07-25 09:20:39,383: [DEBUG]: Langgraph: Current state:
+{'messages': [HumanMessage(content="Die Fehlermeldung lautet: 'Connection attempt has failed'", additional_kwargs={}, response_metadata={}, id='9eb5cbd8-0717-4f7b-ba7c-05b39baa9f5c')], 'ask_issue_attempts': 0, 'intent': 'problem', 'tutorial_attempts': 0, 'visited_nodes': ['extractor_node', 'classify_intent_node'], 'graph_runs': 1, 'user_email': 'a@example.com', 'matrikelnummer': '1234567', 'issue_description': 'Keine Verbindung zum Uni-VPN möglich', 'additional_info': ['Homeoffice', 'Windows 11', 'Cisco AnyConnect Client', "Fehlermeldung: 'Connection attempt has failed'"], 'additional_info_attempts': 1, 'ticket_id': -1, 'full_conversation': "Der Student hat Probleme mit der Verbindung zum Uni-VPN. Er arbeitet von zu Hause aus und verwendet Windows 11 mit dem Cisco AnyConnect Client. Die Fehlermeldung lautet 'Connection attempt has failed'.", 'priority': 0, 'category': '', 'needs_additional_info': False, 'is_complete': False, 'solutions': [], 'display_name': '', 'role': '', 'faculty': '', 'device': '', 'os_name': ''}
+2026-07-25 09:20:39,383: [DEBUG]: Langgraph: ask_for_additional_info node: attempts: 1 
+2026-07-25 09:20:39,385: [INFO]: RAG: Encoding FAQ query...
+2026-07-25 09:20:39,546: [INFO]: RAG: Running cross-encoder re-ranking on 10 FAQ candidates...
+2026-07-25 09:20:40,142: [INFO]: RAG: FAQ re-ranking results (converting from cosine to sigmoid):
+2026-07-25 09:20:40,143: [INFO]: RAG: Title                                                                           |before              |after (raw)         |after (sigmoid)     
+2026-07-25 09:20:40,143: [INFO]: RAG: Zugriff auf das Portal von extern                                               |0.8691              |2.8580              |0.6140              
+2026-07-25 09:20:40,143: [INFO]: RAG: SAP Zugriff von extern funktioniert nicht                                       |0.8802              |2.5635              |0.5943              
+2026-07-25 09:20:40,143: [INFO]: RAG: Zugang über DSL                                                                 |0.8708              |2.1086              |0.5633              
+2026-07-25 09:20:40,143: [INFO]: RAG: 19.02 Warum kann ich auf der Linux Distribution "xy" den Forcepoint-VPN Client nicht installieren?|0.8766              |1.2888              |0.5062              
+2026-07-25 09:20:40,143: [INFO]: RAG: 19.03 Warum kann ich aus dem Forcepoint-VPN meine Server nicht administrieren?  |0.8770              |0.6614              |0.4624              
+2026-07-25 09:20:40,143: [INFO]: RAG: Zugriff von extern funktioniert nicht                                           |0.8709              |0.2173              |0.4316              
+2026-07-25 09:20:40,143: [INFO]: RAG: 19.07 Mein Problem mit dem Forcepoint-VPN-Client ist nicht geschildert. Was kann ich tun damit mir geholfen wird?|0.8714              |-0.0880             |0.4108              
+2026-07-25 09:20:40,143: [INFO]: RAG: Zugang zur Domäne von extern                                                    |0.8749              |-0.1570             |0.4061              
+2026-07-25 09:20:40,143: [INFO]: RAG: Freischaltung einer Netzwerkdose                                                |0.8685              |-2.3113             |0.2723              
+2026-07-25 09:20:40,144: [INFO]: RAG: Keine Verbindung zu eduroam                                                     |0.8804              |-2.6477             |0.2540              
+2026-07-25 09:20:40,144: [INFO]: RAG: FAQ tier 1 matched: returning 4 results above 0.4
+2026-07-25 09:20:40,144: [INFO]: RAG: Encoding ticket query...
+2026-07-25 09:20:40,256: [INFO]: RAG: [RAG]   [ticket_016] similarity: 0.6041
+2026-07-25 09:20:40,256: [INFO]: RAG: [RAG]   [ticket_011] similarity: 0.5703
+2026-07-25 09:20:40,256: [INFO]: RAG: Final: 4 FAQ matches, 2 ticket matches
+2026-07-25 09:20:40,256: [INFO]: RAG: Inferred category: {'category': 'Incident', 'confidence': 0.5872}
+2026-07-25 09:20:40,258: [DEBUG]: RAG: faq_matches:
+[{'id': 'Zugriff auf das Portal von extern', 'text': 'context: 14 SAP > 14.02 Portal > 14.02.02 Technische Voraussetzungen\nproblem: Kann ich das Portal außerhalb des Hochschulnetzes nutzen?\nsolution: Sie befinden sich „irgendwo“ außerhalb der Uni und gre...', 'similarity': 0.614, 'extracted_urls': [{'url': 'http://www.uni-due.de/zim/services/internetzugang/vpn.shtml', 'domain': 'www.uni-due.de', 'status': 'success', 'content': 'Internetzugang über VPN\nInternetzugang über VPN\nVPN\nMit Hilfe eines Zugangs über VPN (Virtual Private Network), mit dem Sie einen Tunnel zum Netz der Universität aufbauen, läuft ihr gesamter Datenverk...', 'content_length': 3855, 'type': None, 'error': None}]}, {'id': 'SAP Zugriff von extern funktioniert nicht', 'text': 'context: 14 SAP > 14.03 SAP-GUI\nproblem: Ich kann von zu Hause keine Verbindung zum VPN-Tunnel aufbauen, um SAP nutzen zu können.\nsolution: Falls Sie sich nicht im Uni-Netz befinden, müssen Sie den VP...', 'similarity': 0.5943, 'extracted_urls': [{'url': 'http://www.uni-due.de/zim/quick/vpn', 'domain': 'www.uni-due.de', 'status': 'success', 'content': 'Internetzugang über VPN\nInternetzugang über VPN\nVPN\nMit Hilfe eines Zugangs über VPN (Virtual Private Network), mit dem Sie einen Tunnel zum Netz der Universität aufbauen, läuft ihr gesamter Datenverk...', 'content_length': 3855, 'type': None, 'error': None}, {'url': 'http://www.uni-due.de/imperia/md/content/zim/services/internetzugang/vpn-extern-nat.pcf', 'domain': 'www.uni-due.de', 'status': 'none', 'content': None, 'content_length': None, 'type': '.pcf', 'error': None, 'note': 'Die URL ist eine .pcf, welche das VPN‑Profil „extern‑nat“ für die Nutzung des VPN‑Tunnels von zu Hause aus bereitstellt.'}]}, {'id': 'Zugang über DSL', 'text': 'context: 12 Netzzugang > 12.01 Zugang\nproblem: Ist ein DSL-Zugang zum Rechnernetz der Universität möglich?\nsolution: Ein DSL-Zugang ist immer ein Anschluss an das Rechnernetz des Providers, bei dem Si...', 'similarity': 0.5633, 'extracted_urls': []}, {'id': '19.02 Warum kann ich auf der Linux Distribution "xy" den Forcepoint-VPN Client nicht installieren?', 'text': 'context: 19 VPN - Forcepoint\nproblem: Warum kann ich auf der Linux Distribution "xy" den Forcepoint-VPN Client nicht installieren?\nsolution: Laut Hersteller werden nur bestimmte Distributionen offizie...', 'similarity': 0.5062, 'extracted_urls': [{'url': 'https://www.uni-due.de/zim/services/internetzugang/forcepoint-linux.php', 'domain': 'www.uni-due.de', 'status': 'success', 'content': 'VPN über Forcepoint unter Linux\nVPN über Forcepoint unter Linux\nVoraussetzungen\nBetriebssystem\n:\nDiese Anleitung gilt nur für Linux Distributionen. Laut dem Hersteller der Software sind die folgenden ...', 'content_length': 1683, 'type': None, 'error': None}]}]
+2026-07-25 09:20:40,258: [DEBUG]: RAG: faq_context:
+- context: 14 SAP > 14.02 Portal > 14.02.02 Technische Voraussetzungen
+problem: Kann ich das Portal außerhalb des Hochschulnetzes nutzen?
+solution: Sie befinden sich „irgendwo“ außerhalb der Uni und g...
+2026-07-25 09:20:40,703: [DEBUG]: Langgraph: decision.needs_additional_info: True
+2026-07-25 09:20:40,703: [DEBUG]: Langgraph: decision.follow_up_question: 'Welches Betriebssystem wird verwendet? (options: Windows 11, macOS, Linux, Andere)'
+2026-07-25 09:20:41,407: [DEBUG]: Langgraph: Entered give_solutions
+2026-07-25 09:20:41,408: [DEBUG]: Langgraph: Current state:
+{'messages': [HumanMessage(content="Die Fehlermeldung lautet: 'Connection attempt has failed'", additional_kwargs={}, response_metadata={}, id='9eb5cbd8-0717-4f7b-ba7c-05b39baa9f5c')], 'ask_issue_attempts': 0, 'intent': 'problem', 'tutorial_attempts': 0, 'visited_nodes': ['extractor_node', 'classify_intent_node', 'ask_for_additional_info', 'classify_ticket_node', 'escalate_incidents_node'], 'graph_runs': 1, 'user_email': 'a@example.com', 'matrikelnummer': '1234567', 'issue_description': 'Keine Verbindung zum Uni-VPN möglich', 'additional_info': ['Homeoffice', 'Windows 11', 'Cisco AnyConnect Client', "Fehlermeldung: 'Connection attempt has failed'"], 'additional_info_attempts': 1, 'ticket_id': -1, 'full_conversation': "Der Student hat Probleme mit der Verbindung zum Uni-VPN. Er arbeitet von zu Hause aus und verwendet Windows 11 mit dem Cisco AnyConnect Client. Die Fehlermeldung lautet 'Connection attempt has failed'.", 'priority': 0, 'category': 'Incident', 'needs_additional_info': False, 'is_complete': False, 'solutions': [], 'display_name': '', 'role': '', 'faculty': '', 'device': '', 'os_name': ''}
+2026-07-25 09:20:41,408: [INFO]: RAG: Sending RAG query 'Keine Verbindung zum Uni-VPN möglich + Homeoffice Windows 11 Cisco AnyConnect Client Fehlermeldung: 'Connection attempt has failed''
+2026-07-25 09:20:41,408: [INFO]: RAG: Encoding FAQ query...
+2026-07-25 09:20:41,581: [INFO]: RAG: Running cross-encoder re-ranking on 10 FAQ candidates...
+2026-07-25 09:20:41,948: [INFO]: RAG: FAQ re-ranking results (converting from cosine to sigmoid):
+2026-07-25 09:20:41,949: [INFO]: RAG: Title                                                                           |before              |after (raw)         |after (sigmoid)     
+2026-07-25 09:20:41,949: [INFO]: RAG: Keine Verbindung zum Netz                                                       |0.8593              |1.4522              |0.5176              
+2026-07-25 09:20:41,949: [INFO]: RAG: 19.02 Warum kann ich auf der Linux Distribution "xy" den Forcepoint-VPN Client nicht installieren?|0.8674              |-0.4339             |0.3876              
+2026-07-25 09:20:41,949: [INFO]: RAG: SAP Zugriff von extern funktioniert nicht                                       |0.8664              |-0.5775             |0.3781              
+2026-07-25 09:20:41,949: [INFO]: RAG: Zugang über DSL                                                                 |0.8563              |-1.6358             |0.3113              
+2026-07-25 09:20:41,949: [INFO]: RAG: 19.03 Warum kann ich aus dem Forcepoint-VPN meine Server nicht administrieren?  |0.8650              |-2.0788             |0.2854              
+2026-07-25 09:20:41,949: [INFO]: RAG: Keine Verbindung zu eduroam                                                     |0.8663              |-2.1031             |0.2840              
+2026-07-25 09:20:41,949: [INFO]: RAG: 19.07 Mein Problem mit dem Forcepoint-VPN-Client ist nicht geschildert. Was kann ich tun damit mir geholfen wird?|0.8602              |-2.8346             |0.2442              
+2026-07-25 09:20:41,949: [INFO]: RAG: Zugang zur Domäne von extern                                                    |0.8634              |-3.1192             |0.2298              
+2026-07-25 09:20:41,949: [INFO]: RAG: Anmeldung funktioniert nicht                                                    |0.8576              |-3.9457             |0.1914              
+2026-07-25 09:20:41,949: [INFO]: RAG: Rechnername wird nicht gefunden                                                 |0.8586              |-6.0100             |0.1172              
+2026-07-25 09:20:41,949: [INFO]: RAG: FAQ tier 1 matched: returning 1 results above 0.4
+2026-07-25 09:20:41,949: [INFO]: RAG: Encoding ticket query...
+2026-07-25 09:20:42,008: [INFO]: RAG: [RAG]   [ticket_016] similarity: 0.6358
+2026-07-25 09:20:42,008: [INFO]: RAG: [RAG]   [ticket_011] similarity: 0.6071
+2026-07-25 09:20:42,008: [INFO]: RAG: Final: 1 FAQ matches, 2 ticket matches
+2026-07-25 09:20:42,008: [INFO]: RAG: Inferred category: {'category': 'Incident', 'confidence': 0.6215}
+2026-07-25 09:20:42,009: [INFO]: RAG: The RAG query returned following results:
+2026-07-25 09:20:42,009: [INFO]: RAG: faq=1
+2026-07-25 09:20:42,009: [INFO]: RAG: tickets=2 
+2026-07-25 09:20:42,009: [INFO]: RAG: inferred={'category': 'Incident', 'confidence': 0.6215}
+2026-07-25 09:20:42,009: [INFO]: Langgraph: give_solutions node returned: [{'title': 'FAQ: Keine Verbindung zum Netz', 'description': 'context: 12 Netzzugang > 12.02 Verbindungsprobleme\nproblem: Ich kann keine Internetverbindung aufbauen / meine E-Mails nicht mehr abrufen etc.\nsolution: Bitte überprüfen Sie zunächst, ob wirklich die ...'}, {'title': 'Ähnliches Ticket (Incident)', 'description': 'ticket: The central VPN gateway seems to be unavailable. Many staff members cannot access internal systems from outside the campus.\nsolution: Escalate to network operations and check the VPN gateway i...'}, {'title': 'Ähnliches Ticket (Incident)', 'description': 'ticket: I cannot connect to the university VPN from home. Forcepoint keeps showing an authentication error. Greetings, Jonas Schneider.\nsolution: Reinstall Forcepoint and re-establish the VPN connecti...'}]
+2026-07-25 09:20:44,284: [INFO]: Langgraph: appending bot message to ticket -1
+2026-07-25 09:20:44,284: [ERROR]: Ticket Service: Failed to append article: Invalid URL 'None/api/v1/ticket_articles': No scheme supplied. Perhaps you meant https://None/api/v1/ticket_articles?
+2026-07-25 09:20:44,291: [DEBUG]: Langgraph: Final updated state:
+{'messages': [HumanMessage(content="Die Fehlermeldung lautet: 'Connection attempt has failed'", additional_kwargs={}, response_metadata={}, id='9eb5cbd8-0717-4f7b-ba7c-05b39baa9f5c'), AIMessage(content='Um die Verbindung zum Uni-VPN zu herstellen, sollten Sie zunächst folgende Schritte ausführen:\n\nZunächst sollten Sie überprüfen, ob die Netzverbindung gestört ist oder ein anderer Dienst ausgefallen ist. Dazu können Sie folgende Schritte ausführen:\n\n- Überprüfen Sie, ob Sie eine Verbindung zum Internet haben, indem Sie eine Webseite aus dem internen Bereich aufrufen (z.B. www.uni-due.de) und eine externe Seite (z.B. www.heise.de).\n- Wenn keine Verbindung möglich ist, sollten Sie eine E-Mail an hotline.zim@uni-due.de oder die Hotline unter 0203-379 2221 oder 0201-183 4444 anrufen und den Fehler beschreiben.\n\nWenn die Netzverbindung in Ordnung ist, sollten Sie folgende Schritte ausführen:\n\n- Überprüfen Sie, ob DHCP aktiviert ist, indem Sie die IP-Adresse und die Mac-Adresse Ihres Rechners herausfinden. Dazu können Sie folgende Schritte ausführen:\n  - Öffnen Sie die Systemsteuerung und wählen Sie "Netzwerkstatus und -aufgaben anzeigen".\n  - Wählen Sie "Adaptereinstellungen ändern" und wählen Sie die richtige LAN-Karte aus.\n  - Wählen Sie mit der rechten Maustaste und "Status" oder in der oberen Leiste "Status der Verbindung anzeigen".\n  - Über "Details" kommen Sie zu den Netzwerkverbindungsdetails.\n  - Unter "Physikalische Adresse" finden Sie die Mac-Adresse Ihres Rechners.\n- Wenn DHCP aktiviert ist, sollten Sie versuchen, die Verbindung zum Uni-VPN mit den korrekten Einstellungen herzustellen.\n\nWenn Sie immer noch Probleme haben, sollten Sie sich an die Hotline wenden und den Fehler beschreiben.\n\n Konnte das Problem damit gelöst werden?', additional_kwargs={}, response_metadata={}, id='bac1a794-4f0b-4c5e-9a5c-0008c936fa45', tool_calls=[], invalid_tool_calls=[])], 'ask_issue_attempts': 0, 'intent': 'problem', 'tutorial_attempts': 0, 'visited_nodes': ['extractor_node', 'classify_intent_node', 'ask_for_additional_info', 'classify_ticket_node', 'escalate_incidents_node', 'give_solutions_node'], 'graph_runs': 1, 'user_email': 'a@example.com', 'matrikelnummer': '1234567', 'issue_description': 'Keine Verbindung zum Uni-VPN möglich', 'additional_info': ['Homeoffice', 'Windows 11', 'Cisco AnyConnect Client', "Fehlermeldung: 'Connection attempt has failed'"], 'additional_info_attempts': 1, 'ticket_id': -1, 'full_conversation': "Der Student hat Probleme mit der Verbindung zum Uni-VPN. Er arbeitet von zu Hause aus und verwendet Windows 11 mit dem Cisco AnyConnect Client. Die Fehlermeldung lautet 'Connection attempt has failed'.", 'priority': 0, 'category': 'Incident', 'needs_additional_info': False, 'is_complete': False, 'solutions': [{'title': 'FAQ: Keine Verbindung zum Netz', 'description': 'context: 12 Netzzugang > 12.02 Verbindungsprobleme\nproblem: Ich kann keine Internetverbindung aufbauen / meine E-Mails nicht mehr abrufen etc.\nsolution: Bitte überprüfen Sie zunächst, ob wirklich die ...'}, {'title': 'Ähnliches Ticket (Incident)', 'description': 'ticket: The central VPN gateway seems to be unavailable. Many staff members cannot access internal systems from outside the campus.\nsolution: Escalate to network operations and check the VPN gateway i...'}, {'title': 'Ähnliches Ticket (Incident)', 'description': 'ticket: I cannot connect to the university VPN from home. Forcepoint keeps showing an authentication error. Greetings, Jonas Schneider.\nsolution: Reinstall Forcepoint and re-establish the VPN connecti...'}], 'display_name': '', 'role': '', 'faculty': '', 'device': '', 'os_name': ''}
+2026-07-25 09:20:44,291: [DEBUG]: Langgraph: Run #1 — path: extractor_node -> classify_intent_node -> ask_for_additional_info -> classify_ticket_node -> escalate_incidents_node -> give_solutions_node
+2026-07-25 09:20:44,291: [INFO]: ZIM: Received request to the chat endpoint
+user_message='Ich kann meine Campuslizenz für Microsoft Office nicht aktivieren' history=[] user_email='a@example.com' matrikelnummer='1234567' issue_description='' additional_info=[] priority=0 category='' helpful=False solutions=[] bot_message='' additional_info_attempts=0 ask_issue_attempts=0 ticket_id=None full_conversation='' user_addendum='' intent='' tutorial_attempts=0 graph_runs=0 display_name='' role='' faculty='' device='' os_name=''
+2026-07-25 09:20:44,293: [DEBUG]: Langgraph: Entered extract_information
+2026-07-25 09:20:44,294: [DEBUG]: Langgraph: Current state:
+{'messages': [HumanMessage(content='Ich kann meine Campuslizenz für Microsoft Office nicht aktivieren', additional_kwargs={}, response_metadata={}, id='6ae44edc-56f8-44c4-b927-256debb0dbd5')], 'ask_issue_attempts': 0, 'intent': '', 'tutorial_attempts': 0, 'visited_nodes': [], 'graph_runs': 0, 'user_email': 'a@example.com', 'matrikelnummer': '1234567', 'issue_description': '', 'additional_info': [], 'additional_info_attempts': 0, 'ticket_id': None, 'full_conversation': '', 'priority': 0, 'category': '', 'needs_additional_info': False, 'is_complete': False, 'solutions': [], 'display_name': '', 'role': '', 'faculty': '', 'device': '', 'os_name': ''}
+2026-07-25 09:20:58,225: [DEBUG]: Langgraph: EXTRACTED DATA: matrikelnummer=None problem='Campuslizenz für Microsoft Office nicht aktivieren' additional_info=[] priority=0 full_conversation='Der Student meldet, dass er seine Campuslizenz für Microsoft Office nicht aktivieren kann.'
+2026-07-25 09:20:58,226: [ERROR]: Zammad: Invalid URL for Zammad provided: Could not reach Zammad to create ticket
+2026-07-25 09:20:58,226: [ERROR]: Zammad: Invalid URL for Zammad provided: Could not reach Zammad to add tag to ticket
+2026-07-25 09:20:58,226: [INFO]: Langgraph: Created ticket with ID -1 for the state update: {'graph_runs': 1, 'issue_description': 'Campuslizenz für Microsoft Office nicht aktivieren', 'priority': 0, 'full_conversation': 'Der Student meldet, dass er seine Campuslizenz für Microsoft Office nicht aktivieren kann.', 'ticket_id': -1}
+2026-07-25 09:20:58,229: [DEBUG]: Langgraph: Entered classify_intent
+2026-07-25 09:20:58,229: [DEBUG]: Langgraph: Current state:
+{'messages': [HumanMessage(content='Ich kann meine Campuslizenz für Microsoft Office nicht aktivieren', additional_kwargs={}, response_metadata={}, id='6ae44edc-56f8-44c4-b927-256debb0dbd5')], 'ask_issue_attempts': 0, 'intent': '', 'tutorial_attempts': 0, 'visited_nodes': ['extractor_node'], 'graph_runs': 1, 'user_email': 'a@example.com', 'matrikelnummer': '1234567', 'issue_description': 'Campuslizenz für Microsoft Office nicht aktivieren', 'additional_info': [], 'additional_info_attempts': 0, 'ticket_id': -1, 'full_conversation': 'Der Student meldet, dass er seine Campuslizenz für Microsoft Office nicht aktivieren kann.', 'priority': 0, 'category': '', 'needs_additional_info': False, 'is_complete': False, 'solutions': [], 'display_name': '', 'role': '', 'faculty': '', 'device': '', 'os_name': ''}
+2026-07-25 09:20:59,120: [DEBUG]: Langgraph: Entered ask_for_additional_info
+2026-07-25 09:20:59,120: [DEBUG]: Langgraph: Current state:
+{'messages': [HumanMessage(content='Ich kann meine Campuslizenz für Microsoft Office nicht aktivieren', additional_kwargs={}, response_metadata={}, id='6ae44edc-56f8-44c4-b927-256debb0dbd5')], 'ask_issue_attempts': 0, 'intent': 'problem', 'tutorial_attempts': 0, 'visited_nodes': ['extractor_node', 'classify_intent_node'], 'graph_runs': 1, 'user_email': 'a@example.com', 'matrikelnummer': '1234567', 'issue_description': 'Campuslizenz für Microsoft Office nicht aktivieren', 'additional_info': [], 'additional_info_attempts': 0, 'ticket_id': -1, 'full_conversation': 'Der Student meldet, dass er seine Campuslizenz für Microsoft Office nicht aktivieren kann.', 'priority': 0, 'category': '', 'needs_additional_info': False, 'is_complete': False, 'solutions': [], 'display_name': '', 'role': '', 'faculty': '', 'device': '', 'os_name': ''}
+2026-07-25 09:20:59,120: [DEBUG]: Langgraph: ask_for_additional_info node: attempts: 0 
+2026-07-25 09:20:59,121: [INFO]: RAG: Encoding FAQ query...
+2026-07-25 09:20:59,238: [INFO]: RAG: Running cross-encoder re-ranking on 10 FAQ candidates...
+2026-07-25 09:20:59,958: [INFO]: RAG: FAQ re-ranking results (converting from cosine to sigmoid):
+2026-07-25 09:20:59,959: [INFO]: RAG: Title                                                                           |before              |after (raw)         |after (sigmoid)     
+2026-07-25 09:20:59,959: [INFO]: RAG: Windows 10 kostenlos?                                                           |0.8753              |-1.0799             |0.3456              
+2026-07-25 09:20:59,959: [INFO]: RAG: MS 365 - Konto deaktiviert                                                      |0.8508              |-3.0098             |0.2353              
+2026-07-25 09:20:59,959: [INFO]: RAG: MS 365 Nutzung                                                                  |0.8374              |-4.2905             |0.1769              
+2026-07-25 09:20:59,959: [INFO]: RAG: 'Server mx-serv..uni-due.de entdeckte einen ausführbaren Anhang ....'           |0.8351              |-5.0201             |0.1491              
+2026-07-25 09:20:59,959: [INFO]: RAG: Wie nutze ich Mendeley mit Word (MS Office 365)?                                |0.8415              |-6.8732             |0.0944              
+2026-07-25 09:20:59,959: [INFO]: RAG: Ein Katalog kann nicht freigegeben werden                                       |0.8453              |-6.9960             |0.0915              
+2026-07-25 09:20:59,959: [INFO]: RAG: @…onmicrosoft.com funktioniert nicht mehr                                       |0.8368              |-7.3801             |0.0830              
+2026-07-25 09:20:59,959: [INFO]: RAG: Kalender kann in OWA 2010 nicht eingebunden werden                              |0.8381              |-7.5126             |0.0802              
+2026-07-25 09:20:59,959: [INFO]: RAG: Anmeldung funktioniert nicht__1                                                 |0.8428              |-9.2747             |0.0505              
+2026-07-25 09:20:59,959: [INFO]: RAG: Signierte E-Mail nicht lesbar                                                   |0.8380              |-9.2993             |0.0502              
+2026-07-25 09:20:59,959: [INFO]: RAG: FAQ tier 2 matched: returning 2 results above 0.2
+2026-07-25 09:20:59,959: [INFO]: RAG: Encoding ticket query...
+2026-07-25 09:21:00,020: [INFO]: RAG: [RAG]   [ticket_033] similarity: 0.6828
+2026-07-25 09:21:00,020: [INFO]: RAG: [RAG]   [ticket_020] similarity: 0.6688
+2026-07-25 09:21:00,020: [INFO]: RAG: Final: 2 FAQ matches, 2 ticket matches
+2026-07-25 09:21:00,021: [INFO]: RAG: Inferred category: {'category': 'unknown', 'confidence': 0.3449}
+2026-07-25 09:21:00,022: [DEBUG]: RAG: faq_matches:
+[{'id': 'Windows 10 kostenlos?', 'text': 'context: 13 PC-Probleme > 13.04 Sonstiges\nproblem: Ich möchte auf meinem Rechner Windows 10 kostenlos installieren. Was muß ich beachten?\nsolution: Im Rahmen einer Campuslizenz können die Windows-Betr...', 'similarity': 0.3456, 'extracted_urls': [{'url': 'https://uni-due.asknet.de/cgi-bin/result?mode=search&partial=Y&start=1&nexus=and&suchbegriff=basisbetriebssystem&x=0&y=0', 'domain': 'uni-due.asknet.de', 'status': 'error', 'content': None, 'content_length': None, 'type': 'unknown', 'error': 'HTTP 404'}, {'url': 'http://www.microsoft.com/de-de/licensing/produktlizenzierung/windows-8.1/qualifizierende-betriebssysteme.aspx', 'domain': 'www.microsoft.com', 'status': 'error', 'content': None, 'content_length': None, 'type': '.aspx', 'error': 'HTTP 404'}, {'url': 'https://www.uni-due.de/zim/services/software/microsoft-campus.shtml', 'domain': 'www.uni-due.de', 'status': 'success', 'content': 'Volumenlizenzprogramm Microsoft Campus & School\nVolumenlizenzprogramm Microsoft Campus & School\nCampus & School Programm\nMicrosoft Produkte für Mitarbeiter/innen\nMit dem Auslauf des alten Bundesvertra...', 'content_length': 2439, 'type': None, 'error': None}]}, {'id': 'MS 365 - Konto deaktiviert', 'text': 'context: 15 Software > 15.05 MS 365\nproblem: Obwohl ich mich mit der @stud.uni-due.de Adresse angemeldet habe, bekomme ich die Fehlermeldung: Konto deaktiviert\nsolution: diese Probleme können aufgrund...', 'similarity': 0.2353, 'extracted_urls': [{'url': 'https://www.microsoft.com/de-de/education/products/office', 'domain': 'www.microsoft.com', 'status': 'success', 'content': 'Kostenloses Office\xa0365 für Lernende und Lehrkräfte | Microsoft\xa0Education\nThis is the Trace Id: 4a5069e98eed8c48447f26bc29dc07bc\nZu Hauptinhalt springen\nEducation\nAzure for Education\nCopilot im Bildung...', 'content_length': 12025, 'type': None, 'error': None}]}]
+2026-07-25 09:21:00,022: [DEBUG]: RAG: faq_context:
+- context: 13 PC-Probleme > 13.04 Sonstiges
+problem: Ich möchte auf meinem Rechner Windows 10 kostenlos installieren. Was muß ich beachten?
+solution: Im Rahmen einer Campuslizenz können die Windows-Be...
+2026-07-25 09:21:00,568: [DEBUG]: Langgraph: decision.needs_additional_info: True
+2026-07-25 09:21:00,568: [DEBUG]: Langgraph: decision.follow_up_question: 'Um das Problem zu lösen, benötigen wir weitere Informationen. Bitte beantworten Sie die folgenden Fragen:\n'
+2026-07-25 09:21:00,568: [ERROR]: Ticket Service: Failed to append article: Invalid URL 'None/api/v1/ticket_articles': No scheme supplied. Perhaps you meant https://None/api/v1/ticket_articles?
+2026-07-25 09:21:00,572: [DEBUG]: Langgraph: Final updated state:
+{'messages': [HumanMessage(content='Ich kann meine Campuslizenz für Microsoft Office nicht aktivieren', additional_kwargs={}, response_metadata={}, id='6ae44edc-56f8-44c4-b927-256debb0dbd5'), AIMessage(content='Ich habe gerade ein Support-Ticket erstellt. Für eine optimale Bearbeitung bitte die folgenden Fragen beantworten:\nUm das Problem zu lösen, benötigen wir weitere Informationen. Bitte beantworten Sie die folgenden Fragen:', additional_kwargs={}, response_metadata={}, id='7b0b9bd5-d739-4c35-8ff4-f592a24b0adf', tool_calls=[], invalid_tool_calls=[])], 'ask_issue_attempts': 0, 'intent': 'problem', 'tutorial_attempts': 0, 'visited_nodes': ['extractor_node', 'classify_intent_node', 'ask_for_additional_info'], 'graph_runs': 1, 'user_email': 'a@example.com', 'matrikelnummer': '1234567', 'issue_description': 'Campuslizenz für Microsoft Office nicht aktivieren', 'additional_info': [], 'additional_info_attempts': 1, 'ticket_id': -1, 'full_conversation': 'Der Student meldet, dass er seine Campuslizenz für Microsoft Office nicht aktivieren kann.', 'priority': 0, 'category': '', 'needs_additional_info': True, 'is_complete': False, 'solutions': [], 'display_name': '', 'role': '', 'faculty': '', 'device': '', 'os_name': ''}
+2026-07-25 09:21:00,573: [DEBUG]: Langgraph: Run #1 — path: extractor_node -> classify_intent_node -> ask_for_additional_info
+2026-07-25 09:21:00,573: [INFO]: ZIM: Received request to the chat endpoint
+user_message='Ich bin Mitarbeiter der Uni, meine Dienst-Mail ist mustermann@uni-due.de' history=[] user_email='a@example.com' matrikelnummer='1234567' issue_description='Campuslizenz für Microsoft Office nicht aktivieren' additional_info=[] priority=0 category='' helpful=False solutions=[] bot_message='' additional_info_attempts=1 ask_issue_attempts=0 ticket_id=None full_conversation='' user_addendum='' intent='' tutorial_attempts=0 graph_runs=0 display_name='' role='' faculty='' device='' os_name=''
+2026-07-25 09:21:00,576: [DEBUG]: Langgraph: Entered extract_information
+2026-07-25 09:21:00,576: [DEBUG]: Langgraph: Current state:
+{'messages': [HumanMessage(content='Ich bin Mitarbeiter der Uni, meine Dienst-Mail ist mustermann@uni-due.de', additional_kwargs={}, response_metadata={}, id='8a023fec-3f4f-458c-9bb4-bd3e9e0a28f5')], 'ask_issue_attempts': 0, 'intent': '', 'tutorial_attempts': 0, 'visited_nodes': [], 'graph_runs': 0, 'user_email': 'a@example.com', 'matrikelnummer': '1234567', 'issue_description': 'Campuslizenz für Microsoft Office nicht aktivieren', 'additional_info': [], 'additional_info_attempts': 1, 'ticket_id': None, 'full_conversation': '', 'priority': 0, 'category': '', 'needs_additional_info': False, 'is_complete': False, 'solutions': [], 'display_name': '', 'role': '', 'faculty': '', 'device': '', 'os_name': ''}
+2026-07-25 09:21:01,184: [DEBUG]: Langgraph: EXTRACTED DATA: matrikelnummer=None problem='Campuslizenz für Microsoft Office nicht aktivieren' additional_info=[] priority=0 full_conversation='Der Mitarbeiter der Uni hat sich bei uns gemeldet und hat erwähnt, dass die Campuslizenz für Microsoft Office nicht aktiviert ist. Er hat seine Dienst-Mail als mustermann@uni-due.de angegeben.'
+2026-07-25 09:21:01,185: [ERROR]: Zammad: Invalid URL for Zammad provided: Could not reach Zammad to create ticket
+2026-07-25 09:21:01,185: [ERROR]: Zammad: Invalid URL for Zammad provided: Could not reach Zammad to add tag to ticket
+2026-07-25 09:21:01,185: [INFO]: Langgraph: Created ticket with ID -1 for the state update: {'graph_runs': 1, 'priority': 0, 'full_conversation': 'Der Mitarbeiter der Uni hat sich bei uns gemeldet und hat erwähnt, dass die Campuslizenz für Microsoft Office nicht aktiviert ist. Er hat seine Dienst-Mail als mustermann@uni-due.de angegeben.', 'ticket_id': -1}
+2026-07-25 09:21:01,188: [DEBUG]: Langgraph: Entered classify_intent
+2026-07-25 09:21:01,188: [DEBUG]: Langgraph: Current state:
+{'messages': [HumanMessage(content='Ich bin Mitarbeiter der Uni, meine Dienst-Mail ist mustermann@uni-due.de', additional_kwargs={}, response_metadata={}, id='8a023fec-3f4f-458c-9bb4-bd3e9e0a28f5')], 'ask_issue_attempts': 0, 'intent': '', 'tutorial_attempts': 0, 'visited_nodes': ['extractor_node'], 'graph_runs': 1, 'user_email': 'a@example.com', 'matrikelnummer': '1234567', 'issue_description': 'Campuslizenz für Microsoft Office nicht aktivieren', 'additional_info': [], 'additional_info_attempts': 1, 'ticket_id': -1, 'full_conversation': 'Der Mitarbeiter der Uni hat sich bei uns gemeldet und hat erwähnt, dass die Campuslizenz für Microsoft Office nicht aktiviert ist. Er hat seine Dienst-Mail als mustermann@uni-due.de angegeben.', 'priority': 0, 'category': '', 'needs_additional_info': False, 'is_complete': False, 'solutions': [], 'display_name': '', 'role': '', 'faculty': '', 'device': '', 'os_name': ''}
+2026-07-25 09:21:01,834: [DEBUG]: Langgraph: Entered ask_intent
+2026-07-25 09:21:01,834: [DEBUG]: Langgraph: Current state:
+{'messages': [HumanMessage(content='Ich bin Mitarbeiter der Uni, meine Dienst-Mail ist mustermann@uni-due.de', additional_kwargs={}, response_metadata={}, id='8a023fec-3f4f-458c-9bb4-bd3e9e0a28f5')], 'ask_issue_attempts': 0, 'intent': 'unclear', 'tutorial_attempts': 0, 'visited_nodes': ['extractor_node', 'classify_intent_node'], 'graph_runs': 1, 'user_email': 'a@example.com', 'matrikelnummer': '1234567', 'issue_description': 'Campuslizenz für Microsoft Office nicht aktivieren', 'additional_info': [], 'additional_info_attempts': 1, 'ticket_id': -1, 'full_conversation': 'Der Mitarbeiter der Uni hat sich bei uns gemeldet und hat erwähnt, dass die Campuslizenz für Microsoft Office nicht aktiviert ist. Er hat seine Dienst-Mail als mustermann@uni-due.de angegeben.', 'priority': 0, 'category': '', 'needs_additional_info': False, 'is_complete': False, 'solutions': [], 'display_name': '', 'role': '', 'faculty': '', 'device': '', 'os_name': ''}
+2026-07-25 09:21:02,309: [DEBUG]: Langgraph: Final updated state:
+{'messages': [HumanMessage(content='Ich bin Mitarbeiter der Uni, meine Dienst-Mail ist mustermann@uni-due.de', additional_kwargs={}, response_metadata={}, id='8a023fec-3f4f-458c-9bb4-bd3e9e0a28f5'), AIMessage(content='Das Ticket wurde erstellt. Bitte beachten Sie, dass ich nur bei Anliegen rund um universitäre IT-Dienste des ZIM helfen kann. Wenn Sie ein IT-Anliegen haben, das mit dem ZIM zusammenhängt, bitte schildern Sie es mir.', additional_kwargs={'refusal': None}, response_metadata={'token_usage': {'completion_tokens': 61, 'prompt_tokens': 1117, 'total_tokens': 1178, 'completion_tokens_details': None, 'prompt_tokens_details': None}, 'model_provider': 'openai', 'model_name': 'meta-llama-3.1-8b-instruct', 'system_fingerprint': 'vllm-0.22.1-8b7e788a', 'id': 'chatcmpl-bce83fe0d49ced69', 'finish_reason': 'stop', 'logprobs': None}, id='lc_run--019f9826-1a8b-71e1-9e16-b073f06cae14-0', tool_calls=[], invalid_tool_calls=[], usage_metadata={'input_tokens': 1117, 'output_tokens': 61, 'total_tokens': 1178, 'input_token_details': {}, 'output_token_details': {}})], 'ask_issue_attempts': 0, 'intent': 'unclear', 'tutorial_attempts': 0, 'visited_nodes': ['extractor_node', 'classify_intent_node', 'ask_intent_node'], 'graph_runs': 1, 'user_email': 'a@example.com', 'matrikelnummer': '1234567', 'issue_description': 'Campuslizenz für Microsoft Office nicht aktivieren', 'additional_info': [], 'additional_info_attempts': 1, 'ticket_id': -1, 'full_conversation': 'Der Mitarbeiter der Uni hat sich bei uns gemeldet und hat erwähnt, dass die Campuslizenz für Microsoft Office nicht aktiviert ist. Er hat seine Dienst-Mail als mustermann@uni-due.de angegeben.', 'priority': 0, 'category': '', 'needs_additional_info': False, 'is_complete': False, 'solutions': [], 'display_name': '', 'role': '', 'faculty': '', 'device': '', 'os_name': ''}
+2026-07-25 09:21:02,309: [DEBUG]: Langgraph: Run #1 — path: extractor_node -> classify_intent_node -> ask_intent_node
+2026-07-25 09:21:02,310: [INFO]: ZIM: Received request to the chat endpoint
+user_message="Die Fehlermeldung sagt 'Kein Abonnement gefunden' obwohl ich berechtigt sein sollte" history=[] user_email='a@example.com' matrikelnummer='1234567' issue_description='Campuslizenz für Microsoft Office nicht aktivieren' additional_info=[] priority=0 category='' helpful=False solutions=[] bot_message='' additional_info_attempts=1 ask_issue_attempts=0 ticket_id=None full_conversation='' user_addendum='' intent='' tutorial_attempts=0 graph_runs=0 display_name='' role='' faculty='' device='' os_name=''
+2026-07-25 09:21:02,313: [DEBUG]: Langgraph: Entered extract_information
+2026-07-25 09:21:02,313: [DEBUG]: Langgraph: Current state:
+{'messages': [HumanMessage(content="Die Fehlermeldung sagt 'Kein Abonnement gefunden' obwohl ich berechtigt sein sollte", additional_kwargs={}, response_metadata={}, id='b4889853-80c2-4da7-b7d1-9c33d35550f9')], 'ask_issue_attempts': 0, 'intent': '', 'tutorial_attempts': 0, 'visited_nodes': [], 'graph_runs': 0, 'user_email': 'a@example.com', 'matrikelnummer': '1234567', 'issue_description': 'Campuslizenz für Microsoft Office nicht aktivieren', 'additional_info': [], 'additional_info_attempts': 1, 'ticket_id': None, 'full_conversation': '', 'priority': 0, 'category': '', 'needs_additional_info': False, 'is_complete': False, 'solutions': [], 'display_name': '', 'role': '', 'faculty': '', 'device': '', 'os_name': ''}
+2026-07-25 09:21:02,964: [DEBUG]: Langgraph: EXTRACTED DATA: matrikelnummer=None problem='Campuslizenz für Microsoft Office nicht aktivieren' additional_info=['Keine Abonnement-Informationen verfügbar'] priority=0 full_conversation="Der Student meldet, dass er eine Fehlermeldung 'Kein Abonnement gefunden' erhält, obwohl er berechtigt sein sollte. Er hat keine weiteren Informationen bereitgestellt."
+2026-07-25 09:21:02,965: [ERROR]: Zammad: Invalid URL for Zammad provided: Could not reach Zammad to create ticket
+2026-07-25 09:21:02,966: [ERROR]: Zammad: Invalid URL for Zammad provided: Could not reach Zammad to add tag to ticket
+2026-07-25 09:21:02,966: [INFO]: Langgraph: Created ticket with ID -1 for the state update: {'graph_runs': 1, 'priority': 0, 'additional_info': ['Keine Abonnement-Informationen verfügbar'], 'full_conversation': "Der Student meldet, dass er eine Fehlermeldung 'Kein Abonnement gefunden' erhält, obwohl er berechtigt sein sollte. Er hat keine weiteren Informationen bereitgestellt.", 'ticket_id': -1}
+2026-07-25 09:21:02,969: [DEBUG]: Langgraph: Entered classify_intent
+2026-07-25 09:21:02,970: [DEBUG]: Langgraph: Current state:
+{'messages': [HumanMessage(content="Die Fehlermeldung sagt 'Kein Abonnement gefunden' obwohl ich berechtigt sein sollte", additional_kwargs={}, response_metadata={}, id='b4889853-80c2-4da7-b7d1-9c33d35550f9')], 'ask_issue_attempts': 0, 'intent': '', 'tutorial_attempts': 0, 'visited_nodes': ['extractor_node'], 'graph_runs': 1, 'user_email': 'a@example.com', 'matrikelnummer': '1234567', 'issue_description': 'Campuslizenz für Microsoft Office nicht aktivieren', 'additional_info': ['Keine Abonnement-Informationen verfügbar'], 'additional_info_attempts': 1, 'ticket_id': -1, 'full_conversation': "Der Student meldet, dass er eine Fehlermeldung 'Kein Abonnement gefunden' erhält, obwohl er berechtigt sein sollte. Er hat keine weiteren Informationen bereitgestellt.", 'priority': 0, 'category': '', 'needs_additional_info': False, 'is_complete': False, 'solutions': [], 'display_name': '', 'role': '', 'faculty': '', 'device': '', 'os_name': ''}
+2026-07-25 09:21:04,000: [DEBUG]: Langgraph: Entered ask_for_additional_info
+2026-07-25 09:21:04,000: [DEBUG]: Langgraph: Current state:
+{'messages': [HumanMessage(content="Die Fehlermeldung sagt 'Kein Abonnement gefunden' obwohl ich berechtigt sein sollte", additional_kwargs={}, response_metadata={}, id='b4889853-80c2-4da7-b7d1-9c33d35550f9')], 'ask_issue_attempts': 0, 'intent': 'problem', 'tutorial_attempts': 0, 'visited_nodes': ['extractor_node', 'classify_intent_node'], 'graph_runs': 1, 'user_email': 'a@example.com', 'matrikelnummer': '1234567', 'issue_description': 'Campuslizenz für Microsoft Office nicht aktivieren', 'additional_info': ['Keine Abonnement-Informationen verfügbar'], 'additional_info_attempts': 1, 'ticket_id': -1, 'full_conversation': "Der Student meldet, dass er eine Fehlermeldung 'Kein Abonnement gefunden' erhält, obwohl er berechtigt sein sollte. Er hat keine weiteren Informationen bereitgestellt.", 'priority': 0, 'category': '', 'needs_additional_info': False, 'is_complete': False, 'solutions': [], 'display_name': '', 'role': '', 'faculty': '', 'device': '', 'os_name': ''}
+2026-07-25 09:21:04,000: [DEBUG]: Langgraph: ask_for_additional_info node: attempts: 1 
+2026-07-25 09:21:04,001: [INFO]: RAG: Encoding FAQ query...
+2026-07-25 09:21:04,181: [INFO]: RAG: Running cross-encoder re-ranking on 10 FAQ candidates...
+2026-07-25 09:21:04,779: [INFO]: RAG: FAQ re-ranking results (converting from cosine to sigmoid):
+2026-07-25 09:21:04,779: [INFO]: RAG: Title                                                                           |before              |after (raw)         |after (sigmoid)     
+2026-07-25 09:21:04,779: [INFO]: RAG: Windows 10 kostenlos?                                                           |0.8812              |-1.7551             |0.3042              
+2026-07-25 09:21:04,779: [INFO]: RAG: MS 365 - Konto deaktiviert                                                      |0.8646              |-3.1372             |0.2289              
+2026-07-25 09:21:04,779: [INFO]: RAG: Office 365 - Access fehlt                                                       |0.8514              |-5.2524             |0.1410              
+2026-07-25 09:21:04,779: [INFO]: RAG: MS 365 Nutzung                                                                  |0.8461              |-5.3060             |0.1392              
+2026-07-25 09:21:04,779: [INFO]: RAG: Anmeldeprobleme bei MS 365 auf Mac                                              |0.8468              |-5.5084             |0.1326              
+2026-07-25 09:21:04,779: [INFO]: RAG: Wie nutze ich Mendeley mit Word (MS Office 365)?                                |0.8530              |-6.8131             |0.0959              
+2026-07-25 09:21:04,779: [INFO]: RAG: @…onmicrosoft.com funktioniert nicht mehr                                       |0.8536              |-7.2228             |0.0864              
+2026-07-25 09:21:04,780: [INFO]: RAG: Ein Katalog kann nicht freigegeben werden                                       |0.8541              |-7.4577             |0.0814              
+2026-07-25 09:21:04,780: [INFO]: RAG: Kalender kann in OWA 2010 nicht eingebunden werden                              |0.8477              |-8.1753             |0.0675              
+2026-07-25 09:21:04,780: [INFO]: RAG: Anmeldung funktioniert nicht__1                                                 |0.8574              |-9.6168             |0.0461              
+2026-07-25 09:21:04,780: [INFO]: RAG: FAQ tier 2 matched: returning 2 results above 0.2
+2026-07-25 09:21:04,780: [INFO]: RAG: Encoding ticket query...
+2026-07-25 09:21:04,826: [INFO]: RAG: [RAG]   [ticket_020] similarity: 0.7216
+2026-07-25 09:21:04,826: [INFO]: RAG: [RAG]   [ticket_033] similarity: 0.7143
+2026-07-25 09:21:04,826: [INFO]: RAG: Final: 2 FAQ matches, 2 ticket matches
+2026-07-25 09:21:04,826: [INFO]: RAG: Inferred category: {'category': 'unknown', 'confidence': 0.3626}
+2026-07-25 09:21:04,828: [DEBUG]: RAG: faq_matches:
+[{'id': 'Windows 10 kostenlos?', 'text': 'context: 13 PC-Probleme > 13.04 Sonstiges\nproblem: Ich möchte auf meinem Rechner Windows 10 kostenlos installieren. Was muß ich beachten?\nsolution: Im Rahmen einer Campuslizenz können die Windows-Betr...', 'similarity': 0.3042, 'extracted_urls': [{'url': 'https://uni-due.asknet.de/cgi-bin/result?mode=search&partial=Y&start=1&nexus=and&suchbegriff=basisbetriebssystem&x=0&y=0', 'domain': 'uni-due.asknet.de', 'status': 'error', 'content': None, 'content_length': None, 'type': 'unknown', 'error': 'HTTP 404'}, {'url': 'http://www.microsoft.com/de-de/licensing/produktlizenzierung/windows-8.1/qualifizierende-betriebssysteme.aspx', 'domain': 'www.microsoft.com', 'status': 'error', 'content': None, 'content_length': None, 'type': '.aspx', 'error': 'HTTP 404'}, {'url': 'https://www.uni-due.de/zim/services/software/microsoft-campus.shtml', 'domain': 'www.uni-due.de', 'status': 'success', 'content': 'Volumenlizenzprogramm Microsoft Campus & School\nVolumenlizenzprogramm Microsoft Campus & School\nCampus & School Programm\nMicrosoft Produkte für Mitarbeiter/innen\nMit dem Auslauf des alten Bundesvertra...', 'content_length': 2439, 'type': None, 'error': None}]}, {'id': 'MS 365 - Konto deaktiviert', 'text': 'context: 15 Software > 15.05 MS 365\nproblem: Obwohl ich mich mit der @stud.uni-due.de Adresse angemeldet habe, bekomme ich die Fehlermeldung: Konto deaktiviert\nsolution: diese Probleme können aufgrund...', 'similarity': 0.2289, 'extracted_urls': [{'url': 'https://www.microsoft.com/de-de/education/products/office', 'domain': 'www.microsoft.com', 'status': 'success', 'content': 'Kostenloses Office\xa0365 für Lernende und Lehrkräfte | Microsoft\xa0Education\nThis is the Trace Id: 4a5069e98eed8c48447f26bc29dc07bc\nZu Hauptinhalt springen\nEducation\nAzure for Education\nCopilot im Bildung...', 'content_length': 12025, 'type': None, 'error': None}]}]
+2026-07-25 09:21:04,828: [DEBUG]: RAG: faq_context:
+- context: 13 PC-Probleme > 13.04 Sonstiges
+problem: Ich möchte auf meinem Rechner Windows 10 kostenlos installieren. Was muß ich beachten?
+solution: Im Rahmen einer Campuslizenz können die Windows-Be...
+2026-07-25 09:21:05,286: [DEBUG]: Langgraph: decision.needs_additional_info: True
+2026-07-25 09:21:05,286: [DEBUG]: Langgraph: decision.follow_up_question: 'Welches Problem genau haben Sie mit der Campuslizenz für Microsoft Office?'
+2026-07-25 09:21:05,287: [ERROR]: Ticket Service: Failed to append article: Invalid URL 'None/api/v1/ticket_articles': No scheme supplied. Perhaps you meant https://None/api/v1/ticket_articles?
+2026-07-25 09:21:05,291: [DEBUG]: Langgraph: Final updated state:
+{'messages': [HumanMessage(content="Die Fehlermeldung sagt 'Kein Abonnement gefunden' obwohl ich berechtigt sein sollte", additional_kwargs={}, response_metadata={}, id='b4889853-80c2-4da7-b7d1-9c33d35550f9'), AIMessage(content='Ich habe gerade ein Support-Ticket erstellt. Für eine optimale Bearbeitung bitte die folgenden Fragen beantworten:\nWelches Problem genau haben Sie mit der Campuslizenz für Microsoft Office?', additional_kwargs={}, response_metadata={}, id='4af5b1ff-5fb2-4760-bd23-1394bfa0ea5d', tool_calls=[], invalid_tool_calls=[])], 'ask_issue_attempts': 0, 'intent': 'problem', 'tutorial_attempts': 0, 'visited_nodes': ['extractor_node', 'classify_intent_node', 'ask_for_additional_info'], 'graph_runs': 1, 'user_email': 'a@example.com', 'matrikelnummer': '1234567', 'issue_description': 'Campuslizenz für Microsoft Office nicht aktivieren', 'additional_info': ['Keine Abonnement-Informationen verfügbar'], 'additional_info_attempts': 2, 'ticket_id': -1, 'full_conversation': "Der Student meldet, dass er eine Fehlermeldung 'Kein Abonnement gefunden' erhält, obwohl er berechtigt sein sollte. Er hat keine weiteren Informationen bereitgestellt.", 'priority': 0, 'category': '', 'needs_additional_info': True, 'is_complete': False, 'solutions': [], 'display_name': '', 'role': '', 'faculty': '', 'device': '', 'os_name': ''}
+2026-07-25 09:21:05,291: [DEBUG]: Langgraph: Run #1 — path: extractor_node -> classify_intent_node -> ask_for_additional_info
+
+============================================================
+Teste Modell: llama-3.1-8b
+============================================================
+
+✨ You're running DeepEval's latest Conversation Completeness Metric! (using qwen3.6-35b-a3b, strict=False, 
+async_mode=True)...
+✨ You're running DeepEval's latest Hallucination Detection [Conversational GEval] Metric! (using qwen3.6-35b-a3b, 
+strict=False, async_mode=True)...
+✨ You're running DeepEval's latest Knowledge Retention [Conversational GEval] Metric! (using qwen3.6-35b-a3b, 
+strict=False, async_mode=True)...
+✨ You're running DeepEval's latest Answer Relevancy [Conversational GEval] Metric! (using qwen3.6-35b-a3b, strict=False, 
+async_mode=True)...
+
+
+╭────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ 🚀 DeepEval Evaluation Results                                                                                         │
+╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ ✅ test_conversation_benchmark (Passed 4 metrics)                                                                      │
+╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Aggregate Metrics                                                                                                      │
+│                                                                                                                        │
+│  Metric                                                              ┃ Average Score       ┃ Pass Rate      ┃ Total    │
+│ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━ │
+│  Conversation Completeness                                           │ 1.00                │ 100.00%        │ 1        │
+│  Hallucination Detection [Conversational GEval]                      │ 1.00                │ 100.00%        │ 1        │
+│  Knowledge Retention [Conversational GEval]                          │ 1.00                │ 100.00%        │ 1        │
+│  Answer Relevancy [Conversational GEval]                             │ 1.00                │ 100.00%        │ 1        │
+╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+
+⚠ WARNING: No hyperparameters logged.
+» Log hyperparameters to attribute prompts and models to your test runs.
+
+================================================================================
+
+
+✓ Evaluation completed 🎉! (time taken: 67.01s | token cost: None)
+» Test Results (1 total tests):
+   » Pass Rate: 100.0% | Passed: 1 | Failed: 0
+
+ ================================================================================ 
+
+» Want to share evals with your team, or a place for your test cases to live? ❤️ 🏡
+  » Run 'deepeval view' to analyze and save testing results on Confident AI.
+
+
+✨ You're running DeepEval's latest Conversation Completeness Metric! (using qwen3.6-35b-a3b, strict=False, 
+async_mode=True)...
+✨ You're running DeepEval's latest Hallucination Detection [Conversational GEval] Metric! (using qwen3.6-35b-a3b, 
+strict=False, async_mode=True)...
+✨ You're running DeepEval's latest Knowledge Retention [Conversational GEval] Metric! (using qwen3.6-35b-a3b, 
+strict=False, async_mode=True)...
+✨ You're running DeepEval's latest Answer Relevancy [Conversational GEval] Metric! (using qwen3.6-35b-a3b, strict=False, 
+async_mode=True)...
+
+
+╭────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ 🚀 DeepEval Evaluation Results                                                                                         │
+╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ ✅ test_conversation_benchmark (Passed 4 metrics)                                                                      │
+╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Aggregate Metrics                                                                                                      │
+│                                                                                                                        │
+│  Metric                                                              ┃ Average Score       ┃ Pass Rate      ┃ Total    │
+│ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━ │
+│  Conversation Completeness                                           │ 1.00                │ 100.00%        │ 1        │
+│  Hallucination Detection [Conversational GEval]                      │ 0.80                │ 100.00%        │ 1        │
+│  Knowledge Retention [Conversational GEval]                          │ 1.00                │ 100.00%        │ 1        │
+│  Answer Relevancy [Conversational GEval]                             │ 1.00                │ 100.00%        │ 1        │
+╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+
+⚠ WARNING: No hyperparameters logged.
+» Log hyperparameters to attribute prompts and models to your test runs.
+
+================================================================================
+
+
+✓ Evaluation completed 🎉! (time taken: 75.77s | token cost: None)
+» Test Results (1 total tests):
+   » Pass Rate: 100.0% | Passed: 1 | Failed: 0
+
+ ================================================================================ 
+
+» Want to share evals with your team, or a place for your test cases to live? ❤️ 🏡
+  » Run 'deepeval view' to analyze and save testing results on Confident AI.
+
+
+✨ You're running DeepEval's latest Conversation Completeness Metric! (using qwen3.6-35b-a3b, strict=False, 
+async_mode=True)...
+✨ You're running DeepEval's latest Hallucination Detection [Conversational GEval] Metric! (using qwen3.6-35b-a3b, 
+strict=False, async_mode=True)...
+✨ You're running DeepEval's latest Knowledge Retention [Conversational GEval] Metric! (using qwen3.6-35b-a3b, 
+strict=False, async_mode=True)...
+✨ You're running DeepEval's latest Answer Relevancy [Conversational GEval] Metric! (using qwen3.6-35b-a3b, strict=False, 
+async_mode=True)...
+
+
+╭────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ 🚀 DeepEval Evaluation Results                                                                                         │
+╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│                                                                                                                        │
+│  ❌ test_conversation_benchmark                                                                                        │
+│  ├── Conversation Turns                                                                                                │
+│  │   ├── User: Ich habe mein Passwort vergessen und kann mich nicht mehr einloggen                                     │
+│  │   ├── Assistant: Ich habe gerade ein Support-Ticket erstellt. Für eine optimale Bearbeitung bitte die folgenden     │
+│  │   │   Fragen beantworten:                                                                                           │
+│  │   │   Welche Art von Passwort ist vergessen worden (Universitätskennung, Moodle-Kennung, HISinOne-Kennung, etc.)?   │
+│  │   ├── User: Ich bin Student im 3. Semester, meine Matrikelnummer ist 1234567                                        │
+│  │   ├── Assistant: Willkommen bei der ZIM-Support-Hilfe. Ich bin hier, um Ihnen bei universitären IT-Angelegenheiten  │
+│  │   │   zu helfen.                                                                                                    │
+│  │   │                                                                                                                 │
+│  │   │   Um Ihnen besser helfen zu können, benötige ich ein bisschen mehr Informationen über Ihr Anliegen. Können Sie  │
+│  │   │   mir bitte mitteilen, was Sie aktuell benötigen oder was Ihr Problem ist? Möchten Sie eine                     │
+│  │   │   Schritt-für-Schritt-Anleitung zum Selbermachen oder soll ich mich um Ihr Anliegen kümmern?                    │
+│  │   ├── User: Ich habe keinen Zugriff mehr auf meine Uni-Mail, ich kann den Reset-Link nicht empfangen                │
+│  │   └── Assistant: Ich habe gerade ein Support-Ticket erstellt. Für eine optimale Bearbeitung bitte die folgenden     │
+│  │       Fragen beantworten:                                                                                           │
+│  │       Welche Art von Passwort haben Sie vergessen (z.B. Moodle, Universitäts-E-Mail, HISinOne, ...)?                │
+│  └── Metrics                                                                                                           │
+│       Status ┃ Metric                                  ┃ Score ┃ Threshold ┃ Reason                                    │
+│      ━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  │
+│        FAIL  │ Conversation Completeness               │ 0.00  │ 0.50      │ The score is 0.0 because the LLM          │
+│              │                                         │       │           │ response completely fails to meet the     │
+│              │                                         │       │           │ User's intention to recover access to     │
+│              │                                         │       │           │ their university account by resetting a   │
+│              │                                         │       │           │ forgotten password. The response is       │
+│              │                                         │       │           │ stuck in a repetitive loop, repeatedly    │
+│              │                                         │       │           │ claiming to have created a support        │
+│              │                                         │       │           │ ticket and asking the same question       │
+│              │                                         │       │           │ ('Welche Art von Passwort haben Sie       │
+│              │                                         │       │           │ vergessen...') without addressing the     │
+│              │                                         │       │           │ User's clarification that they cannot     │
+│              │                                         │       │           │ receive the reset link. It fails to       │
+│              │                                         │       │           │ provide any actual troubleshooting        │
+│              │                                         │       │           │ steps or resolution to recover the        │
+│              │                                         │       │           │ account, leaving the request entirely     │
+│              │                                         │       │           │ unmet.                                    │
+│        FAIL  │ Hallucination Detection [Conversational │ 0.20  │ 0.70      │ The conversation fails the Turn-Level     │
+│              │ GEval]                                  │       │           │ Assessment and Conversation-Level         │
+│              │                                         │       │           │ Consistency criteria due to severe        │
+│              │                                         │       │           │ context breaks. In Turn 4, the            │
+│              │                                         │       │           │ assistant ignores the user's prior        │
+│              │                                         │       │           │ statements about a forgotten password     │
+│              │                                         │       │           │ and student details, instead issuing a    │
+│              │                                         │       │           │ generic welcome message and asking for    │
+│              │                                         │       │           │ the problem again. Turn 6 further         │
+│              │                                         │       │           │ demonstrates poor contextual tracking     │
+│              │                                         │       │           │ by repeating the exact same               │
+│              │                                         │       │           │ ticket-creation prompt from Turn 2,       │
+│              │                                         │       │           │ completely overlooking the user's         │
+│              │                                         │       │           │ specific issue regarding the missing      │
+│              │                                         │       │           │ email reset link. These responses are     │
+│              │                                         │       │           │ implausible for a university IT support   │
+│              │                                         │       │           │ role and lack alignment with standard     │
+│              │                                         │       │           │ support workflows.                        │
+│        FAIL  │ Knowledge Retention [Conversational     │ 0.10  │ 0.70      │ At the turn level, the assistant          │
+│              │ GEval]                                  │       │           │ redundantly requests information          │
+│              │                                         │       │           │ already supplied by the user,             │
+│              │                                         │       │           │ particularly in Turn 4 and Turn 6. At     │
+│              │                                         │       │           │ the conversation level, it fails to       │
+│              │                                         │       │           │ maintain memory retention and context     │
+│              │                                         │       │           │ consistency, completely ignoring the      │
+│              │                                         │       │           │ user's initial password issue and         │
+│              │                                         │       │           │ student details in Turn 4, and            │
+│              │                                         │       │           │ re-asking for the password type in Turn   │
+│              │                                         │       │           │ 6 despite prior clarification. This       │
+│              │                                         │       │           │ demonstrates a severe failure to          │
+│              │                                         │       │           │ seamlessly incorporate known details,     │
+│              │                                         │       │           │ falling short of the required context     │
+│              │                                         │       │           │ alignment.                                │
+│        FAIL  │ Answer Relevancy [Conversational GEval] │ 0.00  │ 0.70      │ The assistant fails to verify that the    │
+│              │                                         │       │           │ content directly addresses the user's     │
+│              │                                         │       │           │ immediate request, as Turn 4 ignores      │
+│              │                                         │       │           │ prior context and resets with a generic   │
+│              │                                         │       │           │ welcome message. Turn 6 repeats an        │
+│              │                                         │       │           │ earlier template, disregarding the        │
+│              │                                         │       │           │ user's clarification about email access   │
+│              │                                         │       │           │ and reset link issues. Consequently,      │
+│              │                                         │       │           │ the responses lack precise, actionable,   │
+│              │                                         │       │           │ and relevant IT solutions. The            │
+│              │                                         │       │           │ assistant's role and content              │
+│              │                                         │       │           │ consistently deviate from the defined     │
+│              │                                         │       │           │ support context and goals, failing to     │
+│              │                                         │       │           │ maintain continuity or resolve the core   │
+│              │                                         │       │           │ IT problem across the dialogue.           │
+│                                                                                                                        │
+╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Aggregate Metrics                                                                                                      │
+│                                                                                                                        │
+│  Metric                                                              ┃ Average Score       ┃ Pass Rate      ┃ Total    │
+│ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━ │
+│  Conversation Completeness                                           │ 0.00                │ 0.00%          │ 1        │
+│  Hallucination Detection [Conversational GEval]                      │ 0.20                │ 0.00%          │ 1        │
+│  Knowledge Retention [Conversational GEval]                          │ 0.10                │ 0.00%          │ 1        │
+│  Answer Relevancy [Conversational GEval]                             │ 0.00                │ 0.00%          │ 1        │
+╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+
+⚠ WARNING: No hyperparameters logged.
+» Log hyperparameters to attribute prompts and models to your test runs.
+
+================================================================================
+
+
+✓ Evaluation completed 🎉! (time taken: 80.95s | token cost: None)
+» Test Results (1 total tests):
+   » Pass Rate: 0.0% | Passed: 0 | Failed: 1
+
+ ================================================================================ 
+
+» Want to share evals with your team, or a place for your test cases to live? ❤️ 🏡
+  » Run 'deepeval view' to analyze and save testing results on Confident AI.
+
+
+✨ You're running DeepEval's latest Conversation Completeness Metric! (using qwen3.6-35b-a3b, strict=False, 
+async_mode=True)...
+✨ You're running DeepEval's latest Hallucination Detection [Conversational GEval] Metric! (using qwen3.6-35b-a3b, 
+strict=False, async_mode=True)...
+✨ You're running DeepEval's latest Knowledge Retention [Conversational GEval] Metric! (using qwen3.6-35b-a3b, 
+strict=False, async_mode=True)...
+✨ You're running DeepEval's latest Answer Relevancy [Conversational GEval] Metric! (using qwen3.6-35b-a3b, strict=False, 
+async_mode=True)...
+
+
+╭────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ 🚀 DeepEval Evaluation Results                                                                                         │
+╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│                                                                                                                        │
+│  ❌ test_conversation_benchmark                                                                                        │
+│  ├── Conversation Turns                                                                                                │
+│  │   ├── User: Ich kann mich nicht mit dem Uni-VPN verbinden, ich brauche das für mein Homeoffice                      │
+│  │   ├── Assistant: Ich habe gerade ein Support-Ticket erstellt. Für eine optimale Bearbeitung bitte die folgenden     │
+│  │   │   Fragen beantworten:                                                                                           │
+│  │   │   • Was ist der genaue Fehlercode oder die Fehlermeldung, die Sie bei der Verbindungsherstellung zum Uni-VPN    │
+│  │   │   sehen?                                                                                                        │
+│  │   ├── User: Ich nutze Windows 11 und habe den Cisco AnyConnect Client installiert                                   │
+│  │   ├── Assistant: Das Cisco AnyConnect Client ist ein VPN-Client, der es dir ermöglicht, über ein sicheres Netzwerk  │
+│  │   │   auf die Universitätsnetzwerke zuzugreifen. Wenn du Probleme mit dem Client hast, kannst du mir gerne sagen,   │
+│  │   │   was genau nicht funktioniert, z.B. ob du dich nicht anmelden kannst, ob das Netzwerk nicht stabil ist oder    │
+│  │   │   ob du andere Probleme hast.                                                                                   │
+│  │   ├── User: Die Fehlermeldung lautet: 'Connection attempt has failed'                                               │
+│  │   └── Assistant: Um die Verbindung zum Uni-VPN zu herstellen, sollten Sie zunächst folgende Schritte ausführen:     │
+│  │                                                                                                                     │
+│  │       Zunächst sollten Sie überprüfen, ob die Netzverbindung gestört ist oder ein anderer Dienst ausgefallen ist.   │
+│  │       Dazu können Sie folgende Schritte ausführen:                                                                  │
+│  │                                                                                                                     │
+│  │       - Überprüfen Sie, ob Sie eine Verbindung zum Internet haben, indem Sie eine Webseite aus dem internen         │
+│  │       Bereich aufrufen (z.B. www.uni-due.de) und eine externe Seite (z.B. www.heise.de).                            │
+│  │       - Wenn keine Verbindung möglich ist, sollten Sie eine E-Mail an hotline.zim@uni-due.de oder die Hotline       │
+│  │       unter 0203-379 2221 oder 0201-183 4444 anrufen und den Fehler beschreiben.                                    │
+│  │                                                                                                                     │
+│  │       Wenn die Netzverbindung in Ordnung ist, sollten Sie folgende Schritte ausführen:                              │
+│  │                                                                                                                     │
+│  │       - Überprüfen Sie, ob DHCP aktiviert ist, indem Sie die IP-Adresse und die Mac-Adresse Ihres Rechners          │
+│  │       herausfinden. Dazu können Sie folgende Schritte ausführen:                                                    │
+│  │         - Öffnen Sie die Systemsteuerung und wählen Sie "Netzwerkstatus und -aufgaben anzeigen".                    │
+│  │         - Wählen Sie "Adaptereinstellungen ändern" und wählen Sie die richtige LAN-Karte aus.                       │
+│  │         - Wählen Sie mit der rechten Maustaste und "Status" oder in der oberen Leiste "Status der Verbindung        │
+│  │       anzeigen".                                                                                                    │
+│  │         - Über "Details" kommen Sie zu den Netzwerkverbindungsdetails.                                              │
+│  │         - Unter "Physikalische Adresse" finden Sie die Mac-Adresse Ihres Rechners.                                  │
+│  │       - Wenn DHCP aktiviert ist, sollten Sie versuchen, die Verbindung zum Uni-VPN mit den korrekten Einstellungen  │
+│  │       herzustellen.                                                                                                 │
+│  │                                                                                                                     │
+│  │       Wenn Sie immer noch Probleme haben, sollten Sie sich an die Hotline wenden und den Fehler beschreiben.        │
+│  │                                                                                                                     │
+│  │        Konnte das Problem damit gelöst werden?                                                                      │
+│  └── Metrics                                                                                                           │
+│       Status ┃ Metric                                  ┃ Score ┃ Threshold ┃ Reason                                    │
+│      ━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  │
+│        PASS  │ Conversation Completeness               │ 1.00  │ 0.50      │ The score is 1.0 because the LLM          │
+│              │                                         │       │           │ response fully...                         │
+│        PASS  │ Hallucination Detection [Conversational │ 0.90  │ 0.70      │ Following the evaluation steps, the       │
+│              │ GEval]                                  │       │           │ conversatio...                            │
+│        FAIL  │ Knowledge Retention [Conversational     │ 0.20  │ 0.70      │ The assistant fails to accurately         │
+│              │ GEval]                                  │       │           │ recall and utilize user-provided          │
+│              │                                         │       │           │ details, directly violating the step      │
+│              │                                         │       │           │ requiring the assistant to pair its       │
+│              │                                         │       │           │ role with content that leverages shared   │
+│              │                                         │       │           │ information. In the second turn, it       │
+│              │                                         │       │           │ ignores the user's explicit mention of    │
+│              │                                         │       │           │ Windows 11 and the Cisco AnyConnect       │
+│              │                                         │       │           │ client, redundantly asking what exactly   │
+│              │                                         │       │           │ is not functioning. In the final turn,    │
+│              │                                         │       │           │ despite receiving the specific error      │
+│              │                                         │       │           │ message, it provides a generic            │
+│              │                                         │       │           │ troubleshooting guide that completely     │
+│              │                                         │       │           │ disregards the established OS and         │
+│              │                                         │       │           │ client context. This demonstrates a       │
+│              │                                         │       │           │ clear failure to seamlessly reuse known   │
+│              │                                         │       │           │ details throughout the interaction.       │
+│        FAIL  │ Answer Relevancy [Conversational GEval] │ 0.50  │ 0.70      │ The assistant maintains an IT support     │
+│              │                                         │       │           │ persona, but Turn 2 ignores the user's    │
+│              │                                         │       │           │ immediate context by defining Cisco       │
+│              │                                         │       │           │ AnyConnect and asking for redundant       │
+│              │                                         │       │           │ details, failing Step 1 and 2. Turn 3     │
+│              │                                         │       │           │ provides generic network                  │
+│              │                                         │       │           │ troubleshooting rather than specific,     │
+│              │                                         │       │           │ actionable steps for the Cisco            │
+│              │                                         │       │           │ AnyConnect 'Connection attempt has        │
+│              │                                         │       │           │ failed' error on Windows 11. While the    │
+│              │                                         │       │           │ dialogue collectively aims to resolve     │
+│              │                                         │       │           │ the VPN issue and maintains role          │
+│              │                                         │       │           │ consistency (Step 3), the lack of         │
+│              │                                         │       │           │ direct, useful content in multiple        │
+│              │                                         │       │           │ turns prevents full alignment with Step   │
+│              │                                         │       │           │ 4's criteria for high-quality             │
+│              │                                         │       │           │ resolution.                               │
+│                                                                                                                        │
+╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Aggregate Metrics                                                                                                      │
+│                                                                                                                        │
+│  Metric                                                              ┃ Average Score       ┃ Pass Rate      ┃ Total    │
+│ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━ │
+│  Conversation Completeness                                           │ 1.00                │ 100.00%        │ 1        │
+│  Hallucination Detection [Conversational GEval]                      │ 0.90                │ 100.00%        │ 1        │
+│  Knowledge Retention [Conversational GEval]                          │ 0.20                │ 0.00%          │ 1        │
+│  Answer Relevancy [Conversational GEval]                             │ 0.50                │ 0.00%          │ 1        │
+╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+
+⚠ WARNING: No hyperparameters logged.
+» Log hyperparameters to attribute prompts and models to your test runs.
+
+================================================================================
+
+
+✓ Evaluation completed 🎉! (time taken: 104.11s | token cost: None)
+» Test Results (1 total tests):
+   » Pass Rate: 0.0% | Passed: 0 | Failed: 1
+
+ ================================================================================ 
+
+» Want to share evals with your team, or a place for your test cases to live? ❤️ 🏡
+  » Run 'deepeval view' to analyze and save testing results on Confident AI.
+
+
+✨ You're running DeepEval's latest Conversation Completeness Metric! (using qwen3.6-35b-a3b, strict=False, 
+async_mode=True)...
+✨ You're running DeepEval's latest Hallucination Detection [Conversational GEval] Metric! (using qwen3.6-35b-a3b, 
+strict=False, async_mode=True)...
+✨ You're running DeepEval's latest Knowledge Retention [Conversational GEval] Metric! (using qwen3.6-35b-a3b, 
+strict=False, async_mode=True)...
+✨ You're running DeepEval's latest Answer Relevancy [Conversational GEval] Metric! (using qwen3.6-35b-a3b, strict=False, 
+async_mode=True)...
+
+
+╭─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ 🚀 DeepEval Evaluation Results                                                                                          │
+╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│                                                                                                                         │
+│  ❌ test_conversation_benchmark                                                                                         │
+│  ├── Conversation Turns                                                                                                 │
+│  │   ├── User: Ich kann meine Campuslizenz für Microsoft Office nicht aktivieren                                        │
+│  │   ├── Assistant: Ich habe gerade ein Support-Ticket erstellt. Für eine optimale Bearbeitung bitte die folgenden      │
+│  │   │   Fragen beantworten:                                                                                            │
+│  │   │   Um das Problem zu lösen, benötigen wir weitere Informationen. Bitte beantworten Sie die folgenden Fragen:      │
+│  │   ├── User: Ich bin Mitarbeiter der Uni, meine Dienst-Mail ist mustermann@uni-due.de                                 │
+│  │   ├── Assistant: Das Ticket wurde erstellt. Bitte beachten Sie, dass ich nur bei Anliegen rund um universitäre       │
+│  │   │   IT-Dienste des ZIM helfen kann. Wenn Sie ein IT-Anliegen haben, das mit dem ZIM zusammenhängt, bitte           │
+│  │   │   schildern Sie es mir.                                                                                          │
+│  │   ├── User: Die Fehlermeldung sagt 'Kein Abonnement gefunden' obwohl ich berechtigt sein sollte                      │
+│  │   └── Assistant: Ich habe gerade ein Support-Ticket erstellt. Für eine optimale Bearbeitung bitte die folgenden      │
+│  │       Fragen beantworten:                                                                                            │
+│  │       Welches Problem genau haben Sie mit der Campuslizenz für Microsoft Office?                                     │
+│  └── Metrics                                                                                                            │
+│       Status ┃ Metric                                   ┃ Score ┃ Threshold ┃ Reason                                    │
+│      ━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  │
+│        FAIL  │ Conversation Completeness                │ 0.00  │ 0.50      │ The score is 0.0 because none of the      │
+│              │                                          │       │           │ User's intentions are met, as the LLM     │
+│              │                                          │       │           │ response completely ignores the           │
+│              │                                          │       │           │ provided details and fails to offer any   │
+│              │                                          │       │           │ technical support for activating their    │
+│              │                                          │       │           │ Microsoft Office campus license.          │
+│              │                                          │       │           │ Despite the User clearly stating their    │
+│              │                                          │       │           │ issue twice, specifically that they       │
+│              │                                          │       │           │ 'Ich kann meine Campuslizenz für          │
+│              │                                          │       │           │ Microsoft Office nicht aktivieren' and    │
+│              │                                          │       │           │ that 'Die Fehlermeldung sagt "Kein        │
+│              │                                          │       │           │ Abonnement gefunden"', the LLM response   │
+│              │                                          │       │           │ repeatedly bypasses these facts.          │
+│              │                                          │       │           │ Instead of providing a resolution, it     │
+│              │                                          │       │           │ falls into a repetitive loop by only      │
+│              │                                          │       │           │ asking the User to restate the issue      │
+│              │                                          │       │           │ with the template message, 'Welches       │
+│              │                                          │       │           │ Problem genau haben Sie mit der           │
+│              │                                          │       │           │ Campuslizenz für Microsoft Office?'.      │
+│              │                                          │       │           │ This results in zero actionable           │
+│              │                                          │       │           │ assistance.                               │
+│        FAIL  │ Hallucination Detection [Conversational  │ 0.20  │ 0.70      │ The assistant repeatedly claims to        │
+│              │ GEval]                                   │       │           │ create a support ticket without           │
+│              │                                          │       │           │ providing a ticket ID or grounding this   │
+│              │                                          │       │           │ action in the conversation, which         │
+│              │                                          │       │           │ fabricates a capability not supported     │
+│              │                                          │       │           │ by the context. It ignores the user’s     │
+│              │                                          │       │           │ specific error message ('Kein             │
+│              │                                          │       │           │ Abonnement gefunden') and provided        │
+│              │                                          │       │           │ employee email, instead offering          │
+│              │                                          │       │           │ generic, repetitive questions. This       │
+│              │                                          │       │           │ lack of factual grounding and failure     │
+│              │                                          │       │           │ to provide plausible university IT        │
+│              │                                          │       │           │ support troubleshooting violates the      │
+│              │                                          │       │           │ requirement to remain strictly factual    │
+│              │                                          │       │           │ and role-appropriate throughout all       │
+│              │                                          │       │           │ turns.                                    │
+│        FAIL  │ Knowledge Retention [Conversational      │ 0.00  │ 0.70      │ The assistant fails to retain or          │
+│              │ GEval]                                   │       │           │ reference key user details, completely    │
+│              │                                          │       │           │ ignoring the provided email and           │
+│              │                                          │       │           │ university affiliation. It exhibits       │
+│              │                                          │       │           │ severe memory failures by redundantly     │
+│              │                                          │       │           │ claiming to have created a support        │
+│              │                                          │       │           │ ticket in the final turn, despite         │
+│              │                                          │       │           │ already doing so earlier. Additionally,   │
+│              │                                          │       │           │ it explicitly re-asks for the exact       │
+│              │                                          │       │           │ problem already stated in the first       │
+│              │                                          │       │           │ turn, demonstrating a complete lack of    │
+│              │                                          │       │           │ cumulative information retention and      │
+│              │                                          │       │           │ violating the requirement to build upon   │
+│              │                                          │       │           │ previously provided details without       │
+│              │                                          │       │           │ redundant questioning.                    │
+│        FAIL  │ Answer Relevancy [Conversational GEval]  │ 0.00  │ 0.70      │ The assistant consistently fails to       │
+│              │                                          │       │           │ address the user's immediate requests,    │
+│              │                                          │       │           │ instead repeating a generic               │
+│              │                                          │       │           │ ticket-creation template across all       │
+│              │                                          │       │           │ turns. Despite the user providing         │
+│              │                                          │       │           │ specific context such as their            │
+│              │                                          │       │           │ university email and the exact error      │
+│              │                                          │       │           │ message ('Kein Abonnement gefunden'),     │
+│              │                                          │       │           │ the assistant ignores these details,      │
+│              │                                          │       │           │ asks redundant questions, and offers no   │
+│              │                                          │       │           │ troubleshooting steps. This repetitive    │
+│              │                                          │       │           │ behavior completely undermines the        │
+│              │                                          │       │           │ conversation's focus on resolving the     │
+│              │                                          │       │           │ IT problem, resulting in a disjointed     │
+│              │                                          │       │           │ and non-problem-solving experience that   │
+│              │                                          │       │           │ fails all evaluation criteria.            │
+│                                                                                                                         │
+╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Aggregate Metrics                                                                                                       │
+│                                                                                                                         │
+│  Metric                                                              ┃ Average Score        ┃ Pass Rate      ┃ Total    │
+│ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━ │
+│  Conversation Completeness                                           │ 0.00                 │ 0.00%          │ 1        │
+│  Hallucination Detection [Conversational GEval]                      │ 0.20                 │ 0.00%          │ 1        │
+│  Knowledge Retention [Conversational GEval]                          │ 0.00                 │ 0.00%          │ 1        │
+│  Answer Relevancy [Conversational GEval]                             │ 0.00                 │ 0.00%          │ 1        │
+╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+
+⚠ WARNING: No hyperparameters logged.
+» Log hyperparameters to attribute prompts and models to your test runs.
+
+================================================================================
+
+
+✓ Evaluation completed 🎉! (time taken: 82.95s | token cost: None)
+» Test Results (1 total tests):
+   » Pass Rate: 0.0% | Passed: 0 | Failed: 1
+
+ ================================================================================ 
+
+» Want to share evals with your team, or a place for your test cases to live? ❤️ 🏡
+  » Run 'deepeval view' to analyze and save testing results on Confident AI.
+
+
+
+============================================================
+BENCHMARK ABGESCHLOSSEN
+Ergebnisse gespeichert in tests/benchmark_results.json
+============================================================
+
+✅ Ergebnisse in LangSmith geloggt.
+PASSEDRunning teardown with pytest sessionfinish...
+
+
+=============================== warnings summary ===============================
+<frozen importlib._bootstrap>:488
+  <frozen importlib._bootstrap>:488: DeprecationWarning: builtin type SwigPyPacked has no __module__ attribute
+
+<frozen importlib._bootstrap>:488
+  <frozen importlib._bootstrap>:488: DeprecationWarning: builtin type SwigPyObject has no __module__ attribute
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================== 1 passed, 2 warnings in 496.70s (0:08:16) ===================
+sys:1: DeprecationWarning: builtin type swigvarlink has no __module__ attribute
