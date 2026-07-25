@@ -4,12 +4,18 @@ Flow: fill the form -> submit. If the proposal is redundant, review the covering
 entries and either proceed or cancel. Otherwise (or after "Dennoch anlegen") an
 editable PREVIEW of the final entry (language-polished + generated title) is shown;
 only after the user confirms it is actually stored.
+
+UI chrome is localized (DE/EN) via ui.i18n; the stored FAQ content and the
+category values stay in their stored language.
 """
 import streamlit as st
 
 from clients.live_client import LiveChatClient
+from ui.i18n import get_language, t
 
-st.set_page_config(page_title="FAQ hinzufügen", page_icon="📝")
+lang = get_language()
+
+st.set_page_config(page_title=t("FAQ hinzufügen", lang), page_icon="📝")
 
 client = LiveChatClient()
 
@@ -60,11 +66,13 @@ def _build_preview_payload() -> dict:
     }
 
 
-def _handle_response(res: dict) -> None:
+def _handle_response(res: dict, lang: str) -> None:
     """Translate a /faq response into session state (rendered after rerun)."""
     status = res.get("status")
     if status == "created":
-        st.session_state["_faq_success_msg"] = f"FAQ-Eintrag angelegt (Titel: {res.get('id')})."
+        st.session_state["_faq_success_msg"] = t(
+            "FAQ-Eintrag angelegt (Titel: {title}).", lang
+        ).format(title=res.get("id"))
         st.session_state["_faq_clear"] = True
     elif status == "redundant":
         st.session_state["faq_redundant"] = res.get("matches", [])
@@ -80,99 +88,103 @@ def _handle_response(res: dict) -> None:
             if isinstance(s, dict) and s.get("faq_content")
         )
     else:
-        st.session_state["_faq_error_msg"] = f"Fehler: {res.get('detail', 'Unbekannter Fehler')}"
+        detail = res.get("detail") or t("Unbekannter Fehler", lang)
+        st.session_state["_faq_error_msg"] = t("Fehler: {detail}", lang).format(detail=detail)
 
 
-def _render_match(match: dict) -> None:
+def _render_match(match: dict, lang: str) -> None:
     """Render one covering FAQ entry in a readable layout (values stay in the
     stored language; only the labels are UI)."""
     if match.get("context"):
         st.markdown(f"**{match['context']}**")
-    st.markdown(f"**Titel:** {match.get('id', '')}")
+    st.markdown(t("**Titel:** {v}", lang).format(v=match.get("id", "")))
     if match.get("problem"):
-        st.markdown(f"**Problem:** {match['problem']}")
+        st.markdown(t("**Problem:** {v}", lang).format(v=match["problem"]))
     if match.get("solution"):
-        st.markdown(f"**Lösung:** {match['solution']}")
+        st.markdown(t("**Lösung:** {v}", lang).format(v=match["solution"]))
     if match.get("last_update"):
         st.caption(match["last_update"])
 
 
-def _render_form() -> None:
+def _render_form(lang: str) -> None:
     st.text_input(
-        "Titel:",
+        t("Titel:", lang),
         key="faq_id",
-        help="Leer lassen — der Titel wird automatisch als Aussage erzeugt.",
+        help=t("Leer lassen — der Titel wird automatisch als Aussage erzeugt.", lang),
     )
     st.selectbox(
-        "Kategorie:",
+        t("Kategorie:", lang),
         options=_load_contexts(),
         index=None,
-        placeholder="Kategorie wählen",
+        placeholder=t("Kategorie wählen", lang),
         key="faq_context",
     )
-    st.text_area("Problem:", key="faq_problem", height=100)
-    st.text_area("Lösung:", key="faq_solution", height=200)
+    st.text_area(t("Problem:", lang), key="faq_problem", height=100)
+    st.text_area(t("Lösung:", lang), key="faq_solution", height=200)
 
-    if st.button("Vorschlag prüfen & absenden", type="primary", use_container_width=True):
+    if st.button(t("Vorschlag prüfen & absenden", lang), type="primary", use_container_width=True):
         category = (st.session_state.get("faq_context") or "").strip()
         problem = (st.session_state.get("faq_problem") or "").strip()
         solution = (st.session_state.get("faq_solution") or "").strip()
         if not (category and problem and solution):
-            st.error("Bitte Kategorie, Problem und Lösung ausfüllen.")
+            st.error(t("Bitte Kategorie, Problem und Lösung ausfüllen.", lang))
         else:
-            _handle_response(client.submit_faq(_build_payload(force=False)))
+            _handle_response(client.submit_faq(_build_payload(force=False)), lang)
             st.rerun()
 
     # Redundancy review (only after a redundant submit).
     redundant = st.session_state.get("faq_redundant")
     if redundant:
-        st.warning(
+        st.warning(t(
             "Dein Vorschlag scheint bereits durch folgende FAQ-Einträge abgedeckt zu sein. "
-            "Bitte überdenke ihn – oder lege ihn dennoch an."
-        )
+            "Bitte überdenke ihn – oder lege ihn dennoch an.", lang
+        ))
         for match in redundant:
-            with st.expander(f"{match.get('id', '?')} — Ähnlichkeit {match.get('similarity', 0):.2f}"):
-                _render_match(match)
+            header = t("{id} — Ähnlichkeit {similarity}", lang).format(
+                id=match.get("id", "?"), similarity=f"{match.get('similarity', 0):.2f}"
+            )
+            with st.expander(header):
+                _render_match(match, lang)
 
         col_create, col_cancel = st.columns(2)
-        if col_create.button("Dennoch anlegen", use_container_width=True):
-            _handle_response(client.submit_faq(_build_payload(force=True)))
+        if col_create.button(t("Dennoch anlegen", lang), use_container_width=True):
+            _handle_response(client.submit_faq(_build_payload(force=True)), lang)
             st.rerun()
-        if col_cancel.button("Abbrechen", use_container_width=True):
+        if col_cancel.button(t("Abbrechen", lang), use_container_width=True):
             st.session_state["_faq_clear"] = True
             st.rerun()
 
 
-def _render_preview() -> None:
-    st.info("So wird der Eintrag gespeichert. Du kannst ihn hier noch anpassen.")
+def _render_preview(lang: str) -> None:
+    st.info(t("So wird der Eintrag gespeichert. Du kannst ihn hier noch anpassen.", lang))
 
-    st.text_input("Titel:", key="prev_id")
+    st.text_input(t("Titel:", lang), key="prev_id")
     # Ensure the (polished) category is selectable even if the list is unavailable.
     ctx_options = _load_contexts()
     current_ctx = st.session_state.get("prev_context") or ""
     if current_ctx and current_ctx not in ctx_options:
         ctx_options = [current_ctx] + ctx_options
-    st.selectbox("Kategorie:", options=ctx_options, key="prev_context")
-    st.text_area("Problem:", key="prev_problem", height=100)
-    st.text_area("Lösung:", key="prev_solution", height=200)
+    st.selectbox(t("Kategorie:", lang), options=ctx_options, key="prev_context")
+    st.text_area(t("Problem:", lang), key="prev_problem", height=100)
+    st.text_area(t("Lösung:", lang), key="prev_solution", height=200)
 
     col_save, col_cancel = st.columns(2)
-    if col_save.button("Speichern bestätigen", type="primary", use_container_width=True):
+    if col_save.button(t("Speichern bestätigen", lang), type="primary", use_container_width=True):
         category = (st.session_state.get("prev_context") or "").strip()
         problem = (st.session_state.get("prev_problem") or "").strip()
         solution = (st.session_state.get("prev_solution") or "").strip()
         if not (category and problem and solution):
-            st.error("Bitte Kategorie, Problem und Lösung ausfüllen.")
+            st.error(t("Bitte Kategorie, Problem und Lösung ausfüllen.", lang))
         else:
-            _handle_response(client.submit_faq(_build_preview_payload()))
+            _handle_response(client.submit_faq(_build_preview_payload()), lang)
             st.rerun()
-    if col_cancel.button("Abbrechen", use_container_width=True):
+    if col_cancel.button(t("Abbrechen", lang), use_container_width=True):
         st.session_state["_faq_clear"] = True
         st.rerun()
 
 
 # --- Page ---------------------------------------------------------------------
-st.title("📝 Neuen FAQ-Eintrag vorschlagen")
+st.title(t("📝 Neuen FAQ-Eintrag vorschlagen", lang))
 
 _success = st.session_state.pop("_faq_success_msg", None)
 if _success:
@@ -182,10 +194,10 @@ if _error:
     st.error(_error)
 
 if st.session_state.get("faq_preview"):
-    _render_preview()
+    _render_preview(lang)
 else:
-    st.caption(
+    st.caption(t(
         "Vorschläge werden vor dem Speichern gegen die bestehende FAQ-Datenbank auf "
-        "Redundanz geprüft und sprachlich überarbeitet."
-    )
-    _render_form()
+        "Redundanz geprüft und sprachlich überarbeitet.", lang
+    ))
+    _render_form(lang)
