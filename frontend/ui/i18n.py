@@ -1,6 +1,15 @@
-"""Minimal DE→EN lookup for the static Streamlit UI chrome (buttons, labels,
-errors). LLM-generated chat content is translated by the backend itself and
-never passes through here."""
+"""App-wide UI i18n for the Streamlit frontend: DE→EN string lookup + language
+resolution. Single entry point for every page/component.
+
+Usage on any page/component:
+    from ...ui.i18n import t, get_language
+    lang = get_language()
+    st.button(t("Abbrechen", lang))     # add the German text as a key in _EN below
+
+Only static UI chrome passes through here; LLM-generated chat content is
+translated by the backend itself. Backend hardcoded messages have their own
+mirror at backend/llm/strings.py (separate process)."""
+import streamlit as st
 
 _EN = {
     "Hallo! Ich bin ZIM Helper. Worum geht es? Bitte das Anliegen kurz beschreiben.":
@@ -63,9 +72,60 @@ _EN = {
         "This conversation is complete — please use 'Restart' to start a new request.",
     "Bitte E-Mail-Adresse und Matrikelnummer eingeben": "Please enter your email address and student ID",
     "Anliegen beschreiben...": "Describe your issue...",
+
+    # --- FAQ submission page (frontend/pages/faq.py) ---
+    "FAQ hinzufügen": "Add FAQ",
+    "📝 Neuen FAQ-Eintrag vorschlagen": "📝 Propose a new FAQ entry",
+    "Vorschläge werden vor dem Speichern gegen die bestehende FAQ-Datenbank auf Redundanz geprüft und sprachlich überarbeitet.":
+        "Before saving, proposals are checked for redundancy against the existing FAQ database and language-polished.",
+    "Titel:": "Title:",
+    "Leer lassen — der Titel wird automatisch als Aussage erzeugt.":
+        "Leave empty — the title is generated automatically as a statement.",
+    "Kategorie:": "Category:",
+    "Kategorie wählen": "Choose a category",
+    "Problem:": "Problem:",
+    "Lösung:": "Solution:",
+    "Vorschlag prüfen & absenden": "Check & submit proposal",
+    "Bitte Kategorie, Problem und Lösung ausfüllen.": "Please fill in category, problem and solution.",
+    "Dein Vorschlag scheint bereits durch folgende FAQ-Einträge abgedeckt zu sein. Bitte überdenke ihn – oder lege ihn dennoch an.":
+        "Your proposal seems to already be covered by the following FAQ entries. Please reconsider it — or create it anyway.",
+    "{id} — Ähnlichkeit {similarity}": "{id} — similarity {similarity}",
+    "**Titel:** {v}": "**Title:** {v}",
+    "**Problem:** {v}": "**Problem:** {v}",
+    "**Lösung:** {v}": "**Solution:** {v}",
+    "Dennoch anlegen": "Create anyway",
+    "Abbrechen": "Cancel",
+    "So wird der Eintrag gespeichert. Du kannst ihn hier noch anpassen.":
+        "This is how the entry will be saved. You can still adjust it here.",
+    "Speichern bestätigen": "Confirm & save",
+    "FAQ-Eintrag angelegt (Titel: {title}).": "FAQ entry created (title: {title}).",
+    "Fehler: {detail}": "Error: {detail}",
+    "Unbekannter Fehler": "Unknown error",
 }
 
 
 def t(text: str, lang: str) -> str:
     """Translate *text* to *lang*; only "en" is translated, everything else stays German."""
     return _EN.get(text, text) if lang == "en" else text
+
+
+def parse_language_from_header(accept_language: str) -> str:
+    """Extract the primary supported UI language ("de"/"en") from an Accept-Language
+    header; anything else falls back to "de"."""
+    primary = accept_language.split(",")[0].strip().split("-")[0].lower()
+    return primary if primary in ("de", "en") else "de"
+
+
+def get_language() -> str:
+    """The single UI-language resolver for every page/component. Returns "de"/"en",
+    resolved once and cached in the session:
+    IdP/chat metadata override -> cached value -> browser Accept-Language -> "de"."""
+    meta = st.session_state.get("user_metadata") or {}
+    if meta.get("language") in ("de", "en"):
+        return meta["language"]
+    cached = st.session_state.get("_ui_language")
+    if cached in ("de", "en"):
+        return cached
+    lang = parse_language_from_header(st.context.headers.get("Accept-Language", ""))
+    st.session_state["_ui_language"] = lang
+    return lang

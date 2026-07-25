@@ -8,7 +8,7 @@ import streamlit as st
 from streamlit.components.v1 import html
 
 from frontend.clients.base import ChatClient
-from frontend.ui.strings import t
+from frontend.ui.i18n import get_language, parse_language_from_header, t
 from frontend.ui.qa_navigation import (
     apply_question_answer,
     can_go_back,
@@ -65,9 +65,9 @@ def _waiting_message(lang: str) -> str:
 
 
 def _lang() -> str:
-    """Current UI/response language, detected from the user's Accept-Language header."""
-    metadata = st.session_state.get("user_metadata") or {}
-    return metadata.get("language", "de")
+    """Current UI/response language. Thin alias over the shared resolver so all
+    pages/components share one language source (frontend.ui.i18n.get_language)."""
+    return get_language()
 
 
 # ── User-Agent parsing ──────────────────────────────────────────────────────
@@ -97,15 +97,6 @@ def _parse_os_from_ua(ua: str) -> str:
     return "Unbekannt"
 
 
-def _parse_language_from_header(accept_language: str) -> str:
-    """Extract the primary language tag from an Accept-Language header.
-
-    Only "de"/"en" are supported UI languages; anything else falls back to "de".
-    """
-    primary = accept_language.split(",")[0].strip().split("-")[0].lower()
-    return primary if primary in ("de", "en") else "de"
-
-
 def _fetch_and_store_metadata() -> None:
     """Fetch user metadata from the IdP API and enrich with browser info."""
     # Only fetch once per session; Shibboleth login already ran before the chat page loaded.
@@ -129,7 +120,7 @@ def _fetch_and_store_metadata() -> None:
     ua = st.context.headers.get("User-Agent", "")
     metadata["device"] = _parse_device_from_ua(ua)
     metadata["os_name"] = _parse_os_from_ua(ua)
-    metadata["language"] = _parse_language_from_header(st.context.headers.get("Accept-Language", ""))
+    metadata["language"] = parse_language_from_header(st.context.headers.get("Accept-Language", ""))
 
     st.session_state["user_metadata"] = metadata
 
