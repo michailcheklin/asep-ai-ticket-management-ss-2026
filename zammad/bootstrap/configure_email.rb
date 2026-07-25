@@ -186,20 +186,20 @@ reopen_trigger.save!
 # Article-created webhook for backend email ticket transmission (Issue #195).
 # The backend re-validates visibility/sender and enforces duplicate protection;
 # Zammad must not add tags or change ticket fields for this flow.
+# Zammad 7.0.x reads Basic Auth from basic_auth_username/basic_auth_password
+# (TriggerWebhookJob), not from preferences["auth"].
 article_webhook = Webhook.find_or_initialize_by(name: "backend article transmission")
-article_webhook_prefs = { "verify_ssl" => false }
-if article_webhook_secret.present?
-  article_webhook_prefs["auth"] = {
-    "username" => "webhook",
-    "password" => article_webhook_secret
-  }
-end
+prefs = article_webhook.preferences.is_a?(Hash) ? article_webhook.preferences.dup : {}
+prefs.delete("auth")
+prefs.delete(:auth)
 article_webhook.assign_attributes(
   endpoint: backend_article_webhook_url,
   http_method: "post",
   active: ActiveModel::Type::Boolean.new.cast(article_transmission_enabled),
   ssl_verify: false,
-  preferences: article_webhook_prefs,
+  basic_auth_username: article_webhook_secret.present? ? "webhook" : nil,
+  basic_auth_password: article_webhook_secret.presence,
+  preferences: prefs,
   updated_by_id: 1
 )
 article_webhook.created_by_id ||= 1
