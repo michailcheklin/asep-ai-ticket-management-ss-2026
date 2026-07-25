@@ -41,6 +41,16 @@ Same idea as the voicebot, different channel: allow a concern to arrive as an em
 - An incoming email would need to be mapped onto the same `ChatbotState` (`backend/graph/state.py`) shape the chat flow uses — likely treating the email body as the first user message and running it through `extract_information` once, since there's no back-and-forth turn structure like chat has.
 - Multi-turn follow-up (the bot asking clarifying questions) is awkward over email compared to chat — decide whether email tickets skip `ask_for_additional_info` and go straight to best-effort classification, or whether follow-ups are sent as reply emails.
 
+## 5. Persistent login session (localStorage/cookie instead of URL token)
+
+The IdP `session_token` currently lives in the URL query string; `keep_session_token()` (`frontend/ui/session.py`) caches it in `session_state` and re-asserts it into the URL so identity survives page navigation and reloads **within** the running browser session. It does **not** survive a new tab or a browser restart, and carrying the token in the URL exposes it (XSS / shoulder-surfing / history).
+
+This was deliberately left minimal: **this frontend exists only to demonstrate the backend's functionality.** Customers are expected to integrate the backend (`/chat`, `/faq`, …) into their own frontend later, which would bring its own authentication/session handling — so investing in production-grade session persistence in this demo UI is out of scope.
+
+If a future demo does need cross-tab / restart persistence:
+- Streamlit cannot **set** cookies from Python (`st.context.cookies` is read-only), and the IdP runs on a different origin (`:5000`/`:4999`) than the app (`:8501`), so a cookie set by the IdP isn't sent to the app. A JS-based component (e.g. `extra-streamlit-components` CookieManager, `streamlit-local-storage`) would be needed — a new dependency.
+- Prefer a **same-origin HttpOnly cookie** (behind a shared reverse proxy) over localStorage/URL for the token, since HttpOnly is not readable by JS. That means fronting IdP + app under one origin, which is an infrastructure change, not just a frontend one.
+
 ## Additional recommendations (not from prior discussion)
 
 - **Known open issue**: when no FAQ/ticket solution matches, the fallback to auto-create a ticket doesn't always trigger, and the bot can loop asking follow-up questions instead. This pre-dates this document and should probably be prioritized before any of the above, since it affects the core flow today.
