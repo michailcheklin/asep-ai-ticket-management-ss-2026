@@ -5,10 +5,14 @@ This folder contains the FastAPI endpoints that receive frontend requests, valid
 Files
 - `Zammad.py` — low-level Zammad helpers and wrappers used by service layer. Contains methods to call the Zammad REST API (create ticket, add tag, update status, etc.).
 - `ZIM.py` — FastAPI endpoint definitions. Routes are responsible for building the request state, calling into the graph workflow, and returning the response to the frontend.
+- `article_transmission_webhook.py` — authenticated `POST /webhook/article-created` for email ticket transmission.
 
 Main endpoints
 - `POST /chat` — main conversation endpoint. Accepts a JSON payload with the user message, optional history and user metadata. Returns the updated chatbot state, any found solutions, and whether additional data is required.
 - `POST /solution-feedback` — receives user feedback about a proposed solution. Depending on the feedback it may create or close a ticket in Zammad and return a confirmation message.
+- `POST /zammad/ticket-closed` — Zammad close webhook; stores eligible tickets in the RAG knowledge base.
+- `POST /webhook/ticket-closed` — removes a closed incident from the recent-incidents store.
+- `POST /webhook/article-created` — authenticated webhook for email ticket transmission (first public support article). Requires `EMAIL_TICKET_TRANSMISSION_WEBHOOK_SECRET`. See `../services/EMAIL_TICKET_TRANSMISSION.md`.
 
 Responsibilities of the API layer
 - Validate incoming requests (Pydantic models)

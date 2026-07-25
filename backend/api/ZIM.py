@@ -1,11 +1,13 @@
 """Backend API for the AI ticket management system with optional Zammad integration."""
 import os
 import re
+
 import requests
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from ..graph.models.ChatRequest import ChatRequest
 from langchain_core.messages import HumanMessage, AIMessage
+
+from ..graph.models.ChatRequest import ChatRequest
 from ..graph.state import ChatbotState
 from ..graph.orchestrator import __execute_langchain_workflow, graph
 from ..graph.nodes import _resolve_ticket_category
@@ -14,12 +16,14 @@ from ..rag import recent_incidents
 from ..api.zammad import log_ticket_close_event, get_ticket_tags, get_ticket_article_bodies
 from ..rag.rag_store_tickets import store_ticket_state_to_rag
 from ..services.BackendLoggingService import BackendLogger
+from ..api.article_transmission_webhook import router as article_transmission_router
 
 zim_logger = BackendLogger("ZIM")
 ticket_service = TicketService()
 
 # Create FastAPI application instance
 app = FastAPI(title="AI Ticket API", version="1.0.0")
+app.include_router(article_transmission_router)
 
 # Enable CORS so frontend applications can access the API
 app.add_middleware(

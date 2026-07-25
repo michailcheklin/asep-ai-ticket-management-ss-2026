@@ -406,3 +406,95 @@ def get_ticket_article_bodies(ticket_id: int | None, article_ids: list[int] | No
     except Exception as e:
         zammad_logger.error(f"Other error occurred while fetching ticket articles for {ticket_id}: {e}")
         return []
+
+
+def get_ticket(ticket_id: int) -> dict | None:
+    """
+    Fetch a Zammad ticket by ID (read-only).
+
+    :param ticket_id: Zammad ticket ID
+    :return: Ticket JSON dict or None on failure
+    """
+    try:
+        response = requests.get(
+            url=f"{server_address}/api/v1/tickets/{ticket_id}",
+            headers=headers,
+            timeout=GENERAL_TIMEOUT,
+        )
+        if response.status_code == 404:
+            zammad_logger.warning(f"Ticket {ticket_id} not found in Zammad")
+            return None
+        response.raise_for_status()
+        payload = response.json()
+        return payload if isinstance(payload, dict) else None
+    except ConnectionError:
+        zammad_logger.error(f"Connection error: Could not reach Zammad to fetch ticket {ticket_id}")
+        return None
+    except MissingSchema:
+        zammad_logger.error(f"Invalid URL for Zammad provided: Could not fetch ticket {ticket_id}")
+        return None
+    except Exception as e:
+        zammad_logger.error(f"Other error occurred while fetching ticket {ticket_id}: {e}")
+        return None
+
+
+def get_ticket_article(article_id: int) -> dict | None:
+    """
+    Fetch a single Zammad ticket article by ID (read-only).
+
+    Prefer this over trusting webhook payload fields for visibility/sender.
+
+    :param article_id: Zammad article ID
+    :return: Article JSON dict or None on failure
+    """
+    try:
+        response = requests.get(
+            url=f"{server_address}/api/v1/ticket_articles/{article_id}",
+            headers=headers,
+            timeout=GENERAL_TIMEOUT,
+        )
+        if response.status_code == 404:
+            zammad_logger.warning(f"Article {article_id} not found in Zammad")
+            return None
+        response.raise_for_status()
+        payload = response.json()
+        return payload if isinstance(payload, dict) else None
+    except ConnectionError:
+        zammad_logger.error(f"Connection error: Could not reach Zammad to fetch article {article_id}")
+        return None
+    except MissingSchema:
+        zammad_logger.error(f"Invalid URL for Zammad provided: Could not fetch article {article_id}")
+        return None
+    except Exception as e:
+        zammad_logger.error(f"Other error occurred while fetching article {article_id}: {e}")
+        return None
+
+
+def get_user(user_id: int) -> dict | None:
+    """
+    Fetch a Zammad user by ID (read-only), used for customer name/email.
+
+    :param user_id: Zammad user ID
+    :return: User JSON dict or None on failure
+    """
+    try:
+        response = requests.get(
+            url=f"{server_address}/api/v1/users/{user_id}",
+            headers=headers,
+            timeout=GENERAL_TIMEOUT,
+        )
+        if response.status_code == 404:
+            zammad_logger.warning(f"User {user_id} not found in Zammad")
+            return None
+        response.raise_for_status()
+        payload = response.json()
+        return payload if isinstance(payload, dict) else None
+    except ConnectionError:
+        zammad_logger.error(f"Connection error: Could not reach Zammad to fetch user {user_id}")
+        return None
+    except MissingSchema:
+        zammad_logger.error(f"Invalid URL for Zammad provided: Could not fetch user {user_id}")
+        return None
+    except Exception as e:
+        zammad_logger.error(f"Other error occurred while fetching user {user_id}: {e}")
+        return None
