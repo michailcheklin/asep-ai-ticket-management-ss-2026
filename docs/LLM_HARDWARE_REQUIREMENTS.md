@@ -51,6 +51,35 @@ For setups where a GPU with 65–80 GB VRAM isn't available, `GLM-4.7` is a viab
 
 This fits on a single consumer/prosumer GPU (e.g. RTX 4090/5090 24GB) instead of a datacenter-class card, at the cost of the larger model's capacity. Treat it as the fallback choice for local hosting when `gpt-oss-120b`-class hardware isn't available, not as a drop-in quality-equivalent replacement.
 
+## Smaller model evaluation (benchmark-based)
+
+Two smaller candidates were compared against the current production model `gpt-oss-120b`, based on the DeepEval conversation benchmark (four metrics — Conversation Completeness, Hallucination Detection, Knowledge Retention, Answer Relevancy — judged by `qwen3.6-35b-a3b`; full methodology, per-scenario scores and raw logs in `tests/README_TESTS.md` and `tests/logs/`).
+
+### Candidate comparison
+
+| Model | Parameters | VRAM (local, quantized) | License |
+|---|---|---|---|
+| `gpt-oss-120b` (current) | ~117B MoE (~5.1B active per token) | ~65–80 GB | Apache 2.0 |
+| `glm-4.7` | 358B MoE | >200 GB quantized — not viable on a single GPU; accessed via SAIA API in this project | MIT |
+| `llama-3.1-8b` | 8B | ~6 GB | Meta Llama 3.1 Community License |
+
+### Benchmark results (DeepEval, judge `qwen3.6-35b-a3b`, 5 scenarios)
+
+| Model | Completeness | Hallucination | Knowledge Retention | Answer Relevancy | Overall |
+|---|---|---|---|---|---|
+| gpt-oss-120b | 0.93 | 0.98 | 0.70 | 0.96 | **0.89** |
+| glm-4.7 | 0.80 | 0.98 | 0.64 | 0.84 | **0.82** |
+| llama-3.1-8b | 0.60 | 0.62 | 0.46 | 0.50 | **0.55** |
+
+(Scores from the archived reference runs in `tests/logs/`; three further models were evaluated and rejected — see `tests/README_TESTS.md` for the full six-model table.)
+
+### Recommendation
+
+* **`glm-4.7` is sufficient as an alternative for the general IT-support chat use case** — it is the only candidate with a hallucination score on par with `gpt-oss-120b` (0.98) and completed all five scenarios. Observed limitations: in one of five scenarios it lost the conversation thread and restarted with a generic greeting (Knowledge Retention 0.64, its weakest metric), and its per-scenario scores varied noticeably between identical runs, so single-run figures are indicative only. Note that as a 358B model it is an alternative on the hosted/API path, not a lighter option for local hosting.
+* **`llama-3.1-8b` is not sufficient for the production use case** — it handles the two simplest scenarios well, but fails to reach any resolution in two of five scenarios (Completeness 0.00), and it violated the structured-output schema in one run (returned a wrong field instead of `intent`), which aborts the graph flow. It is defensible only as an emergency fallback where availability matters more than answer quality, and only with additional schema-validation guards.
+* German language capability was adequate for all three models in the tested scenarios (all conversations are in German); no candidate failed specifically on language grounds.
+
+
 ## RAG components (embedding & re-ranking models)
 
 Defined in `backend/rag/retrieve_info.py`, `rag_store_faq.py`, `rag_store_tickets.py` (see `backend/rag/README.md`):
