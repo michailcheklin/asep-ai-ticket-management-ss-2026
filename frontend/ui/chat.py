@@ -900,7 +900,7 @@ def run_app(client: ChatClient, *, mock_mode: bool = False) -> None:
         with text_container:
             with st.form("chat_form", clear_on_submit=True, border=False):
                 form_col_input, form_col_submit = st.columns([5, 1])
-                user_input = form_col_input.text_input(
+                user_input = form_col_input.text_area(
                     placeholder,
                     key="chat_text_input",
                     disabled=chat_disabled,
