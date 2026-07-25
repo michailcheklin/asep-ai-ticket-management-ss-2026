@@ -27,7 +27,7 @@ CHAT_PY   = os.path.join(ROOT, "frontend", "ui", "chat.py")
 DU_PATTERN = re.compile(r"\b(?:du|dir|dich|dein\w*)\b", re.IGNORECASE)
 
 # Canonical ticket-intro. MUST be byte-identical in the backend
-# (nodes.ask_for_additional_info) and the frontend (chat.TICKET_INTRO),
+# (nodes.ask_for_additional_info) and the frontend (chat.TICKET_INTRO_VARIANTS),
 # otherwise strip_redundant_ticket_intro() silently stops matching.
 TICKET_INTRO = (
     "Ich habe gerade ein Support-Ticket erstellt. "
@@ -68,6 +68,24 @@ def _module_str_assign(path: str, name: str) -> str | None:
                     and isinstance(node.value.value, str)
                 ):
                     return node.value.value
+    return None
+
+
+def _module_tuple_of_str_assign(path: str, name: str) -> list[str] | None:
+    """Return the values of a module-level `NAME = ("...", "...")` tuple assignment."""
+    tree = ast.parse(_read(path), filename=path)
+    for node in tree.body:
+        if isinstance(node, ast.Assign):
+            for target in node.targets:
+                if (
+                    isinstance(target, ast.Name)
+                    and target.id == name
+                    and isinstance(node.value, ast.Tuple)
+                ):
+                    return [
+                        elt.value for elt in node.value.elts
+                        if isinstance(elt, ast.Constant) and isinstance(elt.value, str)
+                    ]
     return None
 
 
@@ -112,11 +130,16 @@ class NeutralAddressTests(unittest.TestCase):
 
     def test_ticket_intro_is_in_sync(self):
         """Backend and frontend ticket-intro must match verbatim."""
-        # Frontend: the folded value of the TICKET_INTRO constant.
-        frontend_intro = _module_str_assign(CHAT_PY, "TICKET_INTRO")
-        self.assertEqual(
-            frontend_intro, TICKET_INTRO,
-            msg="chat.TICKET_INTRO no longer matches the canonical intro.",
+        # Frontend: the German variant in the TICKET_INTRO_VARIANTS tuple
+        # (used to recognize the intro regardless of response language).
+        frontend_intro_variants = _module_tuple_of_str_assign(CHAT_PY, "TICKET_INTRO_VARIANTS")
+        self.assertIsNotNone(
+            frontend_intro_variants,
+            msg="chat.TICKET_INTRO_VARIANTS not found or not a plain string tuple.",
+        )
+        self.assertIn(
+            TICKET_INTRO, frontend_intro_variants,
+            msg="chat.TICKET_INTRO_VARIANTS no longer contains the canonical German intro.",
         )
         # Backend: the same text is an f-string literal inside nodes.py.
         self.assertIn(

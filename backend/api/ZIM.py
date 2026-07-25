@@ -138,6 +138,7 @@ async def chat_endpoint(request: ChatRequest):
         "ask_issue_attempts": request.ask_issue_attempts,
         "ticket_id": request.ticket_id,
         "summary": request.summary,
+        "user_summary": request.user_summary,
         "intent": request.intent,
         "tutorial_attempts": request.tutorial_attempts,
         "display_name": request.display_name,
@@ -145,6 +146,7 @@ async def chat_endpoint(request: ChatRequest):
         "faculty": request.faculty,
         "device": request.device,
         "os_name": request.os_name,
+        "language": request.language,
         "graph_runs": request.graph_runs,
     }
     return __execute_langchain_workflow(current_state)
@@ -307,6 +309,7 @@ async def solution_feedback(request: ChatRequest):
         "additional_info_attempts": request.additional_info_attempts,
         "ticket_id": request.ticket_id,
         "summary": request.summary,
+        "user_summary": request.user_summary,
         "user_addendum": request.user_addendum,
         "intent": request.intent,
         "tutorial_attempts": request.tutorial_attempts,
@@ -315,6 +318,7 @@ async def solution_feedback(request: ChatRequest):
         "faculty": request.faculty,
         "device": request.device,
         "os_name": request.os_name,
+        "language": request.language,
         "graph_runs": request.graph_runs,
     }
 

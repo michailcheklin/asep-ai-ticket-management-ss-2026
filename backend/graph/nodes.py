@@ -12,6 +12,7 @@ from ..services.TicketService import TicketService
 from ..llm.prompts import TICKET_CATEGORY_RULES
 from ..services.ProblemService import ProblemService
 from ..llm.llm import llm, structured_llm, AGENT_PROMPT, category_llm, with_structured_fallback
+from ..llm.strings import t
 from .node_logging import log_node_entry, langgraph_logger, truncate_long_strings_in_dicts_for_logging, visit
 from ..api.zammad import create_ticket_by_user_email, add_tag_to_ticket
 from .models.IntentDecision import IntentDecision
@@ -46,6 +47,9 @@ def _build_metadata_context(state: dict) -> str:
         parts.append(f"Geraet: {state['device']}")
     if state.get("os_name"):
         parts.append(f"Betriebssystem: {state['os_name']}")
+    if state.get("language"):
+        response_language = "Deutsch" if state["language"] == "de" else "Englisch"
+        parts.append(f"Antwortsprache: {response_language}")
     if not parts:
         return ""
     context = "\n\nBENUTZER-KONTEXT:\n" + "\n".join(parts)
@@ -342,8 +346,10 @@ def _build_extraction_system_prompt(
         Setze priority auf 1 bei dringenden Problemen wie gesperrtem Account,
         Login nicht möglich, Prüfungs-/Abgabeproblemen oder komplettem Ausfall.
         Setze priority auf 0 bei normalen oder weniger dringenden Problemen.
-        5. Zusammenfassung (summary): Dieses Feld MUSS bei jeder Antwort neu gesetzt werden - auch wenn sich nur wenig geändert hat. Schreibe eine aktualisierte Zusammenfassung des gesamten bisherigen Gesprächs aus der Perspektive eines Support-Agenten, der einem Kollegen den Fall erklärt. Integriere alle bisher bekannten Informationen, einschließlich Antworten auf Rückfragen. Beispiel: "Der Student fragt nach einer kostenlosen Windows 10 Lizenz für sein universitätseigenes Gerät. Er hat bereits ein qualifizierendes Betriebssystem und benötigt eine Vollversion." Maximal 3 Sätze, keine Aufzählung. Schreib die Zusamenfassung IMMER auf Deutsch.
-        6. Integriere in der Zusammenfassung (summary) die Metadata des Users.
+        5. Zusammenfassung (summary): Dieses Feld MUSS bei jeder Antwort neu gesetzt werden - auch wenn sich nur wenig geändert hat. Schreibe eine aktualisierte Zusammenfassung des gesamten bisherigen Gesprächs aus der Perspektive eines Support-Agenten, der einem Kollegen den Fall erklärt. Integriere alle bisher bekannten Informationen, einschließlich Antworten auf Rückfragen. Beispiel: "Der Student fragt nach einer kostenlosen Windows 10 Lizenz für sein universitätseigenes Gerät. Er hat bereits ein qualifizierendes Betriebssystem und benötigt eine Vollversion." Maximal 3 Sätze, keine Aufzählung. Schreib die Zusamenfassung IMMER auf Deutsch, unabhaengig von der Antwortsprache - dieses Feld ist nur fuer das Support-Team in Zammad bestimmt, nicht fuer den Nutzer sichtbar.
+        5a. Nutzer-Zusammenfassung (user_summary): Schreibe zusaetzlich dieselbe Zusammenfassung inhaltlich identisch noch einmal in das Feld 'user_summary' - aber in der im BENUTZER-KONTEXT angegebenen Antwortsprache statt zwingend auf Deutsch. Dieses Feld MUSS wie 'summary' bei jeder Antwort neu gesetzt werden und wird dem Nutzer selbst angezeigt.
+        6. Integriere in der Zusammenfassung (summary und user_summary) die Metadata des Users.
+        7. Sprache (language): Erkenne die Sprache der aktuellsten Nutzernachricht (der beigefuegten HumanMessage, NICHT dieser Instruktionen) und setze 'language' auf 'de' oder 'en'. Ist die Sprache nicht eindeutig erkennbar (z.B. nur Zahlen, Matrikelnummer, Emojis, einzelnes Wort), setze 'language' auf null.
 
         """.format(
         prior_issue=prior_issue or "noch nicht bekannt",
@@ -357,6 +363,8 @@ def _state_update_from_extracted_data(state: ChatbotState, extracted_data: Extra
     state_update = {}
     state_update["graph_runs"] = state.get("graph_runs", 0) + 1
 
+    if extracted_data.language:
+        state_update["language"] = extracted_data.language
     if extracted_data.student_id and not state.get("student_id"):
         state_update["student_id"] = extracted_data.student_id
     if extracted_data.problem and not state.get("issue_description"):
@@ -370,6 +378,7 @@ def _state_update_from_extracted_data(state: ChatbotState, extracted_data: Extra
         if new_infos:
             state_update["additional_info"] = new_infos
     state_update["summary"] = extracted_data.summary or state.get("summary", "")
+    state_update["user_summary"] = extracted_data.user_summary or state.get("user_summary", "")
 
     return state_update
 
@@ -460,11 +469,12 @@ def ask_for_issue(state: ChatbotState):
     attempts = state.get("ask_issue_attempts", 0) + 1
 
     if attempts >= 3:
-        final_message = (
+        final_message = t(
             "Das Anliegen kann leider nicht weiter als ZIM-IT-Support bearbeitet werden, "
             "da keine eindeutige IT-/ZIM-bezogene Problemstellung erkannt wurde.\n\n"
             "Bei einem späteren IT-Problem rund um Dienste der Universität "
-            "(z. B. WLAN, VPN, E-Mail, Moodle oder Account-Probleme) hilft der ZIM-IT-Support gerne weiter."
+            "(z. B. WLAN, VPN, E-Mail, Moodle oder Account-Probleme) hilft der ZIM-IT-Support gerne weiter.",
+            state.get("language", "de"),
         )
         return {
             **visit("ask_issue_node"),
@@ -565,8 +575,9 @@ def ask_for_additional_info(state: ChatbotState):
         
         6. Gib alle Fragen als Bullet-Liste zurück.
         
-           Multiple-Choice-Fragen müssen exakt folgendes Format verwenden:
-           * [Frage]? (options: [Option A], [Option B], [Option C])
+           Multiple-Choice-Fragen müssen exakt folgendes Format verwenden, mit
+           EXAKT "|" (Pipe-Zeichen) als Trenner zwischen den Optionen:
+           * [Frage]? (options: [Option A] | [Option B] | [Option C])
         
         7. Verwende IMMER Multiple-Choice-Fragen, auch wenn es eine offene Frage ist.
             Bei offenen Fragen: gib die bestmöglichen Antwortoptionen an.
@@ -587,11 +598,11 @@ def ask_for_additional_info(state: ChatbotState):
         13. Vermeide Wenn-Dann-Abhängigkeiten zwischen separaten Fragen.
             Da alle Fragen dem Nutzer GLEICHZEITIG angezeigt werden, dürfen sie logisch nicht aufeinander aufbauen. 
             Fasse solche Abhängigkeiten stattdessen über inklusive Antwortoptionen in einer einzigen Frage zusammen 
-            (z.B. statt zwei Fragen zu stellen, frage lieber: "Welche Maßnahmen hast du bereits ergriffen?" mit den Optionen: [Maßnahme A], [Maßnahme B], [Bisher noch keine Maßnahmen ergriffen], [Andere]).
+            (z.B. statt zwei Fragen zu stellen, frage lieber: "Welche Maßnahmen hast du bereits ergriffen?" mit den Optionen: [Maßnahme A] | [Maßnahme B] | [Bisher noch keine Maßnahmen ergriffen] | [Andere]).
 
         14. Stelle KEINE Rückfragen zu Informationen, die bereits im BENUTZER-KONTEXT bekannt sind (z.B. Betriebssystem, Gerät, Rolle). Diese Daten sind bereits verifiziert und muessen nicht erneut erfragt werden. Nutze sie direkt fuer die Auswahl der passenden Lösung.
         
-        15. Vermeide die Wiedergabe einer Option mit einem Komma, also vermeide zum Beispiel: "options: Keine Verbindung, Verbindung, aber kein Internet, Verbindungsabbrüche, Keine IP‑Adresse, Andere"
+        15. Trenne Optionen AUSSCHLIESSLICH mit "|", niemals mit Komma - auch wenn eine Option selbst ein Komma enthaelt (z.B. "options: Keine Verbindung | Verbindung hergestellt, aber kein Internet | Verbindungsabbrüche | Keine IP‑Adresse | Andere").
         """
     ))
 
@@ -630,7 +641,11 @@ def ask_for_additional_info(state: ChatbotState):
     if known_parts:
         known_str = " Folgende Informationen liegen uns bereits vor: " + ", ".join(known_parts) + "."
 
-    llm_msg = f"Ich habe gerade ein Support-Ticket erstellt. Für eine optimale Bearbeitung bitte die folgenden Fragen beantworten:\n{follow_up_question}"
+    ticket_intro = t(
+        "Ich habe gerade ein Support-Ticket erstellt. Für eine optimale Bearbeitung bitte die folgenden Fragen beantworten:",
+        state.get("language", "de"),
+    )
+    llm_msg = f"{ticket_intro}\n{follow_up_question}"
     ticket_id = state.get("ticket_id")
     _append_agent_article_to_ticket(
         ticket_id,
@@ -667,7 +682,7 @@ def give_solutions(state: ChatbotState):
     if not issue:
         return {
              **visit("give_solutions_node"),
-             "messages": [AIMessage(content="Keine ausreichende Anfrage für die Suche.")], "solutions": []
+             "messages": [AIMessage(content=t("Keine ausreichende Anfrage für die Suche.", state.get("language", "de")))], "solutions": []
              }
 
     try:
@@ -683,7 +698,7 @@ def give_solutions(state: ChatbotState):
         rag_logger.exception(f"RAG retrieval failed for ticket {state.get('ticket_id')}")
         return {
              **visit("give_solutions_node"),
-             "messages": [AIMessage(content="Fehler bei der Suche in der Wissensdatenbank.")],
+             "messages": [AIMessage(content=t("Fehler bei der Suche in der Wissensdatenbank.", state.get("language", "de")))],
              "solutions": []}
 
     faq_matches = results.get("faq_matches", [])
@@ -694,9 +709,9 @@ def give_solutions(state: ChatbotState):
     solutions = []
     for m in faq_matches[:2]:
         solutions.append({"title": f"FAQ: {m['id']}", "description": _format_faq_match_for_prompt(m)})
-    for t in ticket_matches:
+    for ticket_match in ticket_matches:
         solutions.append(
-            {"title": f"Ähnliches Ticket ({t.get('category', 'unknown')})", "description": t.get("text", "")})
+            {"title": f"Ähnliches Ticket ({ticket_match.get('category', 'unknown')})", "description": ticket_match.get("text", "")})
     # Writing a truncated version of the solutions into the logs in the console
     # while the actual solutions are kept intact
     truncated_solutions_for_logs = [truncate_long_strings_in_dicts_for_logging(solution) for solution in solutions]
@@ -758,7 +773,7 @@ def give_solutions(state: ChatbotState):
     message_text = llm.invoke([system_prompt])
 
 
-    final_message = AIMessage(content=message_text.content + "\n\n Konnte das Problem damit gelöst werden?")
+    final_message = AIMessage(content=message_text.content + t("\n\n Konnte das Problem damit gelöst werden?", state.get("language", "de")))
 
     ticket_id = state.get("ticket_id")
     langgraph_logger.info(f"appending bot message to ticket {ticket_id}")
@@ -791,11 +806,12 @@ def finish_ai_created_ticket(state):
     # say instead that the off-topic issue cannot be processed by support
     attempts = state.get("ask_issue_attempts", 0)
     if attempts >= 3:
-        final_message = (
+        final_message = t(
             "Das Anliegen kann leider nicht weiter als ZIM-IT-Support bearbeitet werden, "
             "da keine eindeutige IT-/ZIM-bezogene Problemstellung erkannt wurde.\n\n"
             "Bei einem späteren IT-Problem rund um Dienste der Universität "
-            "(z. B. WLAN, VPN, E-Mail, Moodle oder Account-Probleme) hilft der ZIM-IT-Support gerne weiter."
+            "(z. B. WLAN, VPN, E-Mail, Moodle oder Account-Probleme) hilft der ZIM-IT-Support gerne weiter.",
+            state.get("language", "de"),
         )
         return {
             **visit("finish_ai_created_ticket_node"),
