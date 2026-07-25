@@ -23,4 +23,5 @@ flair==0.15.1
 huggingface-hub==0.36.2
 transformers==4.57.6
 click==8.3.3
+faster-whisper~=1.2.1
 

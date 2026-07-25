@@ -9,6 +9,7 @@ Files
 Main endpoints
 - `POST /chat` — main conversation endpoint. Accepts a JSON payload with the user message, optional history and user metadata. Returns the updated chatbot state, any found solutions, and whether additional data is required.
 - `POST /solution-feedback` — receives user feedback about a proposed solution. Depending on the feedback it may create or close a ticket in Zammad and return a confirmation message.
+- `POST /transcribe` — speech-to-text for the frontend's audio recorder. Accepts base64-encoded audio (`TranscribeRequest`: `audio_base64`, optional `language`), decodes it and runs it through `llm/stt.py`'s faster-whisper model, returns `{"text": ...}`. Invalid base64 is rejected with `400`.
 
 Responsibilities of the API layer
 - Validate incoming requests (Pydantic models)

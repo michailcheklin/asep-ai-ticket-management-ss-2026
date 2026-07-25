@@ -58,3 +58,10 @@ ZAMMAD_PUBLIC_URL: str = (
     os.getenv("ZAMMAD_PUBLIC_URL")
     or os.getenv("ZAMMAD_INTERNAL_URL", "")
 ).rstrip("/")
+
+# Speech-to-text (faster-whisper) settings for the /transcribe endpoint.
+# CPU-only by default: no GPU passthrough is configured anywhere in this
+# project's docker-compose setup.
+STT_MODEL_SIZE: str = os.getenv("STT_MODEL_SIZE", "small")
+STT_DEVICE: str = os.getenv("STT_DEVICE", "cpu")
+STT_COMPUTE_TYPE: str = os.getenv("STT_COMPUTE_TYPE", "int8")

@@ -1,4 +1,5 @@
 """HTTP client for the live AI backend."""
+import base64
 import os
 
 import requests
@@ -35,5 +36,15 @@ class LiveChatClient:
         return requests.post(
             f"{BACKEND_URL}/solution-feedback",
             json=payload,
+            timeout=AI_COMMUNICATION_TIMEOUT_IN_SECONDS,
+        ).json()
+
+    def transcribe_audio(self, audio_bytes: bytes, language: str = "") -> dict:
+        return requests.post(
+            f"{BACKEND_URL}/transcribe",
+            json={
+                "audio_base64": base64.b64encode(audio_bytes).decode("ascii"),
+                "language": language or None,
+            },
             timeout=AI_COMMUNICATION_TIMEOUT_IN_SECONDS,
         ).json()
