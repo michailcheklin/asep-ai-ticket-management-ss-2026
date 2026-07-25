@@ -12,10 +12,14 @@ import streamlit as st
 
 from clients.live_client import LiveChatClient
 from ui.i18n import get_language, t
+from ui.session import keep_session_token
 
 lang = get_language()
 
 st.set_page_config(page_title=t("FAQ hinzufügen", lang), page_icon="📝")
+
+# Keep the IdP session token alive when navigating here from the chat page.
+keep_session_token()
 
 client = LiveChatClient()
 

@@ -9,6 +9,7 @@ from streamlit.components.v1 import html
 
 from frontend.clients.base import ChatClient
 from frontend.ui.i18n import get_language, parse_language_from_header, t
+from frontend.ui.session import keep_session_token
 from frontend.ui.qa_navigation import (
     apply_question_answer,
     can_go_back,
@@ -104,7 +105,9 @@ def _fetch_and_store_metadata() -> None:
         return
 
     # No token means the user reached this page outside the Shibboleth login flow.
-    token = st.query_params.get("session_token")
+    # Fall back to the session-cached token so identity survives page navigation
+    # (Streamlit drops query params when switching pages; see keep_session_token).
+    token = st.query_params.get("session_token") or st.session_state.get("session_token")
     if not token:
         return
 
@@ -787,6 +790,7 @@ def render_question_widget(client: ChatClient) -> None:
 def run_app(client: ChatClient, *, mock_mode: bool = False) -> None:
     st.set_page_config(page_title="Support-Annahme über ZIM Helper", layout="centered")
 
+    keep_session_token()
     _fetch_and_store_metadata()
 
     metadata = st.session_state.get("user_metadata")
