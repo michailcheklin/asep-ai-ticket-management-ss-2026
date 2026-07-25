@@ -33,6 +33,7 @@ class ChatbotState(TypedDict):
     additional_info_attempts: int
     ticket_id: int
     summary: str
+    user_summary: str
 
     #Priority of the ticket:0 =non-ungent/normal, 1 = urgent/important
     priority:int
@@ -54,3 +55,4 @@ class ChatbotState(TypedDict):
     faculty: str
     device: str
     os_name: str
+    language: str

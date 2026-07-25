@@ -14,6 +14,7 @@ from ..api.zammad import (
 )
 
 from ..llm.llm import llm
+from ..llm.strings import t
 from .BackendLoggingService import BackendLogger
 
 ticketservice_logger = BackendLogger("Ticket Service")
@@ -128,7 +129,7 @@ class TicketService:
 
         except Exception as e:
             ticketservice_logger.error(f"Error happened while creating support ticket:\nError: {e}")
-            return self._error_message()
+            return self._error_message(state)
         
     def append_support_ticket_context(self, state, ticket_id, internal=True):
         """
@@ -202,9 +203,10 @@ class TicketService:
                 mark_ticket_as_closed(ticket_id=ticket_id)
             return {
                 "messages": [
-                    AIMessage(content=(
+                    AIMessage(content=t(
                         "Super, das freut mich! Bei weiteren Fragen stehe ich jederzeit zur Verfügung. "
-                        "Einen schönen Tag noch!"
+                        "Einen schönen Tag noch!",
+                        state.get("language", "de"),
                     ))
                 ],
                 "is_complete": True
@@ -214,7 +216,7 @@ class TicketService:
             ticketservice_logger.error(f"AI solved ticket could not be created\nError: {e}")
             return {
                 "messages": [
-                    AIMessage(content="Fehler beim Abschließen des Tickets.")
+                    AIMessage(content=t("Fehler beim Abschließen des Tickets.", state.get("language", "de")))
                 ],
                 "is_complete": True
             }
@@ -438,24 +440,31 @@ class TicketService:
         :param state: Current chatbot state.
         :return: State update containing the confirmation message.
         """
+        lang = state.get("language", "de")
         first_name = state.get("display_name", "").split()[0] if state.get("display_name") else ""
-        greeting = f"Perfekt, {first_name}!" if first_name else "Perfekt!"
+        greeting = t("Perfekt, {name}!", lang).format(name=first_name) if first_name else t("Perfekt!", lang)
         return {
             "messages": [
-                AIMessage(content=(
-                    f"{greeting} Perfekt! Ihr Ticket wurde erfolgreich erstellt.\n\n"
+                AIMessage(content=t(
+                    "{greeting} Perfekt! Ihr Ticket wurde erfolgreich erstellt.\n\n"
                     "Ein Support-Mitarbeiter meldet sich so bald wie möglich.\n\n"
                     "**Ticketübersicht**\n\n"
-                    f"**Betreff:** {title}\n\n"
-                    f"**E-Mail:** {state['user_email']}\n\n"
-                    f"**Problembeschreibung:**\n"
-                    f"{state['issue_description']}"
+                    "**Betreff:** {title}\n\n"
+                    "**E-Mail:** {email}\n\n"
+                    "**Problembeschreibung:**\n"
+                    "{issue}",
+                    lang,
+                ).format(
+                    greeting=greeting,
+                    title=title,
+                    email=state["user_email"],
+                    issue=state["issue_description"],
                 ))
             ],
             "is_complete": True
         }
 
-    def _error_message(self):
+    def _error_message(self, state):
         """
         Creates a generic chatbot response for ticket creation failures.
 
@@ -463,8 +472,9 @@ class TicketService:
         """
         return {
             "messages": [
-                AIMessage(content=(
-                    "Ticket konnte nicht erstellt werden. Bitte später erneut versuchen."
+                AIMessage(content=t(
+                    "Ticket konnte nicht erstellt werden. Bitte später erneut versuchen.",
+                    state.get("language", "de"),
                 ))
             ],
             "is_complete": True
