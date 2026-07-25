@@ -63,6 +63,9 @@ _EN = {
         "This conversation is complete — please use 'Restart' to start a new request.",
     "Bitte E-Mail-Adresse und Matrikelnummer eingeben": "Please enter your email address and student ID",
     "Anliegen beschreiben...": "Describe your issue...",
+    "Senden": "Send",
+    "Aufnehmen": "Record",
+    "Wird transkribiert...": "Transcribing...",
 }
 
 
