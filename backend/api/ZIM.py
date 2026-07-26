@@ -13,11 +13,13 @@ from ..api.article_transmission_webhook import router as article_transmission_ro
 from ..api.zammad import get_ticket_tags, log_ticket_close_event
 from ..graph.models.ChatRequest import ChatRequest
 from ..graph.models.TranscribeRequest import TranscribeRequest
+from ..graph.models.FaqSubmission import FaqSubmission
 from ..graph.nodes import _resolve_ticket_category
 from ..graph.orchestrator import __execute_langchain_workflow, graph
 from ..graph.state import ChatbotState
 from ..llm.stt import transcribe_audio
 from ..rag import recent_incidents
+from ..rag.faq_submission import list_faq_contexts, submit_faq
 from ..rag.rag_store_tickets import store_ticket_state_to_rag
 from ..services.BackendLoggingService import BackendLogger
 from ..services.TicketService import TicketService
@@ -362,6 +364,39 @@ async def transcribe(request: TranscribeRequest):
     text = transcribe_audio(audio_bytes, request.language)
     return {"text": text}
 
+
+
+@app.get("/faq/contexts")
+def faq_contexts():
+    """Return the distinct FAQ context/category values for the submission dropdown."""
+    try:
+        return {"contexts": list_faq_contexts()}
+    except Exception as e:
+        zim_logger.error(f"Listing FAQ contexts failed: {e}")
+        return {"contexts": []}
+
+
+@app.post("/faq")
+async def add_faq(request: FaqSubmission):
+    """
+    Submit a new FAQ entry to the faq_db knowledge base.
+
+    Runs a vector-similarity redundancy check against existing FAQ entries.
+    If the proposal is already covered, returns {"status": "redundant",
+    "matches": [...]} so the user can reconsider; re-submitting with
+    force=true skips the check ("Dennoch anlegen"). A non-redundant proposal
+    is language-polished by an LLM and stored, returning
+    {"status": "created", "id": ...}.
+    """
+    try:
+        return submit_faq(
+            request.model_dump(exclude={"force", "confirmed"}),
+            force=request.force,
+            confirmed=request.confirmed,
+        )
+    except Exception as e:
+        zim_logger.error(f"FAQ submission failed: {e}")
+        return {"status": "error", "detail": str(e)}
 
 
 @app.post("/webhook/ticket-closed")
