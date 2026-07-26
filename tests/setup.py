@@ -1,7 +1,7 @@
 import os
+
 from deepeval.models import GPTModel
 from dotenv import load_dotenv
-
 
 load_dotenv()
 SAIA_API_KEY = os.environ.get("SAIA_API_KEY", "")
@@ -22,5 +22,6 @@ def make_model(model_id: str) -> GPTModel:
     )
 
 
-SAIA_JUDGE_MODEL = make_model("gemma-4-31b-it")
+SAIA_JUDGE_MODEL = make_model("qwen3.6-35b-a3b")
+
 

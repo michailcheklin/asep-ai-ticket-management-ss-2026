@@ -1,7 +1,7 @@
 import json
 import asyncio
 from unittest.mock import patch
-
+ 
 import openai
 from deepeval.metrics import BaseConversationalMetric, BaseMetric
 from langchain_core.outputs import ChatResult
@@ -15,17 +15,17 @@ from backend.graph.models.ExtractedTicketData import ExtractedTicketData
 from tests.setup import SAIA_API_KEY, SAIA_BASE_URL
 from langsmith import Client as LangSmithClient
 from dotenv import load_dotenv
-
+ 
 load_dotenv()
-
+ 
 import re
-
-
+ 
+ 
 class ThinkStripChatOpenAI(ChatOpenAI):
     """
     Wrapper for DeepSeek: removes <think>...</think> tags before the JSON parsing.
     """
-
+ 
     def invoke(self, input, config=None, **kwargs):
         """
         Patch of the invoke() method of the ChatOpenAI class
@@ -40,8 +40,8 @@ class ThinkStripChatOpenAI(ChatOpenAI):
                 r'<think>.*?</think>', '', result.content, flags=re.DOTALL
             ).strip()
         return result
-
-
+ 
+ 
 class LlamaPatchForChatOpenAI(ChatOpenAI):
     def _create_chat_result(
             self,
@@ -64,10 +64,10 @@ class LlamaPatchForChatOpenAI(ChatOpenAI):
                     if hasattr(tool_call, "function") and hasattr(tool_call.function, "arguments"):
                         if not isinstance(tool_call.function.arguments, str):
                             tool_call.function.arguments = json.dumps(tool_call.function.arguments)
-
+ 
         return super()._create_chat_result(response, generation_info)
-
-
+ 
+ 
 class DeepEvalTestTemplate:
     """
     Template for any DeepEval tests covering any chat interaction
@@ -96,7 +96,7 @@ class DeepEvalTestTemplate:
         self.MODEL_CONFIGS = configs_of_models_to_test
         self.BENCHMARK_FILE_PATH = benchmark_file_path
         self.METRICS = metrics
-
+ 
     def run_benchmark_for_model(self, model_name: str, model_id: str):
         """
         Runs a benchmark for one LLM
@@ -106,12 +106,12 @@ class DeepEvalTestTemplate:
         print(f"\n{'=' * 60}")
         print(f"Teste Modell: {model_name}")
         print(f"{'=' * 60}\n")
-
+ 
         # Für DeepSeek: ThinkStripChatOpenAI, für alle anderen: normales ChatOpenAI
         llm_class = ThinkStripChatOpenAI if "deepseek" in model_id.lower() \
             else LlamaPatchForChatOpenAI if "llama" in model_id.lower() \
             else ChatOpenAI
-
+ 
         new_llm = llm_class(
             model=model_id,
             api_key=SecretStr(SAIA_API_KEY),
@@ -120,8 +120,12 @@ class DeepEvalTestTemplate:
             timeout=120,
             max_retries=1,
         )
-        new_structured_llm = new_llm.with_structured_output(ExtractedTicketData, method="json_mode")
-
+ 
+        new_structured_llm = new_llm.with_structured_output(
+            ExtractedTicketData,
+            method="json_mode",
+        )
+ 
         async def build_test_case(messages):
             """
             Builds a Deepeval ConversationalTestCase from the request objects of our chatbot
@@ -131,7 +135,7 @@ class DeepEvalTestTemplate:
             turns = []
             next_req = {
                 "user_message": "", "history": [],
-                "user_email": "a@example.com", "matrikelnummer": "1234567",
+                "user_email": "a@example.com", "student_id": "1234567",
                 "issue_description": "", "additional_info": [],
                 "priority": 0, "helpful": False, "solutions": [],
                 "bot_message": "", "additional_info_attempts": 0, "ask_issue_attempts": 0,
@@ -142,7 +146,7 @@ class DeepEvalTestTemplate:
                 turns.append(Turn(role="user", content=msg))
                 next_req["user_message"] = msg
                 response = await chat_endpoint(ChatRequest(**next_req))
-
+ 
                 # Extracts the actual text the bot returned from the state object
                 # to be used in a DeepEval Turn.
                 turns.append(Turn(role="assistant", content=response["bot_response"]))
@@ -154,21 +158,34 @@ class DeepEvalTestTemplate:
                     "additional_info_attempts": response.get("additional_info_attempts", 0),
                     "ask_issue_attempts": response.get("ask_issue_attempts", 0),
                 })
-
+ 
                 # The generation stops if the bot conversation was determined as finished
                 if response.get("is_complete") or response.get("solutions"):
                     break
             return ConversationalTestCase(turns=turns)
-
+ 
         with patch("backend.graph.nodes.llm", new_llm), \
-                patch("backend.graph.nodes.structured_llm", new_structured_llm):
-
+                patch(
+                    "backend.graph.nodes.structured_llm",
+                    new_structured_llm,
+                ):
+ 
             async def run_all():
                 """
-                Prepares the event loop for the DeepEval evaluation
+                Builds each scenario's conversation sequentially. Each scenario is
+                guarded individually so that one schema violation by the tested model
+                does not abort the whole model run.
                 """
-                return await asyncio.gather(*[build_test_case(msgs) for msgs in self.SCENARIOS])
-
+                test_cases = []
+                for i, messages in enumerate(self.SCENARIOS):
+                    try:
+                        test_case = await build_test_case(messages)
+                        test_cases.append(test_case)
+                    except Exception as e:
+                        print(f"⚠ Szenario {i} (Gesprächsaufbau) für {model_name} fehlgeschlagen: {e}")
+                        test_cases.append(None)
+                return test_cases
+ 
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             try:
@@ -176,25 +193,36 @@ class DeepEvalTestTemplate:
             finally:
                 loop.close()
                 asyncio.set_event_loop(None)
-
-            # Here the test cases are sent to DeepEval for evaluation
+ 
+            # Here the test cases are sent to DeepEval for evaluation.
+            # Scenarios whose conversation could not be built are skipped
+            # and recorded as ERROR entries.
             all_scenario_results = []
-            for tc in test_cases:
-                r = evaluate(
-                    test_cases=[tc],
-                    metrics=self.METRICS,
-                )
-                all_scenario_results.append(r)
-
+            for i, tc in enumerate(test_cases):
+                if tc is None:
+                    all_scenario_results.append(
+                        "ERROR: conversation build failed (model violated the structured output schema)"
+                    )
+                    continue
+                try:
+                    r = evaluate(
+                        test_cases=[tc],
+                        metrics=self.METRICS,
+                    )
+                    all_scenario_results.append(r)
+                except Exception as e:
+                    print(f"⚠ Szenario {i} für {model_name} fehlgeschlagen: {e}")
+                    all_scenario_results.append(f"ERROR: {e}")
+ 
             return all_scenario_results
-
+ 
     def test_benchmark_all_models(self):
         """
         Here the method run_benchmark_for_model() is called for every LLM specified in
         the MODEL_CONFIGS dict and writes the results into a JSON file
         """
         all_results = {}
-
+ 
         for model_name, model_id in self.MODEL_CONFIGS.items():
             try:
                 results = self.run_benchmark_for_model(model_name, model_id)
@@ -202,15 +230,15 @@ class DeepEvalTestTemplate:
             except Exception as e:
                 print(f"\n⚠ {model_name} konnte nicht evaluiert werden: {e}")
                 all_results[model_name] = f"ERROR: {str(e)}"
-
+ 
         with open(self.BENCHMARK_FILE_PATH, "w") as f:
             json.dump(all_results, f, indent=2, ensure_ascii=False)
-
+ 
         print("\n" + "=" * 60)
         print("BENCHMARK ABGESCHLOSSEN")
         print("Ergebnisse gespeichert in tests/benchmark_results.json")
         print("=" * 60)
-
+ 
         # LangSmith: Ergebnisse loggen
         try:
             ls_client = LangSmithClient()

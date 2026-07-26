@@ -16,14 +16,14 @@ import sys
 from pathlib import Path
 
 from dotenv import load_dotenv
+from langchain_core.messages import SystemMessage
 
 load_dotenv()
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT))
 
-from langchain_core.messages import SystemMessage
-from backend.llm.llm import llm
+from backend.llm.llm import llm  # noqa: E402 - needs REPO_ROOT on sys.path first
 
 FAQ_SOURCE_PATH = Path(__file__).resolve().parents[1] / "rag" / "faq_extracted_with_crawled_content.json"
 

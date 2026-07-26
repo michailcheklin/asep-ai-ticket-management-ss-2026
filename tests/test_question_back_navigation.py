@@ -91,8 +91,8 @@ class QuestionBackNavigationTests(unittest.TestCase):
 
     def test_final_message_uses_corrected_answers(self):
         questions = parse_questions_from_message(
-            "* Welches OS? (options: Windows, macOS, Andere)\n"
-            "* Wo bist du? (options: Poolraum, Bibliothek, Andere)"
+            "* Welches OS? (options: Windows | macOS | Andere)\n"
+            "* Wo bist du? (options: Poolraum | Bibliothek | Andere)"
         )
         answers = ["Windows", "Poolraum"]
         _, answers, _ = apply_question_answer(0, answers, "macOS", is_last=False)

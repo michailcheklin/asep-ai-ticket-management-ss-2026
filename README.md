@@ -30,6 +30,10 @@ docker compose -f docker-compose.yml -f zammad/docker-compose.yml -f zammad/scen
 Older Docker Compose version:
 docker-compose -f docker-compose.yml -f zammad/docker-compose.yml -f zammad/scenarios/add-ollama.yml up -d
   ```
+This pulls and runs the local LLM fallback model (`glm-4.7` by default) inside the `ollama` container. To pull a different model, override `OLLAMA_PULL_MODEL`:
+```bash
+OLLAMA_PULL_MODEL=glm-4.7 docker compose -f docker-compose.yml -f zammad/docker-compose.yml -f zammad/scenarios/add-ollama.yml up -d
+```
 
 ## Getting started
 
@@ -82,19 +86,21 @@ To create a ticket, go to `localhost:8501`. After typing your mail address and y
 By typing in your credentials, our backend automatically creates a user account if you do not have one yet.  
 After creating a ticket, you will get a mail from our Mailpit server, which you can observe on `localhost:8025`.
 
-## Choose LLM Model (qwen3:8b (Ollama) vs. openai-gpt-oss-120b (SAIA))
-The backend supports seamless switching between our local model and the SAIA model provided by the Academic Cloud. This is controlled via your local `.env` file (use the variables in the `example.env` as a reference).
+## Choose LLM Model / Fallback Chain
+The backend supports seamless switching between our local model and the powerful SAIA model provided by the Academic Cloud. This is controlled via your local `.env` file (use the variables in the `example.env` as a reference).
 
-* **`USE_SAIA_API=true`**: Activates `openai-gpt-oss-120b` via the SAIA API. (Requirement: A valid `SAIA_API_KEY` must be set in your `.env` file).
-* **`USE_SAIA_API=false`** (or unset): Uses the local Ollama model (`qwen3:8b`) as a fallback.
+* **`USE_SAIA_API=true`**: Activates a 3-tier fallback chain via the SAIA API and, ultimately, a local model, so the chatbot keeps working even if SAIA has an issue. (Requirement: A valid `SAIA_API_KEY` must be set in your `.env` file).
+  1. **Primary**: SAIA `openai-gpt-oss-120b`.
+  2. **If the primary model is retired/unsupported**: SAIA `glm-4.7`.
+  3. **If SAIA is unreachable entirely**: local Ollama `glm-4.7` (see `OLLAMA_BASE_URL` below). Note this is a large model — check [ollama.com/library/glm-4.7](https://ollama.com/library/glm-4.7) for current size/quantization/hardware requirements before pulling it.
+* **`USE_SAIA_API=false`** (or unset): Uses the local Ollama `glm-4.7` model only, no SAIA calls at all.
+
+`OLLAMA_BASE_URL` (see `example.env`) controls where the backend reaches Ollama: defaults to `http://localhost:11434`, or set it to `http://ollama:11434` when running with the `add-ollama.yml` compose override below (in-stack service hostname).
+
 >  **IMPORTANT  RULE REGARDING THE API LIMIT!**
 > We have a strict limit of **3,000 requests per month** for the SAIA API. To ensure we don't exhaust this quota in the middle of a sprint, please adhere to the following rule:
 > * **Local Development & Debugging:** Always use Ollama (`USE_SAIA_API=false`) to verify that the code runs, pipelines are working, or the UI is loading.
 > * **Quality Testing:** **Only** enable the SAIA API (`USE_SAIA_API=true`) when you specifically need to evaluate the quality of the AI responses or during a final feature review.
-
-> **Planned direction:** the agreed target setup for whoever continues this project is the reverse of today's default — run `openai-gpt-oss-120b` locally (via Ollama) as the primary model, with a hosted API (e.g. Claude) only as a fallback when the local model is unavailable. This isn't implemented yet (see [docs/FUTURE_WORK.md](docs/FUTURE_WORK.md), "Local model → API fallback"); see [docs/LLM_HARDWARE_REQUIREMENTS.md](docs/LLM_HARDWARE_REQUIREMENTS.md) for the hardware this requires.
-
-See the [docs/](docs) folder for further planning material: [FUTURE_WORK.md](docs/FUTURE_WORK.md) lists open work for future maintainers, and [LLM_HARDWARE_REQUIREMENTS.md](docs/LLM_HARDWARE_REQUIREMENTS.md) documents the LLM/hardware/model specifications for this project.
 
 
 ## Troubleshooting

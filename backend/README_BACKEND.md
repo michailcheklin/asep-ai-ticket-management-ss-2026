@@ -65,6 +65,7 @@ See `api/README.md` for full endpoint descriptions and example requests/response
 
 - `POST /chat` – primary conversation endpoint. Receives the user message and conversation state, executes the LangGraph workflow and returns an updated state and any suggested solutions.
 - `POST /solution-feedback` – called when the user indicates whether a suggested solution solved the problem. Creates/updates tickets in Zammad depending on the feedback.
+- `POST /transcribe` – speech-to-text for the frontend's audio recorder (faster-whisper). See `api/README.md` and `llm/README.md`.
 
 ### Example (short)
 

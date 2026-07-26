@@ -76,5 +76,8 @@ class BackendLogger:
         """
         self.logger.critical(message)
 
-    
-    
+    def exception(self, message: str):
+        """
+        Writes an error log with exception traceback (call from an except block).
+        """
+        self.logger.exception(message)

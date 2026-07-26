@@ -14,7 +14,7 @@ class TicketConfirmationBodyTests(unittest.TestCase):
         """
         self.service = TicketService()
         self.base_state = {
-            "matrikelnummer": "1234567",
+            "student_id": "1234567",
             "user_email": "student@uni-due.de",
             "priority": 0,
             "category": "Incident",

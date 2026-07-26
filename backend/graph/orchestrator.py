@@ -67,7 +67,7 @@ def __execute_langchain_workflow(state: ChatbotState):
         "bot_response": bot_response,
         "ticket_id": updated_state.get("ticket_id"),
         "user_email": updated_state.get("user_email", ""),
-        "matrikelnummer": updated_state.get("matrikelnummer", ""),
+        "student_id": updated_state.get("student_id", ""),
         "issue_description": updated_state.get("issue_description", ""),
         "additional_info": updated_state.get("additional_info", []),
         "needs_additional_info": updated_state.get("needs_additional_info", False),
@@ -78,6 +78,7 @@ def __execute_langchain_workflow(state: ChatbotState):
         "additional_info_attempts": updated_state.get("additional_info_attempts", 0),
         "ask_issue_attempts": updated_state.get("ask_issue_attempts", 0),
         "summary": updated_state.get("summary", ""),
+        "user_summary": updated_state.get("user_summary", ""),
         "intent": updated_state.get("intent", ""),
         "tutorial_attempts": updated_state.get("tutorial_attempts", 0),
         "display_name": updated_state.get("display_name", ""),
@@ -85,6 +86,7 @@ def __execute_langchain_workflow(state: ChatbotState):
         "faculty": updated_state.get("faculty", ""),
         "device": updated_state.get("device", ""),
         "os_name": updated_state.get("os_name", ""),
+        "language": updated_state.get("language", ""),
         "graph_runs": updated_state.get("graph_runs", 0),
     }
 

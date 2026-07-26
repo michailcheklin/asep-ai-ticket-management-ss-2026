@@ -1,4 +1,5 @@
 ﻿import json
+
 import pytest
 from openai import InternalServerError, RateLimitError
 
@@ -14,7 +15,7 @@ testcases = [
 
         ],  # Format: [{"role": "user", "content": "Hallo"}, {"role": "bot", "content": "Hi"}]
         "user_email":"a@example.com",
-        "matrikelnummer": "123456789",
+        "student_id": "123456789",
         "issue_description": "",
         "additional_info": [],
         "priority": 0

@@ -18,13 +18,14 @@ import time
 
 import chromadb
 
-# Reuse the same (already loaded) symmetric ticket embedder,
-# so that the model isn't loaded into memory a second time.
-from .retrieve_info import ticket_embedder
 from ..config import (
     INCIDENT_RECENCY_WINDOW_HOURS,
     INCIDENT_SIMILARITY_THRESHOLD,
 )
+
+# Reuse the same (already loaded) symmetric ticket embedder,
+# so that the model isn't loaded into memory a second time.
+from .retrieve_info import ticket_embedder
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # Path can be overridden (e.g., for isolated tests) via an environment variable.

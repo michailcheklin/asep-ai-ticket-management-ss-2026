@@ -1,5 +1,6 @@
-from pydantic import BaseModel, Field, model_validator
-from typing import Optional, List
+from typing import Optional
+
+from pydantic import BaseModel, Field
 
 
 class AdditionalInfoDecision(BaseModel):
@@ -20,8 +21,9 @@ class AdditionalInfoDecision(BaseModel):
         description=(
             "Wenn needs_additional_info True ist: Eine oder mehrere kurze, höfliche Fragen an den User, "
             "formatiert als Bullet-Liste. Multiple-Choice-Fragen müssen als Zeilen wie "
-            " '* [Frage]? (options: [A], [B], [C])' "
-            "geliefert werden. Offene Fragen haben keine `options:`-Klammer. Wenn needs_additional_info False ist, "
-            "lasse dieses Feld leer (null)."
+            " '* [Frage]? (options: [A] | [B] | [C])' "
+            "geliefert werden, mit \"|\" als Trenner zwischen den Optionen (niemals Komma, auch wenn eine "
+            "Option selbst ein Komma enthaelt). Offene Fragen haben keine `options:`-Klammer. Wenn "
+            "needs_additional_info False ist, lasse dieses Feld leer (null)."
         )
     )

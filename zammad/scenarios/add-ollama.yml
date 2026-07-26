@@ -4,13 +4,18 @@
 #
 
 services:
+  # Default model is glm-4.7 (matches the local-fallback tier of the SAIA
+  # LLM fallback chain, see backend/llm/llm.py). It is a large MoE model;
+  # if the pull fails with "model not found", pin the ollama image below to
+  # a newer tag than :latest and check ollama.com/library/glm-4.7 for
+  # current hardware/quantization requirements.
   ollama-init:
     image: alpine/curl
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
-        echo "Pulling model ${OLLAMA_PULL_MODEL:-llama3.2}…"
-        curl --location 'http://ollama:11434/api/pull' --data '{"name": "${OLLAMA_PULL_MODEL:-llama3.2}"}'
+        echo "Pulling model ${OLLAMA_PULL_MODEL:-glm-4.7}…"
+        curl --location 'http://ollama:11434/api/pull' --data '{"name": "${OLLAMA_PULL_MODEL:-glm-4.7}"}'
     restart: "no"
     depends_on:
       - ollama
