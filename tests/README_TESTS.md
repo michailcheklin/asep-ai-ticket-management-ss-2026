@@ -84,6 +84,7 @@ If this test fails, the chatbot evaluation tests will not be run
 **What do these tests do:**
 These scripts unit-test individual LangGraph nodes from `backend/graph/nodes.py` in isolation, with all LLM, RAG-retrieval and Zammad calls mocked:
 * `test_intent_classification.py` — `classify_intent`
+* `test_intent_classification_live.py` — `classify_intent` against the real LLM (live counterpart to `test_intent_classification.py`)
 * `test_ticket_category.py` — `classify_ticket`, `classify_ticket_category`, `extract_information`, `finish_ticket`, `_resolve_ticket_category`
 * `test_ticket_category_live.py` — `classify_ticket_category` against the real LLM (live counterpart to `test_ticket_category.py`)
 * `test_ask_for_additional_info.py` — `ask_for_additional_info`
@@ -103,9 +104,17 @@ Note: `ask_for_additional_info` builds its structured-output LLM inline (`llm.wi
   * `test_returns_valid_intent_from_llm` — a mocked `"tutorial"` LLM decision results in `result["intent"] == "tutorial"`.
   * `test_falls_back_to_unclear_on_unknown_intent` — a mocked out-of-schema intent (`"anleitung"`) falls back to `result["intent"] == "unclear"`.
   * `test_prompt_includes_previous_intent_and_conversation` — the prompt sent to the LLM contains both the previous intent (`"tutorial"`) and the latest user message.
+  * `test_prompt_requires_solution_intent_for_tutorial` — regression for the "tutorial" vs. "problem"/"unclear" prompt fix: the prompt sent to the LLM for a bare problem statement (no recognizable solution request) contains the `"KEIN ausreichendes Signal"` instruction that steers the LLM towards `"unclear"` instead of `"tutorial"`.
   * `test_email_is_extracted_when_missing` — an email found in the user message is written to `result["user_email"]`.
   * `test_existing_email_is_not_overwritten` — if `user_email` is already set, the key is absent from the returned state update (i.e. not overwritten).
   * `test_expected_intents_are_defined` — `INTENTS == ["tutorial", "problem", "unclear", "solved"]`.
+* `test_intent_classification_live.py` (only runs with `RUN_LLM_INTENT_TESTS=1`)
+  * `test_bare_problem_statement_is_unclear` — `"Ich habe ein Problem mit dem WLAN."` (problem stated, no solution request, no ticket request) classifies as `"unclear"`.
+  * `test_problem_statement_with_solution_request_is_tutorial` — the same problem statement plus `"Was kann ich tun?"` classifies as `"tutorial"`.
+  * `test_how_to_question_is_tutorial` — `"Wie richte ich eduroam ein?"` classifies as `"tutorial"`.
+  * `test_explicit_ticket_request_is_problem` — `"Erstellt mir bitte ein Ticket."` classifies as `"problem"`.
+  * `test_explicit_human_support_request_is_problem` — `"Ich will mit einem Mitarbeiter sprechen."` classifies as `"problem"`.
+  * `test_pure_infrastructure_outage_is_problem` — `"WLAN in Raum R14 ist komplett ausgefallen."` classifies as `"problem"`.
 * `test_ticket_category.py`
   * `test_returns_valid_category_from_llm` — a mocked `"Incident"` decision results in `classify_ticket_category(...) == "Incident"`.
   * `test_falls_back_when_llm_returns_unknown_category` — a mocked out-of-schema category (`"Netzwerk"`) falls back to `"Service Request"`.
@@ -138,13 +147,15 @@ Note: `ask_for_additional_info` builds its structured-output LLM inline (`llm.wi
   * `test_continues_when_ticket_append_fails` — the Zammad append call raises an exception → the function does not propagate it and still returns the `messages`/`solutions` state update.
 
 **When is the test passed:**
-All assertions in every test case must pass. `test_ticket_category_live.py`'s classes are skipped unless `RUN_LLM_CATEGORY_TESTS=1` is set — without it, the job still counts as passed, just with those cases reported as skipped.
+All assertions in every test case must pass. `test_ticket_category_live.py`'s and `test_intent_classification_live.py`'s classes are skipped unless `RUN_LLM_CATEGORY_TESTS=1` resp. `RUN_LLM_INTENT_TESTS=1` is set — without it, the job still counts as passed, just with those cases reported as skipped.
 
 **Additional notes:**
 * The four mocked graph-node files (`test_intent_classification.py`, `test_ticket_category.py`, `test_ask_for_additional_info.py`, `test_give_solutions.py`) plus the frontend Q&A back-navigation suite (`test_question_back_navigation.py`) run together in one CI job (`run_test_graph_nodes`, stage `before_deepeval`) via a single `pytest` invocation on every push — the node tests share the same mocking approach and never touch a real LLM; the back-navigation tests are pure helpers with no Streamlit runtime.
 * `test_ticket_category_live.py` is **not** part of that job — it needs `RUN_LLM_CATEGORY_TESTS=1` to actually execute anything (without it, every test class is skipped), and it burns real SAIA quota (56 regression + 5+ holdout + 3 spot-check calls). It instead has its own CI job, `run_test_ticket_category_live` (stage `deepeval`), gated the same way as `run_deepeval_tests`: manual and `allow_failure: true` on merge-request pipelines, so it only runs when someone explicitly triggers it (e.g. after changing the classification prompt/logic), not on every push.
+* `test_intent_classification_live.py` follows the same pattern: it needs `RUN_LLM_INTENT_TESTS=1` to run (otherwise skipped), burns real SAIA quota (6 spot-check calls covering the tutorial/problem/unclear acceptance criteria), and has its own CI job `run_test_intent_classification_live` (stage `before_deepeval`), manual and `allow_failure: true` on merge-request pipelines — trigger it after changing `classify_intent`'s prompt/logic, not on every push.
 * `test_ticket_category.py`'s `TicketCategoryConstantsTests` and `test_ticket_category_live.py`'s regression/holdout suites load fixtures from `backend/rag/old_tickets.json` and `backend/rag/category_holdout_tests.json` via the shared helper module `category_test_support.py`. Regression/holdout accuracy thresholds are configurable via `CATEGORY_REGRESSION_MIN_ACCURACY` (default 0.90), `CATEGORY_HOLDOUT_MIN_ACCURACY` (default 0.80), and an optional `CATEGORY_REGRESSION_LIMIT` cap.
 * To run the live LLM suite locally: `RUN_LLM_CATEGORY_TESTS=1 pytest tests/test_ticket_category_live.py -v -s` (uses real SAIA/Ollama quota — don't run casually, see the SAIA request cap in the main `CLAUDE.md`).
+* To run the live intent classification suite locally: `RUN_LLM_INTENT_TESTS=1 PYTHONPATH=. pytest tests/test_intent_classification_live.py -v -s` (uses real SAIA/Ollama quota — don't run casually, see the SAIA request cap in the main `CLAUDE.md`).
 
 ### RAG retrieval
 **What does this test do:**
