@@ -12,6 +12,12 @@ smtp_host = ENV.fetch("ZAMMAD_SMTP_HOST")
 smtp_port = ENV.fetch("ZAMMAD_SMTP_PORT")
 environment = ENV.fetch("APP_ENV", "local")
 backend_close_webhook_url = ENV.fetch("BACKEND_CLOSE_WEBHOOK_URL", "http://backend_app:8000/zammad/ticket-closed")
+backend_article_webhook_url = ENV.fetch(
+  "BACKEND_ARTICLE_WEBHOOK_URL",
+  "http://backend_app:8000/webhook/article-created"
+)
+article_webhook_secret = ENV.fetch("EMAIL_TICKET_TRANSMISSION_WEBHOOK_SECRET", "")
+article_transmission_enabled = ENV.fetch("EMAIL_TICKET_TRANSMISSION_ENABLED", "false")
 
 # SMTP-Setup
 smtp_options =
@@ -177,6 +183,51 @@ reopen_trigger.assign_attributes(
 reopen_trigger.created_by_id ||= 1
 reopen_trigger.save!
 
+# Article-created webhook for backend email ticket transmission (Issue #195).
+# The backend re-validates visibility/sender and enforces duplicate protection;
+# Zammad must not add tags or change ticket fields for this flow.
+# Zammad 7.0.x reads Basic Auth from basic_auth_username/basic_auth_password
+# (TriggerWebhookJob), not from preferences["auth"].
+article_webhook = Webhook.find_or_initialize_by(name: "backend article transmission")
+prefs = article_webhook.preferences.is_a?(Hash) ? article_webhook.preferences.dup : {}
+prefs.delete("auth")
+prefs.delete(:auth)
+article_webhook.assign_attributes(
+  endpoint: backend_article_webhook_url,
+  http_method: "post",
+  active: ActiveModel::Type::Boolean.new.cast(article_transmission_enabled),
+  ssl_verify: false,
+  basic_auth_username: article_webhook_secret.present? ? "webhook" : nil,
+  basic_auth_password: article_webhook_secret.presence,
+  preferences: prefs,
+  updated_by_id: 1
+)
+article_webhook.created_by_id ||= 1
+article_webhook.save!
+
+article_trigger = Trigger.find_or_initialize_by(name: "backend article transmission webhook")
+article_trigger.assign_attributes(
+  condition: {
+    "article.action" => {
+      "operator" => "is",
+      "value" => "create"
+    }
+  },
+  perform: {
+    "notification.webhook" => {
+      "webhook_id" => article_webhook.id
+    }
+  },
+  disable_notification: true,
+  activator: "action",
+  execution_condition_mode: "selective",
+  active: ActiveModel::Type::Boolean.new.cast(article_transmission_enabled),
+  updated_by_id: 1
+)
+article_trigger.created_by_id ||= 1
+article_trigger.save!
+
 puts "Configured #{support_name} <#{support_email}> for group #{support_group} via #{smtp_host}:#{smtp_port}."
 puts "Configured close notification trigger '#{close_trigger_name}'."
 puts "Configured reopen notification trigger '#{reopen_trigger_name}'."
+puts "Configured article transmission webhook '#{backend_article_webhook_url}' (enabled=#{article_transmission_enabled})."

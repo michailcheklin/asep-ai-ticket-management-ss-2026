@@ -8,7 +8,8 @@ import streamlit as st
 from streamlit.components.v1 import html
 
 from frontend.clients.base import ChatClient
-from frontend.ui.strings import t
+from frontend.ui.i18n import get_language, parse_language_from_header, t
+from frontend.ui.session import keep_session_token
 from frontend.ui.qa_navigation import (
     apply_question_answer,
     can_go_back,
@@ -57,6 +58,7 @@ INITIAL_STATES = {
     "user_metadata": None,      # dict from IdP + browser UA, or None if not logged in
     "metadata_confirmed": False,   # True after user confirms browser-detected device/OS
     "_pending_first_message": None, # first user message held until metadata is confirmed
+    "_last_audio_id": None,         # file_id of the last transcribed recording
 }
 
 def _waiting_message(lang: str) -> str:
@@ -65,9 +67,9 @@ def _waiting_message(lang: str) -> str:
 
 
 def _lang() -> str:
-    """Current UI/response language, detected from the user's Accept-Language header."""
-    metadata = st.session_state.get("user_metadata") or {}
-    return metadata.get("language", "de")
+    """Current UI/response language. Thin alias over the shared resolver so all
+    pages/components share one language source (frontend.ui.i18n.get_language)."""
+    return get_language()
 
 
 # ── User-Agent parsing ──────────────────────────────────────────────────────
@@ -97,15 +99,6 @@ def _parse_os_from_ua(ua: str) -> str:
     return "Unbekannt"
 
 
-def _parse_language_from_header(accept_language: str) -> str:
-    """Extract the primary language tag from an Accept-Language header.
-
-    Only "de"/"en" are supported UI languages; anything else falls back to "de".
-    """
-    primary = accept_language.split(",")[0].strip().split("-")[0].lower()
-    return primary if primary in ("de", "en") else "de"
-
-
 def _fetch_and_store_metadata() -> None:
     """Fetch user metadata from the IdP API and enrich with browser info."""
     # Only fetch once per session; Shibboleth login already ran before the chat page loaded.
@@ -113,7 +106,9 @@ def _fetch_and_store_metadata() -> None:
         return
 
     # No token means the user reached this page outside the Shibboleth login flow.
-    token = st.query_params.get("session_token")
+    # Fall back to the session-cached token so identity survives page navigation
+    # (Streamlit drops query params when switching pages; see keep_session_token).
+    token = st.query_params.get("session_token") or st.session_state.get("session_token")
     if not token:
         return
 
@@ -129,7 +124,7 @@ def _fetch_and_store_metadata() -> None:
     ua = st.context.headers.get("User-Agent", "")
     metadata["device"] = _parse_device_from_ua(ua)
     metadata["os_name"] = _parse_os_from_ua(ua)
-    metadata["language"] = _parse_language_from_header(st.context.headers.get("Accept-Language", ""))
+    metadata["language"] = parse_language_from_header(st.context.headers.get("Accept-Language", ""))
 
     st.session_state["user_metadata"] = metadata
 
@@ -796,6 +791,7 @@ def render_question_widget(client: ChatClient) -> None:
 def run_app(client: ChatClient, *, mock_mode: bool = False) -> None:
     st.set_page_config(page_title="Support-Annahme über ZIM Helper", layout="centered")
 
+    keep_session_token()
     _fetch_and_store_metadata()
 
     metadata = st.session_state.get("user_metadata")
@@ -820,9 +816,19 @@ def run_app(client: ChatClient, *, mock_mode: bool = False) -> None:
 
     st.subheader(t("Kontaktdaten", lang))
     is_logged_in = metadata is not None
-    st.text_input(t("E-Mail-Adresse *", lang), key="email_input", disabled=is_logged_in)
+
+    # For pre-filling the form fields for the email and student id
+    # at the top of the "app" tab. When not logged in,
+    # the fields are not pre-filled
+    extracted_email_from_shibboleth = ""
+    extracted_student_id_from_shibboleth = ""
+    if is_logged_in:
+        extracted_email_from_shibboleth = metadata.get("email", "")
+        extracted_student_id_from_shibboleth = metadata.get("student_id", "")
+
+    st.text_input(t("E-Mail-Adresse *", lang), key="email_input", disabled=is_logged_in, value=extracted_email_from_shibboleth)
     if not metadata or metadata.get("role") == "student":
-        st.text_input(t("Matrikelnummer *", lang), key="student_id_input", disabled=is_logged_in)
+        st.text_input(t("Matrikelnummer *", lang), key="student_id_input", disabled=is_logged_in, value=extracted_student_id_from_shibboleth)
     st.divider()
     st.header(t("ZIM Helper", lang))
 
@@ -861,7 +867,7 @@ def run_app(client: ChatClient, *, mock_mode: bool = False) -> None:
             _scroll_page_to_bottom(scroll_target)
             st.session_state["scroll_target"] = None
 
-    # Priority 4: normal freeform chat input.
+    # Priority 4: normal freeform chat input, with the audio recorder below it.
     else:
         has_pending_solutions = any(msg.get("solutions") for msg in st.session_state.messages)
         chat_disabled = (
@@ -871,17 +877,44 @@ def run_app(client: ChatClient, *, mock_mode: bool = False) -> None:
             or st.session_state.pending_ticket_confirmation is not None
             or st.session_state.is_complete
         )
-        if user_input := st.chat_input(
-            placeholder=(
-                t("Das Gespräch ist abgeschlossen — bitte über 'Neu starten' ein neues Anliegen beginnen.", lang)
-                if st.session_state.is_complete
-                else t("Bitte E-Mail-Adresse und Matrikelnummer eingeben", lang)
-                if not are_form_fields_valid()
-                else t("Anliegen beschreiben...", lang)
-            ),
-            disabled=chat_disabled,
-            on_submit=bot_starting_thinking,
-        ):
+        placeholder = (
+            t("Das Gespräch ist abgeschlossen — bitte über 'Neu starten' ein neues Anliegen beginnen.", lang)
+            if st.session_state.is_complete
+            else t("Bitte E-Mail-Adresse und Matrikelnummer eingeben", lang)
+            if not are_form_fields_valid()
+            else t("Anliegen beschreiben...", lang)
+        )
+
+        # A placeholder container reserves the text field's visual position
+        # above the audio recorder; it's filled in further down. This lets
+        # the audio widget + transcription run (and write to
+        # session_state["chat_text_input"]) *before* the text_input is
+        # actually instantiated below - Streamlit forbids writing to a
+        # widget's session-state key after that widget has been created in
+        # the same run - while still rendering the recorder underneath.
+        text_container = st.container()
+        recording = st.audio_input(t("Aufnehmen", lang), disabled=chat_disabled)
+
+        if recording is not None and recording.file_id != st.session_state.get("_last_audio_id"):
+            st.session_state["_last_audio_id"] = recording.file_id
+            with st.spinner(t("Wird transkribiert...", lang)):
+                result = client.transcribe_audio(recording.getvalue(), lang)
+            st.session_state["chat_text_input"] = result.get("text", "")
+            st.rerun()
+
+        with text_container:
+            with st.form("chat_form", clear_on_submit=True, border=False):
+                form_col_input, form_col_submit = st.columns([5, 1])
+                user_input = form_col_input.text_area(
+                    placeholder,
+                    key="chat_text_input",
+                    disabled=chat_disabled,
+                    label_visibility="collapsed",
+                )
+                submitted = form_col_submit.form_submit_button(t("Senden", lang), disabled=chat_disabled)
+
+        if submitted and user_input:
+            bot_starting_thinking()
             if metadata_needs_confirm:
                 st.session_state["_pending_first_message"] = user_input
                 st.rerun()

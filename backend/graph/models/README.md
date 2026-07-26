@@ -2,8 +2,8 @@
 
 This folder contains typed Pydantic models used across the graph and nodes.
 Keeping models separate makes nodes and the API layer more predictable and easier to test.
-Two kinds of models live here: transport models for the API boundary (`ChatRequest`)
-and structured-output schemas that force the LLM to answer in a fixed shape
+Two kinds of models live here: transport models for the API boundary (`ChatRequest`,
+`FaqSubmission`) and structured-output schemas that force the LLM to answer in a fixed shape
 (`ExtractedTicketData`, `AdditionalInfoDecision`, `TicketCategoryDecision`, `IntentDecision`).
 
 ## Models
@@ -15,7 +15,15 @@ and structured-output schemas that force the LLM to answer in a fixed shape
   - `user_email`, `matrikelnummer`, `issue_description`, `additional_info`
   - `priority`, `category`, `solutions`, `ticket_id`
   - `additional_info_attempts`, `ask_issue_attempts`
-  - `intent`, `tutorial_attempts` — added for the two-path workflow 
+  - `intent`, `tutorial_attempts` — added for the two-path workflow
+  - `language` — detected response/UI language (`"de"`/`"en"`), threaded through the state so
+    the LLM answers in that language (see Internationalization in the root `CLAUDE.md`)
+
+- `FaqSubmission.py` — transport model for `POST /faq` (FAQ knowledge submission). Fields:
+  `id` (title, optional — auto-generated if empty), `context` (category, required),
+  `problem`, `solution` (list of `{faq_content, extracted_urls}`), and the control flags
+  `force` (skip redundancy check) and `confirmed` (store the previewed entry as-is). Handled by
+  `rag/faq_submission.py`.
 
 - `ExtractedTicketData.py` — structured data extracted from the user's message by the
   extraction node. Fields:
@@ -36,6 +44,11 @@ and structured-output schemas that force the LLM to answer in a fixed shape
   (two-path workflow). Fields:
   - `intent` — exactly one of: `tutorial`, `problem`, `unclear`, `solved`
   - `reason` — short justification, used only for debugging / tracing
+
+- `TranscribeRequest.py` — request body for `POST /transcribe` (speech-to-text, not part
+  of the graph state). Fields:
+  - `audio_base64` — base64-encoded audio recorded via the frontend's `st.audio_input`
+  - `language` — optional ISO language hint (`"de"`/`"en"`) passed to faster-whisper
 
 ## Guidelines
 

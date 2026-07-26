@@ -1,19 +1,26 @@
 """Backend API for the AI ticket management system with optional Zammad integration."""
+import base64
+import binascii
 import os
 import re
 
 import requests
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from langchain_core.messages import AIMessage, HumanMessage
 from . import channel_email
 
+from ..api.article_transmission_webhook import router as article_transmission_router
 from ..api.zammad import get_ticket_tags, log_ticket_close_event
 from ..graph.models.ChatRequest import ChatRequest
+from ..graph.models.TranscribeRequest import TranscribeRequest
+from ..graph.models.FaqSubmission import FaqSubmission
 from ..graph.nodes import _resolve_ticket_category
 from ..graph.orchestrator import __execute_langchain_workflow, graph
 from ..graph.state import ChatbotState
+from ..llm.stt import transcribe_audio
 from ..rag import recent_incidents
+from ..rag.faq_submission import list_faq_contexts, submit_faq
 from ..rag.rag_store_tickets import store_ticket_state_to_rag
 from ..services.BackendLoggingService import BackendLogger
 from ..services.TicketService import TicketService
@@ -23,6 +30,7 @@ ticket_service = TicketService()
 
 # Create FastAPI application instance
 app = FastAPI(title="AI Ticket API", version="1.0.0")
+app.include_router(article_transmission_router)
 
 # Register the email webhook routes
 app.include_router(channel_email.router)
@@ -344,6 +352,55 @@ async def solution_feedback(request: ChatRequest):
         }
 
 
+@app.post("/transcribe")
+async def transcribe(request: TranscribeRequest):
+    """
+    Transcribe a recorded audio clip to text using faster-whisper.
+
+    :param request: Base64-encoded audio and optional language hint
+    :return: The transcribed text
+    """
+    try:
+        audio_bytes = base64.b64decode(request.audio_base64, validate=True)
+    except binascii.Error:
+        raise HTTPException(status_code=400, detail="Invalid audio_base64")
+
+    text = transcribe_audio(audio_bytes, request.language)
+    return {"text": text}
+
+
+
+@app.get("/faq/contexts")
+def faq_contexts():
+    """Return the distinct FAQ context/category values for the submission dropdown."""
+    try:
+        return {"contexts": list_faq_contexts()}
+    except Exception as e:
+        zim_logger.error(f"Listing FAQ contexts failed: {e}")
+        return {"contexts": []}
+
+
+@app.post("/faq")
+async def add_faq(request: FaqSubmission):
+    """
+    Submit a new FAQ entry to the faq_db knowledge base.
+
+    Runs a vector-similarity redundancy check against existing FAQ entries.
+    If the proposal is already covered, returns {"status": "redundant",
+    "matches": [...]} so the user can reconsider; re-submitting with
+    force=true skips the check ("Dennoch anlegen"). A non-redundant proposal
+    is language-polished by an LLM and stored, returning
+    {"status": "created", "id": ...}.
+    """
+    try:
+        return submit_faq(
+            request.model_dump(exclude={"force", "confirmed"}),
+            force=request.force,
+            confirmed=request.confirmed,
+        )
+    except Exception as e:
+        zim_logger.error(f"FAQ submission failed: {e}")
+        return {"status": "error", "detail": str(e)}
 
 
 @app.post("/webhook/ticket-closed")

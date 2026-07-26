@@ -8,6 +8,7 @@ services:
     environment:
       ZAMMAD_INTERNAL_URL: http://zammad-nginx:8080
       ZAMMAD_API_TOKEN: ${ZAMMAD_API_TOKEN:-}
+      ZAMMAD_PUBLIC_URL: ${ZAMMAD_PUBLIC_URL:-http://localhost:8080}
       OLLAMA_BASE_URL: http://ollama:11434
       SAIA_API_KEY: ${SAIA_API_KEY:-}
       USE_SAIA_API: ${USE_SAIA_API:-false}
@@ -18,6 +19,23 @@ services:
       INCIDENT_ESCALATION_MIN_COUNT: ${INCIDENT_ESCALATION_MIN_COUNT}
       INCIDENT_RECENCY_WINDOW_HOURS: ${INCIDENT_RECENCY_WINDOW_HOURS}
       INCIDENT_SIMILARITY_THRESHOLD: ${INCIDENT_SIMILARITY_THRESHOLD}
+      EMAIL_TICKET_TRANSMISSION_ENABLED: ${EMAIL_TICKET_TRANSMISSION_ENABLED:-false}
+      EMAIL_TICKET_TRANSMISSION_RECIPIENT: ${EMAIL_TICKET_TRANSMISSION_RECIPIENT:-}
+      EMAIL_TICKET_TRANSMISSION_WEBHOOK_SECRET: ${EMAIL_TICKET_TRANSMISSION_WEBHOOK_SECRET:-}
+      EMAIL_TICKET_TRANSMISSION_DB_PATH: /data/email_ticket_transmissions.sqlite3
+      ZAMMAD_SMTP_HOST: ${ZAMMAD_SMTP_HOST:-mailpit}
+      ZAMMAD_SMTP_PORT: ${ZAMMAD_SMTP_PORT:-1025}
+      ZAMMAD_SMTP_USER: ${ZAMMAD_SMTP_USER:-}
+      ZAMMAD_SMTP_PASSWORD: ${ZAMMAD_SMTP_PASSWORD:-}
+      ZAMMAD_SUPPORT_EMAIL: ${ZAMMAD_SUPPORT_EMAIL:-support@localhost}
+      EMAIL_SMTP_HOST: ${EMAIL_SMTP_HOST:-}
+      EMAIL_SMTP_PORT: ${EMAIL_SMTP_PORT:-}
+      EMAIL_SMTP_USER: ${EMAIL_SMTP_USER:-}
+      EMAIL_SMTP_PASSWORD: ${EMAIL_SMTP_PASSWORD:-}
+      EMAIL_SMTP_FROM: ${EMAIL_SMTP_FROM:-}
+      EMAIL_SMTP_USE_TLS: ${EMAIL_SMTP_USE_TLS:-false}
+    depends_on:
+      - mailpit
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
       interval: 10s
@@ -27,6 +45,7 @@ services:
     volumes:
       - huggingface-models:/models
       - flair-models:/flair_models
+      - email-transmission-data:/data
 
   frontend_app:
     build:
@@ -106,6 +125,9 @@ services:
       ZAMMAD_CLOSE_TRIGGER_NAME: ${ZAMMAD_CLOSE_TRIGGER_NAME:?Set ZAMMAD_CLOSE_TRIGGER_NAME in .env}
       ZAMMAD_REOPEN_TRIGGER_NAME: ${ZAMMAD_REOPEN_TRIGGER_NAME:?Set ZAMMAD_REOPEN_TRIGGER_NAME in .env}
       ZAMMAD_REOPEN_MARKER_TAG: ${ZAMMAD_REOPEN_MARKER_TAG:?Set ZAMMAD_REOPEN_MARKER_TAG in .env}
+      BACKEND_ARTICLE_WEBHOOK_URL: ${BACKEND_ARTICLE_WEBHOOK_URL:-http://backend_app:8000/webhook/article-created}
+      EMAIL_TICKET_TRANSMISSION_WEBHOOK_SECRET: ${EMAIL_TICKET_TRANSMISSION_WEBHOOK_SECRET:-}
+      EMAIL_TICKET_TRANSMISSION_ENABLED: ${EMAIL_TICKET_TRANSMISSION_ENABLED:-false}
     volumes:
       - zammad-storage:/opt/zammad/storage
       - ./zammad/bootstrap:/opt/zammad/bootstrap:ro
@@ -127,6 +149,7 @@ services:
 volumes:
   zammad-storage:
   mailpit-data:
+  email-transmission-data:
   huggingface-models:
     # In this volume the Huggingface models for the PII anonymizer are persisted so that they do not
     # have to be downloaded every time

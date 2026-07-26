@@ -1,9 +1,10 @@
-"""Central, configurable settings for incident-to-problem escalation.
+"""Central, configurable settings for the backend.
 
 All values can be overridden via environment variables (or the .env file)
-so thresholds can be adjusted without changing code.
+so thresholds and feature flags can be adjusted without changing code.
 """
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
 
@@ -17,8 +18,11 @@ def _get_int(name: str, default: int) -> int:
     :param default: Default value if unset or invalid
     :return: The value as int
     """
+    raw = os.getenv(name)
+    if raw is None or str(raw).strip() == "":
+        return default
     try:
-        return int(os.getenv(name, str(default)))
+        return int(raw)
     except (TypeError, ValueError):
         return default
 
@@ -30,10 +34,24 @@ def _get_float(name: str, default: float) -> float:
     :param default: Default value if unset or invalid
     :return: The value as float
     """
+    raw = os.getenv(name)
+    if raw is None or str(raw).strip() == "":
+        return default
     try:
-        return float(os.getenv(name, str(default)))
+        return float(raw)
     except (TypeError, ValueError):
         return default
+
+
+def _get_bool(name: str, default: bool = False) -> bool:
+    """
+    Convert an environment variable to a Python bool.
+    Accepts common truthy/falsy string forms.
+    """
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
 # Minimum number of thematically identical open incidents (including the new one)
@@ -45,6 +63,11 @@ INCIDENT_RECENCY_WINDOW_HOURS: float = _get_float("INCIDENT_RECENCY_WINDOW_HOURS
 
 # Similarity threshold (cosine) for semantic similarity between two incidents.
 INCIDENT_SIMILARITY_THRESHOLD: float = _get_float("INCIDENT_SIMILARITY_THRESHOLD", 0.55)
+
+# Scaled-similarity threshold above which a newly submitted FAQ entry counts as
+# "redundant" (already covered by an existing entry). Compared against the top
+# faq_match similarity returned by retrieve_relevant_entries.
+FAQ_REDUNDANCY_THRESHOLD: float = _get_float("FAQ_REDUNDANCY_THRESHOLD", 0.5)
 
 # Sender/customer email for automatically created problem tickets.
 PROBLEM_TICKET_AUTHOR_EMAIL: str = os.getenv(
@@ -58,3 +81,50 @@ ZAMMAD_PUBLIC_URL: str = (
     os.getenv("ZAMMAD_PUBLIC_URL")
     or os.getenv("ZAMMAD_INTERNAL_URL", "")
 ).rstrip("/")
+
+# --- Email ticket transmission (first public support article → external mail) ---
+EMAIL_TICKET_TRANSMISSION_ENABLED: bool = _get_bool(
+    "EMAIL_TICKET_TRANSMISSION_ENABLED", False
+)
+EMAIL_TICKET_TRANSMISSION_RECIPIENT: str = (
+    os.getenv("EMAIL_TICKET_TRANSMISSION_RECIPIENT", "") or ""
+).strip()
+EMAIL_TICKET_TRANSMISSION_WEBHOOK_SECRET: str = (
+    os.getenv("EMAIL_TICKET_TRANSMISSION_WEBHOOK_SECRET", "") or ""
+).strip()
+
+_DEFAULT_TRANSMISSION_DB = str(
+    Path(__file__).resolve().parent / "data" / "email_ticket_transmissions.sqlite3"
+)
+EMAIL_TICKET_TRANSMISSION_DB_PATH: str = os.getenv(
+    "EMAIL_TICKET_TRANSMISSION_DB_PATH", _DEFAULT_TRANSMISSION_DB
+)
+
+# Outbound SMTP for backend-controlled transmission (reuses Zammad Mailpit/SMTP vars).
+EMAIL_SMTP_HOST: str = (
+    os.getenv("EMAIL_SMTP_HOST") or os.getenv("ZAMMAD_SMTP_HOST", "mailpit")
+).strip()
+_email_smtp_port_raw = (os.getenv("EMAIL_SMTP_PORT") or "").strip()
+EMAIL_SMTP_PORT: int = (
+    _get_int("EMAIL_SMTP_PORT", 1025)
+    if _email_smtp_port_raw
+    else _get_int("ZAMMAD_SMTP_PORT", 1025)
+)
+EMAIL_SMTP_USER: str = (
+    os.getenv("EMAIL_SMTP_USER") or os.getenv("ZAMMAD_SMTP_USER", "") or ""
+).strip()
+EMAIL_SMTP_PASSWORD: str = (
+    os.getenv("EMAIL_SMTP_PASSWORD") or os.getenv("ZAMMAD_SMTP_PASSWORD", "") or ""
+)
+EMAIL_SMTP_FROM: str = (
+    os.getenv("EMAIL_SMTP_FROM")
+    or os.getenv("ZAMMAD_SUPPORT_EMAIL", "support@localhost")
+).strip()
+EMAIL_SMTP_USE_TLS: bool = _get_bool("EMAIL_SMTP_USE_TLS", False)
+
+# Speech-to-text (faster-whisper) settings for the /transcribe endpoint.
+# CPU-only by default: no GPU passthrough is configured anywhere in this
+# project's docker-compose setup.
+STT_MODEL_SIZE: str = os.getenv("STT_MODEL_SIZE", "small")
+STT_DEVICE: str = os.getenv("STT_DEVICE", "cpu")
+STT_COMPUTE_TYPE: str = os.getenv("STT_COMPUTE_TYPE", "int8")

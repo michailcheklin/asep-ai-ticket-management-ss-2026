@@ -8,16 +8,19 @@ SCENARIOS = [
     # Off-Topic-Anfragen
     ["Wie backe ich einen Kuchen?"],
     ["Ich möchte ein Flugticket nach Mallorca kaufen."],
-    ["Welches Brautkleid steht mir am besten?"]
+    ["Welches Brautkleid steht mir am besten?"],
 ]
 
 
 MODEL_CONFIGS = {
-    "llama-3.1-8b": "meta-llama-3.1-8b-instruct",
-    "deepseek-r1-70b": "deepseek-r1-distill-llama-70b",
-    "apertus-70b": "apertus-70b-instruct-2509",
-    "gemma-4-31b": "gemma-4-31b-it",
+    "llama-3.1-8b":    "meta-llama-3.1-8b-instruct",
+    "deepseek-v4-flash": "deepseek-v4-flash",
+    "apertus-70b":     "apertus-70b-instruct-2509",
+    "gemma-4-31b":     "gemma-4-31b-it",
+    "gpt-oss-120b":    "openai-gpt-oss-120b",              
+    "glm-4.7":         "glm-4.7",  
 }
+
 
 # Custom GEval metric (Deepeval docs on usage:
 # https://deepeval.com/docs/metrics-conversational-g-eval
