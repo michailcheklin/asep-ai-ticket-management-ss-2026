@@ -8,7 +8,8 @@ import streamlit as st
 from streamlit.components.v1 import html
 
 from frontend.clients.base import ChatClient
-from frontend.ui.strings import t
+from frontend.ui.i18n import get_language, parse_language_from_header, t
+from frontend.ui.session import keep_session_token
 from frontend.ui.qa_navigation import (
     apply_question_answer,
     can_go_back,
@@ -66,9 +67,9 @@ def _waiting_message(lang: str) -> str:
 
 
 def _lang() -> str:
-    """Current UI/response language, detected from the user's Accept-Language header."""
-    metadata = st.session_state.get("user_metadata") or {}
-    return metadata.get("language", "de")
+    """Current UI/response language. Thin alias over the shared resolver so all
+    pages/components share one language source (frontend.ui.i18n.get_language)."""
+    return get_language()
 
 
 # ── User-Agent parsing ──────────────────────────────────────────────────────
@@ -98,15 +99,6 @@ def _parse_os_from_ua(ua: str) -> str:
     return "Unbekannt"
 
 
-def _parse_language_from_header(accept_language: str) -> str:
-    """Extract the primary language tag from an Accept-Language header.
-
-    Only "de"/"en" are supported UI languages; anything else falls back to "de".
-    """
-    primary = accept_language.split(",")[0].strip().split("-")[0].lower()
-    return primary if primary in ("de", "en") else "de"
-
-
 def _fetch_and_store_metadata() -> None:
     """Fetch user metadata from the IdP API and enrich with browser info."""
     # Only fetch once per session; Shibboleth login already ran before the chat page loaded.
@@ -114,7 +106,9 @@ def _fetch_and_store_metadata() -> None:
         return
 
     # No token means the user reached this page outside the Shibboleth login flow.
-    token = st.query_params.get("session_token")
+    # Fall back to the session-cached token so identity survives page navigation
+    # (Streamlit drops query params when switching pages; see keep_session_token).
+    token = st.query_params.get("session_token") or st.session_state.get("session_token")
     if not token:
         return
 
@@ -130,7 +124,7 @@ def _fetch_and_store_metadata() -> None:
     ua = st.context.headers.get("User-Agent", "")
     metadata["device"] = _parse_device_from_ua(ua)
     metadata["os_name"] = _parse_os_from_ua(ua)
-    metadata["language"] = _parse_language_from_header(st.context.headers.get("Accept-Language", ""))
+    metadata["language"] = parse_language_from_header(st.context.headers.get("Accept-Language", ""))
 
     st.session_state["user_metadata"] = metadata
 
@@ -797,6 +791,7 @@ def render_question_widget(client: ChatClient) -> None:
 def run_app(client: ChatClient, *, mock_mode: bool = False) -> None:
     st.set_page_config(page_title="Support-Annahme über ZIM Helper", layout="centered")
 
+    keep_session_token()
     _fetch_and_store_metadata()
 
     metadata = st.session_state.get("user_metadata")
@@ -821,9 +816,19 @@ def run_app(client: ChatClient, *, mock_mode: bool = False) -> None:
 
     st.subheader(t("Kontaktdaten", lang))
     is_logged_in = metadata is not None
-    st.text_input(t("E-Mail-Adresse *", lang), key="email_input", disabled=is_logged_in)
+
+    # For pre-filling the form fields for the email and student id
+    # at the top of the "app" tab. When not logged in,
+    # the fields are not pre-filled
+    extracted_email_from_shibboleth = ""
+    extracted_student_id_from_shibboleth = ""
+    if is_logged_in:
+        extracted_email_from_shibboleth = metadata.get("email", "")
+        extracted_student_id_from_shibboleth = metadata.get("student_id", "")
+
+    st.text_input(t("E-Mail-Adresse *", lang), key="email_input", disabled=is_logged_in, value=extracted_email_from_shibboleth)
     if not metadata or metadata.get("role") == "student":
-        st.text_input(t("Matrikelnummer *", lang), key="student_id_input", disabled=is_logged_in)
+        st.text_input(t("Matrikelnummer *", lang), key="student_id_input", disabled=is_logged_in, value=extracted_student_id_from_shibboleth)
     st.divider()
     st.header(t("ZIM Helper", lang))
 

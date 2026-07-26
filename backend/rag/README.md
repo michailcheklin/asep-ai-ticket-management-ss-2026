@@ -193,6 +193,22 @@ Like the retrieval models, both models are **loaded once at import time** (see `
 
 A CI test file, `tests/test_anonymiser.py`, checks anonymization quality on a hand-crafted dataset with known ground truth, enforces zero-tolerance on a list of "critical" PII types (passwords, emails, IBANs, etc.), and prints a full precision/recall + false-positive/negative report.
 
+## Adding single FAQ entries at runtime
+
+`rag_store_faq.py` is a one-off **wipe-and-rebuild** script (its rebuild logic lives in `main()` — importing the module has no side effects, only the pure helpers `flatten_faq_entry` / `build_faq_metadata` / `make_unique_ids` are exposed for reuse).
+
+To add **one** new FAQ entry into the live collection, use `faq_submission.py` (exposed via `POST /faq`):
+
+- `submit_faq(entry, force=False, confirmed=False)` — `problem` and `context` (category) are mandatory. Two-phase flow:
+  - **Phase 1 (preview):** redundancy check → if redundant and not `force`, return the covering matches (parsed via `parse_faq_document`) so the caller can reconsider (`force=True` = "Dennoch anlegen" skips it). Otherwise language-**polish** (`FAQ_POLISH_RULES`) + finalize the **title** as a statement (`generate_faq_title` + `FAQ_TITLE_RULES`, `_strip_question` safety net), and return `{"status": "preview", "entry": ...}` **without storing**.
+  - **Phase 2 (confirm):** the user reviews/edits the preview and resubmits with `confirmed=True`; the finalized entry is stored **as-is** (no redundancy/polish/title re-run).
+  - **Redundancy threshold** `FAQ_REDUNDANCY_THRESHOLD` (`backend/config.py`, env-overridable).
+  - **Store** upserts into the same `faq_entries` collection the reader queries (`"passage: "` prefix, cosine, same `faq_embedder`), so new entries are immediately retrievable by the chatbot's RAG.
+
+`GET /faq/contexts` → `list_faq_contexts()` returns the distinct FAQ categories (scanned from the live collection) that populate the submission-page dropdown.
+
+Frontend demo page: `frontend/pages/faq.py` (served at `:8501/faq`).
+
 ## Additional Notes
 
 - **Models load once** at module import time (around 30 seconds on my device). Subsequent queries are fast.
