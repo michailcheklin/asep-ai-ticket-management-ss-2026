@@ -74,3 +74,6 @@ class MockChatClient:
                 "Unser Team wird sich in Kürze bei dir melden."
             )
         }
+
+    def transcribe_audio(self, audio_bytes: bytes, language: str = "") -> dict:
+        return {"text": "Dies ist eine Mock-Transkription."}

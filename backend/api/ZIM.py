@@ -1,22 +1,26 @@
 """Backend API for the AI ticket management system with optional Zammad integration."""
+import base64
+import binascii
 import os
 import re
 
 import requests
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from langchain_core.messages import HumanMessage, AIMessage
+from langchain_core.messages import AIMessage, HumanMessage
 
+from ..api.article_transmission_webhook import router as article_transmission_router
+from ..api.zammad import get_ticket_tags, log_ticket_close_event
 from ..graph.models.ChatRequest import ChatRequest
-from ..graph.state import ChatbotState
-from ..graph.orchestrator import __execute_langchain_workflow, graph
+from ..graph.models.TranscribeRequest import TranscribeRequest
 from ..graph.nodes import _resolve_ticket_category
-from ..services.TicketService import TicketService
+from ..graph.orchestrator import __execute_langchain_workflow, graph
+from ..graph.state import ChatbotState
+from ..llm.stt import transcribe_audio
 from ..rag import recent_incidents
-from ..api.zammad import log_ticket_close_event, get_ticket_tags, get_ticket_article_bodies
 from ..rag.rag_store_tickets import store_ticket_state_to_rag
 from ..services.BackendLoggingService import BackendLogger
-from ..api.article_transmission_webhook import router as article_transmission_router
+from ..services.TicketService import TicketService
 
 zim_logger = BackendLogger("ZIM")
 ticket_service = TicketService()
@@ -113,7 +117,7 @@ async def chat_endpoint(request: ChatRequest):
             "bot_response": f"{reason} Bitte formuliere eine normale Anfrage zu einem ZIM-Thema.",
             "security": complete_evaluation,
             "user_email": request.user_email,
-            "matrikelnummer": request.matrikelnummer,
+            "student_id": request.student_id,
             "issue_description": request.issue_description,
             "needs_additional_info": False,
             "priority": request.priority,
@@ -126,7 +130,7 @@ async def chat_endpoint(request: ChatRequest):
     current_state : ChatbotState = {
         "messages": langchain_messages,
         "user_email": request.user_email,
-        "matrikelnummer": request.matrikelnummer,
+        "student_id": request.student_id,
         "issue_description": request.issue_description,
         "additional_info": request.additional_info,
         "needs_additional_info": False,
@@ -138,6 +142,7 @@ async def chat_endpoint(request: ChatRequest):
         "ask_issue_attempts": request.ask_issue_attempts,
         "ticket_id": request.ticket_id,
         "summary": request.summary,
+        "user_summary": request.user_summary,
         "intent": request.intent,
         "tutorial_attempts": request.tutorial_attempts,
         "display_name": request.display_name,
@@ -145,6 +150,7 @@ async def chat_endpoint(request: ChatRequest):
         "faculty": request.faculty,
         "device": request.device,
         "os_name": request.os_name,
+        "language": request.language,
         "graph_runs": request.graph_runs,
     }
     return __execute_langchain_workflow(current_state)
@@ -259,16 +265,15 @@ async def zammad_ticket_closed(payload: dict):
     }
 
     articles = get_zammad_ticket_articles(ticket_id) if ticket_id else []
-    ticket_summary, full_text, agent_messages = build_ticket_summary_and_conversation(articles)
+    ticket_summary, _, agent_messages = build_ticket_summary_and_conversation(articles)
 
     rag_state = {
         "summary": ticket_summary,
         "ticket_id": ticket_id,
         "messages": agent_messages,
     }
-    zim_logger.debug(f"RAG STATE= {rag_state}")
-
     if ticket_id:
+        zim_logger.debug(f"Preparing RAG store for closed ticket {ticket_id}")
         zim_logger.info(f"Close webhook received for ticket {ticket_id}")
         store_ticket_state_to_rag(rag_state, ticket_id=ticket_id)
 
@@ -296,7 +301,7 @@ async def solution_feedback(request: ChatRequest):
     current_state: ChatbotState = {
         "messages": langchain_messages,
         "user_email": request.user_email,
-        "matrikelnummer": request.matrikelnummer,
+        "student_id": request.student_id,
         "issue_description": request.issue_description,
         "additional_info": request.additional_info,
         "needs_additional_info": False,
@@ -308,6 +313,7 @@ async def solution_feedback(request: ChatRequest):
         "additional_info_attempts": request.additional_info_attempts,
         "ticket_id": request.ticket_id,
         "summary": request.summary,
+        "user_summary": request.user_summary,
         "user_addendum": request.user_addendum,
         "intent": request.intent,
         "tutorial_attempts": request.tutorial_attempts,
@@ -316,6 +322,7 @@ async def solution_feedback(request: ChatRequest):
         "faculty": request.faculty,
         "device": request.device,
         "os_name": request.os_name,
+        "language": request.language,
         "graph_runs": request.graph_runs,
     }
 
@@ -338,6 +345,22 @@ async def solution_feedback(request: ChatRequest):
             "category": current_state.get("category", "")
         }
 
+
+@app.post("/transcribe")
+async def transcribe(request: TranscribeRequest):
+    """
+    Transcribe a recorded audio clip to text using faster-whisper.
+
+    :param request: Base64-encoded audio and optional language hint
+    :return: The transcribed text
+    """
+    try:
+        audio_bytes = base64.b64decode(request.audio_base64, validate=True)
+    except binascii.Error:
+        raise HTTPException(status_code=400, detail="Invalid audio_base64")
+
+    text = transcribe_audio(audio_bytes, request.language)
+    return {"text": text}
 
 
 
@@ -382,7 +405,7 @@ def run_local_chat():
     current_state = {
         "messages": [],
         "user_email": "",
-        "matrikelnummer": "",
+        "student_id": "",
         "issue_description": "",
         "additional_info": [],
         "additional_info_attempts": 0,
@@ -437,7 +460,7 @@ def run_local_chat():
         print(f"Bot: {bot_response}")
         print(
             f"   [DEBUG STATE] email: {current_state.get('user_email')} | "
-            f"Matrikel: {current_state.get('matrikelnummer')} | "
+            f"Matrikel: {current_state.get('student_id')} | "
             f"Problem: {current_state.get('issue_description')}"
         )
 

@@ -116,3 +116,10 @@ EMAIL_SMTP_FROM: str = (
     or os.getenv("ZAMMAD_SUPPORT_EMAIL", "support@localhost")
 ).strip()
 EMAIL_SMTP_USE_TLS: bool = _get_bool("EMAIL_SMTP_USE_TLS", False)
+
+# Speech-to-text (faster-whisper) settings for the /transcribe endpoint.
+# CPU-only by default: no GPU passthrough is configured anywhere in this
+# project's docker-compose setup.
+STT_MODEL_SIZE: str = os.getenv("STT_MODEL_SIZE", "small")
+STT_DEVICE: str = os.getenv("STT_DEVICE", "cpu")
+STT_COMPUTE_TYPE: str = os.getenv("STT_COMPUTE_TYPE", "int8")

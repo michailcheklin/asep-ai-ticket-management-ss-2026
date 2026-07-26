@@ -1,5 +1,7 @@
+from typing import Dict, List
+
 from pydantic import BaseModel
-from typing import List, Dict
+
 
 class ChatRequest(BaseModel):
     """
@@ -8,7 +10,7 @@ class ChatRequest(BaseModel):
     user_message: str
     history: List[Dict[str, str]]
     user_email: str = ""
-    matrikelnummer: str = ""
+    student_id: str = ""
     issue_description: str = ""
     additional_info: List[str] = []
     priority: int = 0
@@ -20,6 +22,7 @@ class ChatRequest(BaseModel):
     ask_issue_attempts: int = 0
     ticket_id: int | None = None
     summary: str = ""
+    user_summary: str = ""
     user_addendum: str = ""
     intent: str = ""
     tutorial_attempts: int = 0
@@ -29,3 +32,4 @@ class ChatRequest(BaseModel):
     faculty: str = ""
     device: str = ""
     os_name: str = ""
+    language: str = ""

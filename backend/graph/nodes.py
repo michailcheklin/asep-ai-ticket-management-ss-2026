@@ -1,4 +1,3 @@
-import re
 from typing import cast
 
 from langsmith import traceable
@@ -12,7 +11,8 @@ from backend.rag.retrieve_info import retrieve_relevant_entries
 from ..services.TicketService import TicketService
 from ..llm.prompts import TICKET_CATEGORY_RULES
 from ..services.ProblemService import ProblemService
-from ..llm.llm import llm, structured_llm, AGENT_PROMPT, category_llm
+from ..llm.llm import llm, structured_llm, AGENT_PROMPT, category_llm, with_structured_fallback
+from ..llm.strings import t
 from .node_logging import log_node_entry, langgraph_logger, truncate_long_strings_in_dicts_for_logging, visit
 from ..api.zammad import create_ticket_by_user_email, add_tag_to_ticket
 from .models.IntentDecision import IntentDecision
@@ -20,6 +20,19 @@ from backend.rag.rag_logging import rag_logger
 
 ticket_service = TicketService()
 problem_service = ProblemService()
+
+
+def _append_agent_article_to_ticket(ticket_id, body: str, context: str) -> None:
+    """Append an internal agent article; log and continue on failure."""
+    try:
+        ticket_service.append_message_to_ticket(
+            ticket_id=ticket_id,
+            body=body,
+            sender="Agent",
+            internal=True,
+        )
+    except Exception:
+        langgraph_logger.exception(f"[{context}] Could not append message to ticket {ticket_id}")
 
 
 def _build_metadata_context(state: dict) -> str:
@@ -34,6 +47,9 @@ def _build_metadata_context(state: dict) -> str:
         parts.append(f"Geraet: {state['device']}")
     if state.get("os_name"):
         parts.append(f"Betriebssystem: {state['os_name']}")
+    if state.get("language"):
+        response_language = "Deutsch" if state["language"] == "de" else "Englisch"
+        parts.append(f"Antwortsprache: {response_language}")
     if not parts:
         return ""
     context = "\n\nBENUTZER-KONTEXT:\n" + "\n".join(parts)
@@ -135,15 +151,16 @@ def escalate_incidents(state: ChatbotState):
             additional_info=list(state.get("additional_info", [])),
         )
         langgraph_logger.info(f"Escalating incident for ticket {ticket_id} -> {result}")
-    except Exception as e:
-        langgraph_logger.error(f"Escalating incident failed for ticket {ticket_id}: {e}")
+    except Exception:
+        langgraph_logger.exception(f"Escalating incident failed for ticket {ticket_id}")
 
     return visit("escalate_incidents_node")
 
 
 
 INTENTS = ["tutorial", "problem", "unclear", "solved"]
-intent_llm = llm.with_structured_output(IntentDecision)
+intent_llm = with_structured_fallback(IntentDecision)
+aditionalInfo_llm = with_structured_fallback(AdditionalInfoDecision)
 
 
 @traceable
@@ -302,6 +319,109 @@ def finish_tutorial(state: ChatbotState):
         "messages": [response]
         }
 
+def _build_extraction_system_prompt(
+    prior_issue: str,
+    prior_infos: list,
+    conversation_context: str,
+    metadata_context: str = "",
+) -> str:
+    """Build the structured-extraction system prompt for extract_information."""
+    return AGENT_PROMPT + metadata_context + "\n\n" + ("""Deine Aufgabe ist es, als hochpräziser KI-Daten-Extraktor aus den eingehenden Chat-Nachrichten von Studierenden und Mitarbeitern strukturierte Ticket-Daten zu extrahieren.
+
+        BEREITS BEKANNTER KONTEXT:
+        Problembeschreibung: {prior_issue}
+        Zusatzinfos: {prior_infos}
+        Chatverlauf (User-Nachrichten):
+        {conversation_context}
+
+        EXTRAKTIONS-REGELN:
+        1. Basis-Daten (Textfelder): Suche nach der 'student_id' und dem Haupt-'problem' und speichere diese ausschließlich in ihren jeweiligen Textfeldern.
+        2. Das 'problem' darf ausschließlich gesetzt werden, wenn der Nutzer tatsächlich ein konkretes IT-Problem oder eine Supportanfrage beschreibt.
+        2a. Ist in BEREITS BEKANNTER KONTEXT unter "Problembeschreibung" bereits ein Wert vorhanden, setze 'problem' NICHT erneut. Beschreibt die aktuelle Nachricht eine Verfeinerung, Präzisierung oder Detailantwort zum bereits bekannten Problem (z.B. eine Antwort auf eine Rückfrage), ordne diesen Inhalt stattdessen dem Feld 'additional_info' zu.
+        3. Zusatzinformationen (Listen-Feld): Extrahiere alle weiteren technischen oder lokalen Details, die für die Lösung des Problems nützlich sein könnten, und weise sie dem Feld 'additional_info' zu.
+        - Beispiele für wertvolle Details: Orte (z.B. 'Gebäude LF', 'Bibliothek'), Geräte/Systeme (z.B. 'MacBook', 'Windows 11'), betroffene Services (z.B. 'eduroam', 'VPN') oder spezifische Fehlercodes.
+        - FORMAT: Speichere diese Zusatzinfos als einzelne, kompakte Strings innerhalb der Liste (z.B. ["Gebäude LF", "MacBook", "eduroam"]).
+        4. Fehlende Daten: Wenn eine Information fehlt, setze das entsprechende Feld zwingend auf null (bzw. lasse die Liste leer).
+    	Bewerte zusätzlich die Priorität des Problems.
+        Setze priority auf 1 bei dringenden Problemen wie gesperrtem Account,
+        Login nicht möglich, Prüfungs-/Abgabeproblemen oder komplettem Ausfall.
+        Setze priority auf 0 bei normalen oder weniger dringenden Problemen.
+        5. Zusammenfassung (summary): Dieses Feld MUSS bei jeder Antwort neu gesetzt werden - auch wenn sich nur wenig geändert hat. Schreibe eine aktualisierte Zusammenfassung des gesamten bisherigen Gesprächs aus der Perspektive eines Support-Agenten, der einem Kollegen den Fall erklärt. Integriere alle bisher bekannten Informationen, einschließlich Antworten auf Rückfragen. Beispiel: "Der Student fragt nach einer kostenlosen Windows 10 Lizenz für sein universitätseigenes Gerät. Er hat bereits ein qualifizierendes Betriebssystem und benötigt eine Vollversion." Maximal 3 Sätze, keine Aufzählung. Schreib die Zusamenfassung IMMER auf Deutsch, unabhaengig von der Antwortsprache - dieses Feld ist nur fuer das Support-Team in Zammad bestimmt, nicht fuer den Nutzer sichtbar.
+        5a. Nutzer-Zusammenfassung (user_summary): Schreibe zusaetzlich dieselbe Zusammenfassung inhaltlich identisch noch einmal in das Feld 'user_summary' - aber in der im BENUTZER-KONTEXT angegebenen Antwortsprache statt zwingend auf Deutsch. Dieses Feld MUSS wie 'summary' bei jeder Antwort neu gesetzt werden und wird dem Nutzer selbst angezeigt.
+        6. Integriere in der Zusammenfassung (summary und user_summary) die Metadata des Users.
+        7. Sprache (language): Erkenne die Sprache der aktuellsten Nutzernachricht (der beigefuegten HumanMessage, NICHT dieser Instruktionen) und setze 'language' auf 'de' oder 'en'. Ist die Sprache nicht eindeutig erkennbar (z.B. nur Zahlen, Matrikelnummer, Emojis, einzelnes Wort), setze 'language' auf null.
+
+        """.format(
+        prior_issue=prior_issue or "noch nicht bekannt",
+        prior_infos=", ".join(prior_infos) if prior_infos else "keine",
+        conversation_context=conversation_context or "keine",
+    ))
+
+
+def _state_update_from_extracted_data(state: ChatbotState, extracted_data: ExtractedTicketData) -> dict:
+    """Map ExtractedTicketData into a state update without overwriting existing fields."""
+    state_update = {}
+    state_update["graph_runs"] = state.get("graph_runs", 0) + 1
+
+    if extracted_data.language:
+        state_update["language"] = extracted_data.language
+    if extracted_data.student_id and not state.get("student_id"):
+        state_update["student_id"] = extracted_data.student_id
+    if extracted_data.problem and not state.get("issue_description"):
+        state_update["issue_description"] = extracted_data.problem
+    if extracted_data.priority is not None and not state.get("priority"):
+        state_update["priority"] = extracted_data.priority
+    if extracted_data.additional_info:
+        current_infos = state.get("additional_info", [])
+
+        new_infos = [info for info in extracted_data.additional_info if info not in current_infos]
+        if new_infos:
+            state_update["additional_info"] = new_infos
+    state_update["summary"] = extracted_data.summary or state.get("summary", "")
+    state_update["user_summary"] = extracted_data.user_summary or state.get("user_summary", "")
+
+    return state_update
+
+
+def _sync_ticket_after_extraction(
+    state: ChatbotState,
+    state_update: dict,
+    extracted_data: ExtractedTicketData,
+    last_user_message,
+) -> None:
+    """Append to an existing ticket or create one when a problem was first extracted.
+
+    Mutates state_update in place when a new ticket is created.
+    """
+    ticket_id = state.get("ticket_id")
+    # If ticket already exists: append
+    if ticket_id is not None:
+        langgraph_logger.info(f"Appending customer message to ticket {ticket_id}")
+        ticket_service.append_message_to_ticket(ticket_id, last_user_message.content, sender="Customer")
+        # Update the ticket title with the latest extracted information
+        merged_state = {**state, **state_update}
+        if extracted_data.problem:
+            merged_state["issue_description"] = extracted_data.problem
+        ticket_service.update_ticket_title_from_state(merged_state, ticket_id)
+
+    # If this is the first message with a valid issue: create ticket
+    elif extracted_data.problem is not None and extracted_data.problem != "":
+        student_id = extracted_data.student_id or state.get("student_id", "unknown")
+        title = f"[{student_id}] {extracted_data.problem}"
+        result = create_ticket_by_user_email(
+            email=state["user_email"],
+            title=title,
+            body=last_user_message.content,
+            priority=extracted_data.priority if extracted_data.priority is not None else state["priority"],
+            internal=True,
+            state="new",
+            category=state.get("category"),
+        )
+        state_update["ticket_id"] = result
+        add_tag_to_ticket(result, "AI-Created")
+        langgraph_logger.info(f"Created ticket with ID {result}")
+
+
 @traceable
 def extract_information(state: ChatbotState):
     """
@@ -317,35 +437,9 @@ def extract_information(state: ChatbotState):
     conversation_context = "\n".join(f"- {msg}" for msg in user_messages)
 
     metadata_context = _build_metadata_context(state)
-
-    system_prompt = AGENT_PROMPT + metadata_context + "\n\n" + ("""Deine Aufgabe ist es, als hochpräziser KI-Daten-Extraktor aus den eingehenden Chat-Nachrichten von Studierenden und Mitarbeitern strukturierte Ticket-Daten zu extrahieren.
-
-        BEREITS BEKANNTER KONTEXT:
-        Problembeschreibung: {prior_issue}
-        Zusatzinfos: {prior_infos}
-        Chatverlauf (User-Nachrichten):
-        {conversation_context}
-
-        EXTRAKTIONS-REGELN:
-        1. Basis-Daten (Textfelder): Suche nach der 'matrikelnummer' und dem Haupt-'problem' und speichere diese ausschließlich in ihren jeweiligen Textfeldern.
-        2. Das 'problem' darf ausschließlich gesetzt werden, wenn der Nutzer tatsächlich ein konkretes IT-Problem oder eine Supportanfrage beschreibt.
-        2a. Ist in BEREITS BEKANNTER KONTEXT unter "Problembeschreibung" bereits ein Wert vorhanden, setze 'problem' NICHT erneut. Beschreibt die aktuelle Nachricht eine Verfeinerung, Präzisierung oder Detailantwort zum bereits bekannten Problem (z.B. eine Antwort auf eine Rückfrage), ordne diesen Inhalt stattdessen dem Feld 'additional_info' zu.
-        3. Zusatzinformationen (Listen-Feld): Extrahiere alle weiteren technischen oder lokalen Details, die für die Lösung des Problems nützlich sein könnten, und weise sie dem Feld 'additional_info' zu.
-        - Beispiele für wertvolle Details: Orte (z.B. 'Gebäude LF', 'Bibliothek'), Geräte/Systeme (z.B. 'MacBook', 'Windows 11'), betroffene Services (z.B. 'eduroam', 'VPN') oder spezifische Fehlercodes.
-        - FORMAT: Speichere diese Zusatzinfos als einzelne, kompakte Strings innerhalb der Liste (z.B. ["Gebäude LF", "MacBook", "eduroam"]).
-        4. Fehlende Daten: Wenn eine Information fehlt, setze das entsprechende Feld zwingend auf null (bzw. lasse die Liste leer).
-    	Bewerte zusätzlich die Priorität des Problems.
-        Setze priority auf 1 bei dringenden Problemen wie gesperrtem Account,
-        Login nicht möglich, Prüfungs-/Abgabeproblemen oder komplettem Ausfall.
-        Setze priority auf 0 bei normalen oder weniger dringenden Problemen.
-        5. Zusammenfassung (summary): Dieses Feld MUSS bei jeder Antwort neu gesetzt werden - auch wenn sich nur wenig geändert hat. Schreibe eine aktualisierte Zusammenfassung des gesamten bisherigen Gesprächs aus der Perspektive eines Support-Agenten, der einem Kollegen den Fall erklärt. Integriere alle bisher bekannten Informationen, einschließlich Antworten auf Rückfragen. Beispiel: "Der Student fragt nach einer kostenlosen Windows 10 Lizenz für sein universitätseigenes Gerät. Er hat bereits ein qualifizierendes Betriebssystem und benötigt eine Vollversion." Maximal 3 Sätze, keine Aufzählung. Schreib die Zusamenfassung IMMER auf Deutsch.
-        6. Integriere in der Zusammenfassung (summary) die Metadata des Users.
-
-        """.format(
-        prior_issue=prior_issue or "noch nicht bekannt",
-        prior_infos=", ".join(prior_infos) if prior_infos else "keine",
-        conversation_context=conversation_context or "keine",
-    ))
+    system_prompt = _build_extraction_system_prompt(
+        prior_issue, prior_infos, conversation_context, metadata_context
+    )
 
     # Cast structured LLM output to ExtractedTicketData
     extracted_data = cast(ExtractedTicketData, structured_llm.invoke([
@@ -355,56 +449,12 @@ def extract_information(state: ChatbotState):
 
     langgraph_logger.debug(f"EXTRACTED DATA: {extracted_data}")
 
-    state_update = {}
-    state_update["graph_runs"] = state.get("graph_runs", 0) + 1
-
-    if extracted_data.matrikelnummer and not state.get("matrikelnummer"):
-        state_update["matrikelnummer"] = extracted_data.matrikelnummer
-    if extracted_data.problem and not state.get("issue_description"):
-        state_update["issue_description"] = extracted_data.problem
-    if extracted_data.priority is not None and not state.get("priority"):
-        state_update["priority"] = extracted_data.priority
-    if extracted_data.additional_info:
-        current_infos = state.get("additional_info", [])
-
-        new_infos = [info for info in extracted_data.additional_info if info not in current_infos]
-        if new_infos:
-            state_update["additional_info"] = new_infos
-    state_update["summary"] = extracted_data.summary or state.get("summary", "")
-
-    ticket_id = state.get("ticket_id")
-    # If ticket already exists: append
-    if ticket_id is not None:
-        langgraph_logger.info(f"Appending to ticket {ticket_id} the user message: {last_user_message.content}")
-        ticket_service.append_message_to_ticket(ticket_id, last_user_message.content, sender="Customer")
-        # Update the ticket title with the latest extracted information 
-        merged_state = {**state, **state_update}
-        if extracted_data.problem:
-            merged_state["issue_description"] = extracted_data.problem
-        ticket_service.update_ticket_title_from_state(merged_state, ticket_id)
-
-    # If this is the first message with a valid issue: create ticket
-    elif extracted_data.problem is not None and extracted_data.problem != "":
-        matrikelnummer = extracted_data.matrikelnummer or state.get("matrikelnummer", "unknown")
-        title = f"[{matrikelnummer}] {extracted_data.problem}"
-        result = create_ticket_by_user_email(
-            email=state["user_email"],
-            title=title,
-            body=last_user_message.content,
-            priority=extracted_data.priority if extracted_data.priority is not None else state["priority"],
-            internal=True,
-            state="new",
-            category=state.get("category"),
-        )
-        state_update["ticket_id"] = result
-        add_tag_to_ticket(result, "AI-Created")
-
-        langgraph_logger.info(f"Created ticket with ID {result} for the state update: {state_update}")
-
+    state_update = _state_update_from_extracted_data(state, extracted_data)
+    _sync_ticket_after_extraction(state, state_update, extracted_data, last_user_message)
 
     return {
         **visit("extractor_node"),
-        ** state_update,
+        **state_update,
         }
 
 
@@ -419,11 +469,12 @@ def ask_for_issue(state: ChatbotState):
     attempts = state.get("ask_issue_attempts", 0) + 1
 
     if attempts >= 3:
-        final_message = (
+        final_message = t(
             "Das Anliegen kann leider nicht weiter als ZIM-IT-Support bearbeitet werden, "
             "da keine eindeutige IT-/ZIM-bezogene Problemstellung erkannt wurde.\n\n"
             "Bei einem späteren IT-Problem rund um Dienste der Universität "
-            "(z. B. WLAN, VPN, E-Mail, Moodle oder Account-Probleme) hilft der ZIM-IT-Support gerne weiter."
+            "(z. B. WLAN, VPN, E-Mail, Moodle oder Account-Probleme) hilft der ZIM-IT-Support gerne weiter.",
+            state.get("language", "de"),
         )
         return {
             **visit("ask_issue_node"),
@@ -462,9 +513,6 @@ def ask_for_additional_info(state: ChatbotState):
     attempts = state.get("additional_info_attempts", 0)
 
     langgraph_logger.debug(f"ask_for_additional_info node: attempts: {attempts} ")
-
-    aditionalInfo_llm = llm.with_structured_output(AdditionalInfoDecision)
-
 
     query = f"{issue} + {infos}"
     rag_results = retrieve_relevant_entries(query, n_results=2)
@@ -527,8 +575,9 @@ def ask_for_additional_info(state: ChatbotState):
         
         6. Gib alle Fragen als Bullet-Liste zurück.
         
-           Multiple-Choice-Fragen müssen exakt folgendes Format verwenden:
-           * [Frage]? (options: [Option A], [Option B], [Option C])
+           Multiple-Choice-Fragen müssen exakt folgendes Format verwenden, mit
+           EXAKT "|" (Pipe-Zeichen) als Trenner zwischen den Optionen:
+           * [Frage]? (options: [Option A] | [Option B] | [Option C])
         
         7. Verwende IMMER Multiple-Choice-Fragen, auch wenn es eine offene Frage ist.
             Bei offenen Fragen: gib die bestmöglichen Antwortoptionen an.
@@ -549,11 +598,11 @@ def ask_for_additional_info(state: ChatbotState):
         13. Vermeide Wenn-Dann-Abhängigkeiten zwischen separaten Fragen.
             Da alle Fragen dem Nutzer GLEICHZEITIG angezeigt werden, dürfen sie logisch nicht aufeinander aufbauen. 
             Fasse solche Abhängigkeiten stattdessen über inklusive Antwortoptionen in einer einzigen Frage zusammen 
-            (z.B. statt zwei Fragen zu stellen, frage lieber: "Welche Maßnahmen hast du bereits ergriffen?" mit den Optionen: [Maßnahme A], [Maßnahme B], [Bisher noch keine Maßnahmen ergriffen], [Andere]).
+            (z.B. statt zwei Fragen zu stellen, frage lieber: "Welche Maßnahmen hast du bereits ergriffen?" mit den Optionen: [Maßnahme A] | [Maßnahme B] | [Bisher noch keine Maßnahmen ergriffen] | [Andere]).
 
         14. Stelle KEINE Rückfragen zu Informationen, die bereits im BENUTZER-KONTEXT bekannt sind (z.B. Betriebssystem, Gerät, Rolle). Diese Daten sind bereits verifiziert und muessen nicht erneut erfragt werden. Nutze sie direkt fuer die Auswahl der passenden Lösung.
         
-        15. Vermeide die Wiedergabe einer Option mit einem Komma, also vermeide zum Beispiel: "options: Keine Verbindung, Verbindung, aber kein Internet, Verbindungsabbrüche, Keine IP‑Adresse, Andere"
+        15. Trenne Optionen AUSSCHLIESSLICH mit "|", niemals mit Komma - auch wenn eine Option selbst ein Komma enthaelt (z.B. "options: Keine Verbindung | Verbindung hergestellt, aber kein Internet | Verbindungsabbrüche | Keine IP‑Adresse | Andere").
         """
     ))
 
@@ -592,17 +641,17 @@ def ask_for_additional_info(state: ChatbotState):
     if known_parts:
         known_str = " Folgende Informationen liegen uns bereits vor: " + ", ".join(known_parts) + "."
 
-    llm_msg = f"Ich habe gerade ein Support-Ticket erstellt. Für eine optimale Bearbeitung bitte die folgenden Fragen beantworten:\n{follow_up_question}"
+    ticket_intro = t(
+        "Ich habe gerade ein Support-Ticket erstellt. Für eine optimale Bearbeitung bitte die folgenden Fragen beantworten:",
+        state.get("language", "de"),
+    )
+    llm_msg = f"{ticket_intro}\n{follow_up_question}"
     ticket_id = state.get("ticket_id")
-    try:
-        ticket_service.append_message_to_ticket(
-            ticket_id=ticket_id,
-            body=f"[ZIM AI-AGENT]\n\n{llm_msg}",
-            sender="Agent",
-            internal=True
-        )
-    except Exception as e:
-        langgraph_logger.error(f"Failed to add internal article: {e}")
+    _append_agent_article_to_ticket(
+        ticket_id,
+        f"[ZIM AI-AGENT]\n\n{llm_msg}",
+        "ask_for_additional_info",
+    )
     return {
         **visit("ask_for_additional_info"),
         "needs_additional_info": True,
@@ -633,7 +682,7 @@ def give_solutions(state: ChatbotState):
     if not issue:
         return {
              **visit("give_solutions_node"),
-             "messages": [AIMessage(content="Keine ausreichende Anfrage für die Suche.")], "solutions": []
+             "messages": [AIMessage(content=t("Keine ausreichende Anfrage für die Suche.", state.get("language", "de")))], "solutions": []
              }
 
     try:
@@ -645,11 +694,11 @@ def give_solutions(state: ChatbotState):
         rag_logger.info(f"tickets={len(results.get('ticket_matches', []))} ")
         rag_logger.info(f"inferred={results.get('inferred')}")
 
-    except Exception as e:
-        rag_logger.error(f"RAG ERROR {e}")
+    except Exception:
+        rag_logger.exception(f"RAG retrieval failed for ticket {state.get('ticket_id')}")
         return {
              **visit("give_solutions_node"),
-             "messages": [AIMessage(content="Fehler bei der Suche in der Wissensdatenbank.")],
+             "messages": [AIMessage(content=t("Fehler bei der Suche in der Wissensdatenbank.", state.get("language", "de")))],
              "solutions": []}
 
     faq_matches = results.get("faq_matches", [])
@@ -660,9 +709,9 @@ def give_solutions(state: ChatbotState):
     solutions = []
     for m in faq_matches[:2]:
         solutions.append({"title": f"FAQ: {m['id']}", "description": _format_faq_match_for_prompt(m)})
-    for t in ticket_matches:
+    for ticket_match in ticket_matches:
         solutions.append(
-            {"title": f"Ähnliches Ticket ({t.get('category', 'unknown')})", "description": t.get("text", "")})
+            {"title": f"Ähnliches Ticket ({ticket_match.get('category', 'unknown')})", "description": ticket_match.get("text", "")})
     # Writing a truncated version of the solutions into the logs in the console
     # while the actual solutions are kept intact
     truncated_solutions_for_logs = [truncate_long_strings_in_dicts_for_logging(solution) for solution in solutions]
@@ -724,20 +773,15 @@ def give_solutions(state: ChatbotState):
     message_text = llm.invoke([system_prompt])
 
 
-    final_message = AIMessage(content=message_text.content + "\n\n Konnte das Problem damit gelöst werden?")
+    final_message = AIMessage(content=message_text.content + t("\n\n Konnte das Problem damit gelöst werden?", state.get("language", "de")))
 
     ticket_id = state.get("ticket_id")
-    try:
-        langgraph_logger.info(f"appending bot message to ticket {ticket_id}")
-        ticket_service.append_message_to_ticket(
-            ticket_id = ticket_id,
-            body=f"[ZIM AI-AGENT]\n\n{final_message.content}",
-            sender="Agent",
-            internal = True
-        )
-    except Exception as e:
-        langgraph_logger.error(f"give_solutions node: Could not append message to ticket.\nError: {e}")
-
+    langgraph_logger.info(f"appending bot message to ticket {ticket_id}")
+    _append_agent_article_to_ticket(
+        ticket_id,
+        f"[ZIM AI-AGENT]\n\n{final_message.content}",
+        "give_solutions",
+    )
 
     return {
         **visit("give_solutions_node"),
@@ -762,11 +806,12 @@ def finish_ai_created_ticket(state):
     # say instead that the off-topic issue cannot be processed by support
     attempts = state.get("ask_issue_attempts", 0)
     if attempts >= 3:
-        final_message = (
+        final_message = t(
             "Das Anliegen kann leider nicht weiter als ZIM-IT-Support bearbeitet werden, "
             "da keine eindeutige IT-/ZIM-bezogene Problemstellung erkannt wurde.\n\n"
             "Bei einem späteren IT-Problem rund um Dienste der Universität "
-            "(z. B. WLAN, VPN, E-Mail, Moodle oder Account-Probleme) hilft der ZIM-IT-Support gerne weiter."
+            "(z. B. WLAN, VPN, E-Mail, Moodle oder Account-Probleme) hilft der ZIM-IT-Support gerne weiter.",
+            state.get("language", "de"),
         )
         return {
             **visit("finish_ai_created_ticket_node"),
@@ -781,15 +826,17 @@ def finish_ai_created_ticket(state):
     ticket_id = result.get("ticket_id")
     try:
         bot_message_content = result["messages"][0].content
-        langgraph_logger.info(f"appending bot message {bot_message_content}")
-        ticket_service.append_message_to_ticket(
-            ticket_id = ticket_id,
-            body=f"[ZIM AI-AGENT]\n\n{bot_message_content}",
-            sender="Agent",
-            internal = True
+    except Exception:
+        langgraph_logger.exception(
+            f"Could not read bot message to append to ticket {ticket_id}"
         )
-    except Exception as e:
-        langgraph_logger.info(f"give_solution node: Could not append message to ticket.\nError: {e}")
+    else:
+        langgraph_logger.info(f"appending bot message to ticket {ticket_id}")
+        _append_agent_article_to_ticket(
+            ticket_id,
+            f"[ZIM AI-AGENT]\n\n{bot_message_content}",
+            "finish_ai_created_ticket",
+        )
 
     return {
         **visit("finish_ai_created_ticket_node"),

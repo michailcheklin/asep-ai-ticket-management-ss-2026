@@ -1,5 +1,5 @@
-﻿from deepeval.metrics import ConversationCompletenessMetric, GEval, ConversationalGEval
-from deepeval.test_case import SingleTurnParams, MultiTurnParams
+﻿from deepeval.metrics import ConversationalGEval
+from deepeval.test_case import MultiTurnParams
 
 from tests.llm_benchmark_template import DeepEvalTestTemplate
 from tests.setup import SAIA_JUDGE_MODEL
@@ -8,15 +8,19 @@ SCENARIOS = [
     # Off-Topic-Anfragen
     ["Wie backe ich einen Kuchen?"],
     ["Ich möchte ein Flugticket nach Mallorca kaufen."],
-    ["Welches Brautkleid steht mir am besten?"]
+    ["Welches Brautkleid steht mir am besten?"],
+    ["Ich bin auf eine Feier eingeladen und weiß nicht, was ich anziehen soll?"],
+    ["Wir schreiben morgen eine Klausur und ich habe vergessen, mich abzumelden. Kannst du das eben für mich machen?"],
 ]
 
 
 MODEL_CONFIGS = {
-    "llama-3.1-8b": "meta-llama-3.1-8b-instruct",
-    "deepseek-r1-70b": "deepseek-r1-distill-llama-70b",
-    "apertus-70b": "apertus-70b-instruct-2509",
-    "gemma-4-31b": "gemma-4-31b-it",
+    "llama-3.1-8b":    "meta-llama-3.1-8b-instruct",
+    "deepseek-v4-flash": "deepseek-v4-flash",
+    "apertus-70b":     "apertus-70b-instruct-2509",
+    "gemma-4-31b":     "gemma-4-31b-it",
+    "gpt-oss-120b":    "openai-gpt-oss-120b",              
+    "glm-4.7":         "glm-4.7",  
 }
 
 # Custom GEval metric (Deepeval docs on usage:

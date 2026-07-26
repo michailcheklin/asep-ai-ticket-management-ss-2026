@@ -1,6 +1,7 @@
-from dotenv import load_dotenv
 import os
+
 import requests
+from dotenv import load_dotenv
 from requests.exceptions import ConnectionError, MissingSchema
 
 from ..graph.models.TicketCategoryDecision import TICKET_CATEGORIES
@@ -329,7 +330,7 @@ def mark_ticket_as_closed(ticket_id:int):
     :param ticket_id: The ticket id of the ticket to close
     """
     try:
-        response = requests.put(
+        requests.put(
             url=f"{server_address}/api/v1/tickets/{ticket_id}",
             json={
                 "state":"closed",

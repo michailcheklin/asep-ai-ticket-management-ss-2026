@@ -13,6 +13,7 @@ Main endpoints
 - `POST /zammad/ticket-closed` — Zammad close webhook; stores eligible tickets in the RAG knowledge base.
 - `POST /webhook/ticket-closed` — removes a closed incident from the recent-incidents store.
 - `POST /webhook/article-created` — authenticated webhook for email ticket transmission (first public support article). Requires `EMAIL_TICKET_TRANSMISSION_WEBHOOK_SECRET`. See `../services/EMAIL_TICKET_TRANSMISSION.md`.
+- `POST /transcribe` — speech-to-text for the frontend's audio recorder. Accepts base64-encoded audio (`TranscribeRequest`: `audio_base64`, optional `language`), decodes it and runs it through `llm/stt.py`'s faster-whisper model, returns `{"text": ...}`. Invalid base64 is rejected with `400`.
 
 Responsibilities of the API layer
 - Validate incoming requests (Pydantic models)

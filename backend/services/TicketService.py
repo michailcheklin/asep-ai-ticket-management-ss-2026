@@ -14,6 +14,7 @@ from ..api.zammad import (
 )
 
 from ..llm.llm import llm
+from ..llm.strings import t
 from .BackendLoggingService import BackendLogger
 
 ticketservice_logger = BackendLogger("Ticket Service")
@@ -32,7 +33,7 @@ class TicketService:
     # -------------------------
     # Title Generation
     # -------------------------
-    def generate_title(self, issue_description: str, matrikelnummer: str) -> str:
+    def generate_title(self, issue_description: str, student_id: str) -> str:
         """
         Generates a concise ticket title using the configured LLM.
 
@@ -40,7 +41,7 @@ class TicketService:
         to simplify ticket identification inside the ticket system.
 
         :param issue_description: User's problem description.
-        :param matrikelnummer: Student's matriculation number.
+        :param student_id: Student's matriculation number.
         :return: Formatted ticket title.
         """
         prompt = (
@@ -53,8 +54,8 @@ class TicketService:
         response = llm.invoke([HumanMessage(content=prompt)])
         title = response.content.strip()
 
-        if matrikelnummer:
-            return f"[{matrikelnummer}] {title}"
+        if student_id:
+            return f"[{student_id}] {title}"
         return title
 
 
@@ -70,15 +71,15 @@ class TicketService:
             title (used on every extractor iteration).
         """
         issue = state.get("issue_description", "")
-        matrikelnummer = state.get("matrikelnummer", "")
+        student_id = state.get("student_id", "")
         if not issue:
            return
 
         if use_llm:
             summary = state.get("summary") or issue
-            title = self.generate_title(summary, matrikelnummer)
+            title = self.generate_title(summary, student_id)
         else:
-            title = f"[{matrikelnummer or 'unknown'}] {issue}"
+            title = f"[{student_id or 'unknown'}] {issue}"
 
         update_ticket_title(ticket_id, title)
 
@@ -107,7 +108,7 @@ class TicketService:
         """
         title = self.generate_title(
             state["issue_description"],
-            state["matrikelnummer"],
+            state["student_id"],
         )
 
         body = self._build_open_body(state)
@@ -128,7 +129,7 @@ class TicketService:
 
         except Exception as e:
             ticketservice_logger.error(f"Error happened while creating support ticket:\nError: {e}")
-            return self._error_message()
+            return self._error_message(state)
         
     def append_support_ticket_context(self, state, ticket_id, internal=True):
         """
@@ -202,9 +203,10 @@ class TicketService:
                 mark_ticket_as_closed(ticket_id=ticket_id)
             return {
                 "messages": [
-                    AIMessage(content=(
+                    AIMessage(content=t(
                         "Super, das freut mich! Bei weiteren Fragen stehe ich jederzeit zur Verfügung. "
-                        "Einen schönen Tag noch!"
+                        "Einen schönen Tag noch!",
+                        state.get("language", "de"),
                     ))
                 ],
                 "is_complete": True
@@ -214,7 +216,7 @@ class TicketService:
             ticketservice_logger.error(f"AI solved ticket could not be created\nError: {e}")
             return {
                 "messages": [
-                    AIMessage(content="Fehler beim Abschließen des Tickets.")
+                    AIMessage(content=t("Fehler beim Abschließen des Tickets.", state.get("language", "de")))
                 ],
                 "is_complete": True
             }
@@ -228,7 +230,7 @@ class TicketService:
         user_messages = [m.content for m in state.get("messages", []) if isinstance(m, HumanMessage)]
         issue = state.get("issue_description") or (user_messages[0] if user_messages else "Anliegen per Chatbot geloest")
 
-        title = self.generate_title(issue, state.get("matrikelnummer", ""))
+        title = self.generate_title(issue, state.get("student_id", ""))
         body = (
             f"E-Mail: {state.get('user_email', '')}\n"
             f"Anliegen:\n{issue}\n\n"
@@ -266,7 +268,7 @@ class TicketService:
         :return: Formatted ticket body as plain text.
         """
         return (
-            f"Matrikelnummer: {state['matrikelnummer']}\n"
+            f"Matrikelnummer: {state['student_id']}\n"
             f"E-Mail: {state['user_email']}\n\n"
             f"Priorität: {'urgent' if state.get('priority') == 1 else 'normal'}\n"
             f"Kategorie: {resolve_zammad_category(state.get('category')) or state.get('category', 'Service Request')}\n"
@@ -295,7 +297,7 @@ class TicketService:
         :return: Formatted ticket body as plain text.
         """
         return (
-            f"Matrikelnummer: {state['matrikelnummer']}\n"
+            f"Matrikelnummer: {state['student_id']}\n"
             f"E-Mail: {state['user_email']}\n\n"
             f"Priorität: {'urgent' if state.get('priority') == 1 else 'normal'}\n"
             f"Kategorie: {resolve_zammad_category(state.get('category')) or state.get('category', 'Service Request')}\n"
@@ -438,24 +440,31 @@ class TicketService:
         :param state: Current chatbot state.
         :return: State update containing the confirmation message.
         """
+        lang = state.get("language", "de")
         first_name = state.get("display_name", "").split()[0] if state.get("display_name") else ""
-        greeting = f"Perfekt, {first_name}!" if first_name else "Perfekt!"
+        greeting = t("Perfekt, {name}!", lang).format(name=first_name) if first_name else t("Perfekt!", lang)
         return {
             "messages": [
-                AIMessage(content=(
-                    f"{greeting} Perfekt! Ihr Ticket wurde erfolgreich erstellt.\n\n"
+                AIMessage(content=t(
+                    "{greeting} Perfekt! Ihr Ticket wurde erfolgreich erstellt.\n\n"
                     "Ein Support-Mitarbeiter meldet sich so bald wie möglich.\n\n"
                     "**Ticketübersicht**\n\n"
-                    f"**Betreff:** {title}\n\n"
-                    f"**E-Mail:** {state['user_email']}\n\n"
-                    f"**Problembeschreibung:**\n"
-                    f"{state['issue_description']}"
+                    "**Betreff:** {title}\n\n"
+                    "**E-Mail:** {email}\n\n"
+                    "**Problembeschreibung:**\n"
+                    "{issue}",
+                    lang,
+                ).format(
+                    greeting=greeting,
+                    title=title,
+                    email=state["user_email"],
+                    issue=state["issue_description"],
                 ))
             ],
             "is_complete": True
         }
 
-    def _error_message(self):
+    def _error_message(self, state):
         """
         Creates a generic chatbot response for ticket creation failures.
 
@@ -463,8 +472,9 @@ class TicketService:
         """
         return {
             "messages": [
-                AIMessage(content=(
-                    "Ticket konnte nicht erstellt werden. Bitte später erneut versuchen."
+                AIMessage(content=t(
+                    "Ticket konnte nicht erstellt werden. Bitte später erneut versuchen.",
+                    state.get("language", "de"),
                 ))
             ],
             "is_complete": True

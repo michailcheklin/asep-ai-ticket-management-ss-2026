@@ -3,9 +3,9 @@ Script that starts the frontend alongside Flask in the backgroud for the login
 """
 
 import os
-import sys
-import subprocess
 import signal
+import subprocess
+import sys
 import time
 import webbrowser
 

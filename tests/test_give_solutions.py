@@ -49,11 +49,15 @@ class GiveSolutionsTests(unittest.TestCase):
         mock_retrieve.side_effect = Exception("Chroma unavailable")
 
         # Act
-        result = give_solutions(base_state())
+        with self.assertLogs("RAG", level="ERROR") as log_cm:
+            result = give_solutions(base_state())
 
         # Assert
         self.assertEqual(result["solutions"], [])
         self.assertIn("Fehler bei der Suche", result["messages"][0].content)
+        self.assertTrue(any("RAG retrieval failed" in line for line in log_cm.output))
+        self.assertTrue(any("Chroma unavailable" in line for line in log_cm.output))
+        self.assertFalse(any("WLAN funktioniert nicht" in line for line in log_cm.output))
 
     @patch("backend.graph.nodes.ticket_service.append_message_to_ticket")
     @patch("backend.graph.nodes.llm")

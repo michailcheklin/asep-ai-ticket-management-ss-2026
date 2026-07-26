@@ -1,7 +1,9 @@
-﻿from deepeval.metrics import ConversationCompletenessMetric
+﻿from deepeval.metrics import ConversationCompletenessMetric, ConversationalGEval
+from deepeval.test_case import MultiTurnParams
 
 from tests.llm_benchmark_template import DeepEvalTestTemplate
 from tests.setup import SAIA_JUDGE_MODEL
+
 
 SCENARIOS = [
     # Szenario 1: WLAN
@@ -38,25 +40,60 @@ SCENARIOS = [
 
 
 MODEL_CONFIGS = {
-    "llama-3.1-8b": "meta-llama-3.1-8b-instruct",
-    "deepseek-r1-70b":  "deepseek-r1-distill-llama-70b",
-    "apertus-70b":      "apertus-70b-instruct-2509",
-    "gemma-4-31b":   "gemma-4-31b-it",
+    "llama-3.1-8b":    "meta-llama-3.1-8b-instruct",
+    "deepseek-r1-70b": "deepseek-v4-flash",
+    "apertus-70b":     "apertus-70b-instruct-2509",
+    "gemma-4-31b":     "gemma-4-31b-it",
+    "gpt-oss-120b":    "openai-gpt-oss-120b",              
+    "glm-4.7":         "glm-4.7",  
 }
+METRICS = [
+    ConversationCompletenessMetric(
+        model=SAIA_JUDGE_MODEL, async_mode=False, threshold=0.5,
+    ),
+    ConversationalGEval(
+        name="Hallucination Detection",
+        criteria=(
+            "Assess whether every factual claim, instruction step, URL, or "
+            "detail the assistant provides is grounded in the conversation and "
+            "plausible for university IT support. Award a HIGH score when the "
+            "assistant stays factual and does not invent steps, links, contact "
+            "details, or capabilities. Award a LOW score when it fabricates or "
+            "states unsupported information."
+        ),
+        evaluation_params=[MultiTurnParams.CONTENT],
+        model=SAIA_JUDGE_MODEL, async_mode=False, threshold=0.7,
+    ),
+    ConversationalGEval(
+        name="Knowledge Retention",
+        criteria=(
+            "Assess whether the assistant remembers information the user has "
+            "already provided earlier in the conversation. Award a HIGH score "
+            "when it reuses known details and does not ask again for them. "
+            "Award a LOW score when it re-asks for information the user already "
+            "gave (e.g. device, OS, email, error message)."
+        ),
+        evaluation_params=[MultiTurnParams.CONTENT],
+        model=SAIA_JUDGE_MODEL, async_mode=False, threshold=0.7,
+    ),
+    ConversationalGEval(
+        name="Answer Relevancy",
+        criteria=(
+            "Assess whether each assistant turn directly addresses the user's "
+            "current request or question. Award a HIGH score when every answer "
+            "is on-point and useful for the user's IT problem. Award a LOW "
+            "score when answers are vague, off-topic, or ignore what the user asked."
+        ),
+        evaluation_params=[MultiTurnParams.CONTENT],
+        model=SAIA_JUDGE_MODEL, async_mode=False, threshold=0.7,
+    ),
+]
 
-METRICS = [ConversationCompletenessMetric(model=SAIA_JUDGE_MODEL, async_mode=False)]
 
 BENCHMARK_FILE_PATH = "tests/benchmark_conversation_results.json"
 
 
-
 def test_conversation_benchmark():
-    """
-    Executes the conversation benchmark on the deepeval test template instance
-    This method wrapping is made to allow to have a reusable DeepEval test template
-    concerning chatbot chat tests while making Pytest still be
-    able to run this in a CI pipeline
-    """
     conversation_benchmark = DeepEvalTestTemplate(
         scenarios=SCENARIOS,
         metrics=METRICS,
