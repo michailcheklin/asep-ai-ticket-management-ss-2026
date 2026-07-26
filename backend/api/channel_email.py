@@ -2,50 +2,39 @@
 from fastapi import APIRouter, Request, HTTPException
 from langchain_core.messages import HumanMessage
 
-# Importe analog zu ZIM.py
 from ..graph.orchestrator import __execute_langchain_workflow
 from ..graph.state import ChatbotState
 from ..services.BackendLoggingService import BackendLogger
 
-# Logger initialisieren, spezifisch für den Email-Channel
+# Initialize the logger specifically for the email channel
 email_logger = BackendLogger("EmailChannel")
 
-# APIRouter instanziieren
 router = APIRouter()
 
 
 @router.post("/api/webhook/email")
 async def handle_email_webhook(request: Request):
     """
-    Empfängt den Webhook von Mailpit, parst die E-Mail und leitet
-    sie an den LangGraph-Workflow weiter.
+    Receives the webhook from Mailpit, parses the email, and forwards
+    it to the LangGraph workflow
     """
     try:
-        # Mailpit sendet die Daten als JSON
         payload = await request.json()
 
-        # 1. Daten aus dem Mailpit-Payload extrahieren
-        # Mailpit verschachtelt die Absender-Infos unter 'From' -> 'Address' und 'Name'
         sender_email = payload.get("From", {}).get("Address", "")
         display_name = payload.get("From", {}).get("Name", "")
         subject = payload.get("Subject", "")
-        text_body = payload.get("Text", "")  # Der reine Text der E-Mail (ohne HTML)
+        text_body = payload.get("Text", "")
 
-        # ---------------------------------------------------------
-        # NEUER FILTER: System-Mails (Auto-Replies) ignorieren
-        # ---------------------------------------------------------
+        # Ignores all emails coming from support@localhost
         if sender_email.lower() == "support@localhost":
             email_logger.info("Auto-Reply von Zammad (support@localhost) erkannt. Ignoriere E-Mail.")
             return {"status": "ignored", "message": "System email ignored"}
-        # ---------------------------------------------------------
 
-        email_logger.info(f"Neue E-Mail empfangen von: {sender_email} | Betreff: {subject}")
+        email_logger.info(f"New email received from: {sender_email} | Subject: {subject}")
 
-        # 2. Den Input für den LLM-Graphen formatieren
-        # Wir kombinieren Betreff und Body, damit das LLM den vollen Kontext hat
-        combined_message = f"Betreff: {subject}\n\n{text_body}"
+        combined_message = f"Subject: {subject}\n\n{text_body}"
 
-        # 3. Den ChatbotState aufbauen
         current_state: ChatbotState = {
             "messages": [HumanMessage(content=combined_message)],
             "visited_nodes": [],
@@ -75,16 +64,13 @@ async def handle_email_webhook(request: Request):
             "channel": "email"
         }
 
-        # 4. Den LangGraph-Workflow anstoßen
-        email_logger.debug("Starte LangGraph Workflow für E-Mail-Kanal...")
-        result_state = __execute_langchain_workflow(current_state)
-        email_logger.info("LangGraph Workflow für E-Mail erfolgreich abgeschlossen.")
 
-        # 5. HTTP 200 OK an Mailpit zurückgeben
+        email_logger.debug("Start the LangGraph workflow for the email channel...")
+        result_state = __execute_langchain_workflow(current_state)
+        email_logger.info("LangGraph workflow for email successfully completed.")
+
         return {"status": "success", "message": "Email received and processed"}
 
     except Exception as e:
-        email_logger.error(f"Fehler bei der E-Mail-Verarbeitung: {e}")
-        # Wenn wir keinen 2xx Statuscode zurückgeben, versucht Mailpit
-        # (je nach Config) die E-Mail eventuell später erneut zuzustellen.
+        email_logger.error(f"Error during email processing: {e}")
         raise HTTPException(status_code=500, detail="Internal Server Error")

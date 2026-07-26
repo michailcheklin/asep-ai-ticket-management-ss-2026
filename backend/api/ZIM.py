@@ -24,6 +24,7 @@ ticket_service = TicketService()
 # Create FastAPI application instance
 app = FastAPI(title="AI Ticket API", version="1.0.0")
 
+# Register the email webhook routes
 app.include_router(channel_email.router)
 
 # Enable CORS so frontend applications can access the API

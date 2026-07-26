@@ -3,15 +3,18 @@ from email.message import EmailMessage
 
 
 def send_test_email():
-    # E-Mail-Objekt erstellen
+    """
+        Sends a test email to local Mailpit (localhost:1025) to trigger the webhook
+        and verify the automated Zammad ticket creation workflow.
+    """
     msg = EmailMessage()
 
-    # Header definieren
+    # Header
     msg['Subject'] = "Dringend: eduroam funktioniert plötzlich nicht mehr"
     msg['From'] = "peter.krauza@stud.uni.de"
     msg['To'] = "it-support@uni.de"
 
-    # Realistischer E-Mail-Body
+    # Realistic email body
     email_body = """Hallo IT-Support-Team,
 
 ich sitze gerade in der Bibliothek am Campus in Duisburg und versuche seit einer halben Stunde, mich mit dem WLAN zu verbinden. Das eduroam-Netzwerk wird zwar angezeigt, aber die Verbindung schlägt immer fehl ('Keine Verbindung mit diesem Netzwerk möglich'). 
@@ -31,16 +34,16 @@ Studiengang: Informatik (M.Sc.)
 
     msg.set_content(email_body)
 
-    # Verbindung zu Mailpit (localhost:1025) aufbauen und senden
+    # Establish connection to Mailpit (localhost:1025) and send
     try:
-        print("Sende Test-E-Mail an Mailpit...")
+        print("Sending test email to Mailpit...")
         with smtplib.SMTP('localhost', 1025) as server:
             server.send_message(msg)
-        print("✅ E-Mail erfolgreich gesendet! Schau im Backend-Log nach, ob der Webhook ausgelöst wurde.")
+        print("✅ Email sent successfully! Check the backend log to see if the webhook was triggered.")
     except ConnectionRefusedError:
-        print("❌ Fehler: Konnte nicht zu Mailpit verbinden. Läuft der Docker-Container und ist Port 1025 freigegeben?")
+        print("❌ Error: Could not connect to Mailpit. Is the Docker container running and is port 1025 exposed?")
     except Exception as e:
-        print(f"❌ Ein unerwarteter Fehler ist aufgetreten: {e}")
+        print(f"❌ An unexpected error occurred: {e}")
 
 
 if __name__ == "__main__":

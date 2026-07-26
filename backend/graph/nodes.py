@@ -811,9 +811,8 @@ def finish_ai_created_ticket(state):
             "messages": [AIMessage(content=final_message)],
             "is_complete": True
         }
-
+    # Append the category and bot message to the new ticket.
     category = _resolve_ticket_category(state)
-    # Append the bot's confirmation reply as an Agent article to the new ticket.
     ticket_id = state.get("ticket_id")
     if ticket_id:
         state_for_update = {**state, "category": category}
