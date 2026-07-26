@@ -76,6 +76,25 @@ class ClassifyIntentTests(unittest.TestCase):
         self.assertIn("hat leider nicht funktioniert", prompt)
 
     @patch("backend.graph.nodes.intent_llm")
+    def test_prompt_requires_solution_intent_for_tutorial(self, mock_intent_llm):
+        """
+        Regression for f30b84c: a bare problem statement ("Ich habe ein
+        Problem mit X") must not be classified as "tutorial" by itself -
+        the prompt must instruct the LLM to require a recognizable wish
+        for self-help and fall back to "unclear" otherwise.
+        """
+        mock_intent_llm.invoke.return_value = intent_decision("unclear")
+
+        classify_intent({
+            "messages": [HumanMessage(content="Ich habe ein Problem mit dem WLAN.")],
+            "intent": "",
+            "user_email": "test@web.de",
+        })
+
+        prompt = mock_intent_llm.invoke.call_args[0][0][0].content
+        self.assertIn("KEIN ausreichendes Signal", prompt)
+
+    @patch("backend.graph.nodes.intent_llm")
     def test_existing_email_is_not_overwritten(self, mock_intent_llm):
         """
         Check if the e-mail address is kept throughout the whole conversation
