@@ -25,6 +25,10 @@ async def handle_email_webhook(request: Request):
         display_name = payload.get("From", {}).get("Name", "")
         subject = payload.get("Subject", "")
         text_body = payload.get("Text", "")
+        html_body = payload.get("HTML", "")
+
+        if not text_body and html_body:
+            text_body = html_body
 
         # Ignores all emails coming from support@localhost
         if sender_email.lower() == "support@localhost":
