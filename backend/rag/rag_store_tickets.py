@@ -3,6 +3,10 @@ import os
 import sys
 from typing import Any
 
+import smtplib
+from email.message import EmailMessage
+from ..config import PROBLEM_TICKET_AUTHOR_EMAIL
+
 import chromadb
 from sentence_transformers import SentenceTransformer
 
@@ -16,7 +20,7 @@ MERGE_MARKER = "Dies ist ein weiterer verwandter Ticket-Eintrag"
 FAQ_GENERATION_THRESHOLD = 2
 
 from .pii_anonymizer import anonymize_ticket_fields
-from .rag_logging import anon_logger, rag_logger
+from .rag_logging import anon_logger, rag_logger, merge_logger
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TICKET_DB_PATH = os.path.join(BASE_DIR, "ticket_db")
@@ -108,8 +112,8 @@ def _build_faq_entry_from_merged_tickets(messages: str, document: str, llm_clien
         "erstelle ausschließlich ein JSON mit genau diesen Schlüsseln: "
         "id: Das Thema des Eintrags,"
         "context: 2 oder 3 keywords, die beim Matching helfen können,"
-        "problem: Die Problembeschreibung in einem Satz,"
-        "solution: Die Lösung des Problems, die länger sein darf. (Dieses Feld sieht so aus: 'solution':[{'faq_content':'string')}]" \
+        "problem: Die Problembeschreibung in einem Satz, da darf es keine Gründe Beschrieben werden, nur das Problem"
+        "solution: Die Lösung des Problems, die länger sein darf. (Dieses Feld sieht so aus: 'solution':[{'faq_content':'string')}] mit einer passenden Formatierung, die zu einem FAQ passt" \
         "Du sollst nur die JSON zurückgeben."
         f"TICKET-DATEN:\n{messages}\n\n{document}"
     )
@@ -120,7 +124,26 @@ def _build_faq_entry_from_merged_tickets(messages: str, document: str, llm_clien
             parsed = json.loads(content)
         except json.JSONDecodeError:
             parsed = json.loads(content.strip("```json\n").strip("```"))
-        print(f"Printing parsed LLM reply: {parsed}")
+        merge_logger.debug(f"LLM-summarised FAQ: {parsed}")
+
+        context_str = ", ".join(parsed.get("context") or [])
+        solution_str = "\n\n".join(
+            s.get("faq_content", "") for s in parsed.get("solution") or [] if isinstance(s, dict)
+        )
+        body = (
+            f"Context: {context_str}\n\n"
+            f"Problem:\n{parsed.get('problem', '')}\n\n"
+            f"Solution:\n{solution_str}"
+        )
+
+        msg = EmailMessage()
+        msg["Subject"] = f"FAQ ADDITION SUGGESTION: {parsed.get('id', '')}"
+        msg["From"] = msg["To"] = PROBLEM_TICKET_AUTHOR_EMAIL
+        msg.set_content(body)
+
+        with smtplib.SMTP(os.environ.get("ZAMMAD_SMTP_HOST", "mailpit"), int(os.environ.get("ZAMMAD_SMTP_PORT", 1025))) as s:
+            s.send_message(msg)
+
         return parsed
     return {}
 
@@ -226,7 +249,7 @@ def store_ticket_state_to_rag(
             retrieval_func=retrieval_func,
         )
         if similar_ticket_id is not None:
-            rag_logger.info(
+            merge_logger.info(
                 f"Found similar ticket {similar_ticket_id} for {resolved_ticket_id} with similarity {similarity:.4f}; merging into existing entry"
             )
             existing_results = collection.get(ids=[similar_ticket_id], include=["documents", "metadatas"])
@@ -259,20 +282,19 @@ def store_ticket_state_to_rag(
                 documents=[merged_document],
                 metadatas=[merged_metadata],
             )
-            rag_logger.info(f"Merged closed ticket into existing RAG entry: {similar_ticket_id}")
+            merge_logger.info(f"Merged closed ticket into existing RAG entry: {similar_ticket_id}")
 
             merge_count = _count_merge_markers(merged_metadata.get("messages", "")) + 1
             if merge_count >= faq_generation_threshold:
-                rag_logger.info(
+                merge_logger.info(
                     f"Merged ticket count reached threshold {faq_generation_threshold}; generating FAQ entry for {similar_ticket_id}"
                 )
-                faq_entry = _build_faq_entry_from_merged_tickets(
+                _build_faq_entry_from_merged_tickets(
                     merged_metadata.get("messages", ""),
                     merged_document,
                     llm_client=llm_client,
                 )
-                # _store_faq_entry(faq_entry, faq_collection=faq_collection, faq_embedder=faq_embedder)
-
+                
             return similar_ticket_id
 
         embedding_result = embedder.encode(document, normalize_embeddings=True)
