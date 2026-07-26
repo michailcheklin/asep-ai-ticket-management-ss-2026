@@ -9,8 +9,6 @@ SCENARIOS = [
     ["Wie backe ich einen Kuchen?"],
     ["Ich möchte ein Flugticket nach Mallorca kaufen."],
     ["Welches Brautkleid steht mir am besten?"],
-    ["Ich bin auf eine Feier eingeladen und weiß nicht, was ich anziehen soll?"],
-    ["Wir schreiben morgen eine Klausur und ich habe vergessen, mich abzumelden. Kannst du das eben für mich machen?"],
 ]
 
 
@@ -22,6 +20,7 @@ MODEL_CONFIGS = {
     "gpt-oss-120b":    "openai-gpt-oss-120b",              
     "glm-4.7":         "glm-4.7",  
 }
+
 
 # Custom GEval metric (Deepeval docs on usage:
 # https://deepeval.com/docs/metrics-conversational-g-eval
