@@ -180,12 +180,16 @@ def classify_intent(state: ChatbotState):
 Entscheide anhand des GESAMTEN Chatverlaufs, was der Nutzer AKTUELL moechte:
 
 - "tutorial": Der Nutzer sucht nach einer Anleitung, Hilfe zur Selbsthilfe oder einer Loesung, um ein Problem/eine Stoerung SELBST zu beheben.
-  WICHTIG: Auch wenn der Nutzer Formulierungen nutzt wie "Ich habe ein Problem", "X geht nicht", "X funktioniert nicht" oder "Ich komme nicht rein", gilt dies als "tutorial", solange er wissen moechte, wie er es selbst loesen kann (z. B. "Was kann ich tun?", "Wie loese ich das?", "Wie richte ich ... ein?").
-  Waehle "tutorial" bevorzugt, wenn erkennbar ist, dass der Nutzer selbst motiviert ist, das Problem zu loesen (z. B. er fragt aktiv nach Schritten oder zeigt Bereitschaft, etwas selbst auszuprobieren).
-- "problem": Der Nutzer moechte EXPLIZIT, dass der menschliche Support übernimmt / ein Ticket erstellt wird, ODER meldet einen reinen Infrastruktur-Ausfall, den er selbst nicht beheben kann.
-  Waehle bevorzugt "problem", wenn es keine Motivation des Nutzers erkennbar ist, das Problem selbst zu loesen.
+  WICHTIG: Formulierungen wie "Ich habe ein Problem mit X", "X geht nicht" oder "X funktioniert nicht" zaehlen NUR dann als "tutorial", wenn zusaetzlich ein erkennbarer Loesungswunsch vorhanden ist
+  (z. B. eine Frage wie "Was kann ich tun?", "Wie loese ich das?", "Wie richte ich ... ein?", oder die Bereitschaft, selbst Schritte auszuprobieren).
+  Enthaelt die Nachricht NUR die Problem-Nennung ohne solch einen Zusatz (z. B. "Ich habe ein Problem mit dem WLAN."), ist das KEIN ausreichendes Signal fuer "tutorial" — waehle in diesem Fall "unclear", da nicht erkennbar ist, ob der Nutzer selbst eine Anleitung moechte oder direkt Support/ein Ticket erwartet.
+
+- "problem": Der Nutzer moechte EXPLIZIT, dass der menschliche Support uebernimmt / ein Ticket erstellt wird, ODER meldet einen reinen Infrastruktur-Ausfall, den er selbst nicht beheben kann.
   Typisch: "Erstellt mir ein Ticket", "Ich will mit einem Mitarbeiter sprechen", "WLAN in Raum R14 ist komplett ausgefallen", "Das System ist down".
-- "unclear": Die Absicht ist aus den Nachrichten nicht erkennbar (z. B. nur "Hallo").
+
+- "unclear": Die Absicht ist aus den Nachrichten nicht erkennbar. Das gilt insbesondere fuer eine blosse Problem-Nennung ohne erkennbaren Loesungswunsch und ohne explizite Ticket-/Support-Anfrage
+  (z. B. "Ich habe ein Problem mit xy." ohne weitere Angabe). In diesem Fall soll der Bot aktiv nachfragen, ob der Nutzer eine Anleitung zur Selbsthilfe moechte oder direkt an den Support weitergeleitet werden will.
+  
 - "solved": NUR waehlen, wenn der Bot zuvor eine Anleitung gegeben hat UND der
   Nutzer jetzt bestaetigt, dass sein Anliegen damit geloest ist.
   Typisch: "hat geklappt", "funktioniert jetzt", "danke, erledigt".
