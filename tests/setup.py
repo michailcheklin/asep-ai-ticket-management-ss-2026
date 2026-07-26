@@ -22,5 +22,6 @@ def make_model(model_id: str) -> GPTModel:
     )
 
 
-SAIA_JUDGE_MODEL = make_model("gemma-4-31b-it")
+SAIA_JUDGE_MODEL = make_model("qwen3.6-35b-a3b")
+
 
