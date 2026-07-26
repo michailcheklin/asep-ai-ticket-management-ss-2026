@@ -10,7 +10,7 @@ Selected via `USE_SAIA_API` in `.env`:
 
 | Mode | Model | Provider | Config |
 |---|---|---|---|
-| Local (default, `USE_SAIA_API=false`) | `qwen3:8b` | Ollama (`ChatOllama`) | `OLLAMA_BASE_URL` (default `http://localhost:11434`), temperature 0.2 |
+| Local (default, `USE_SAIA_API=false`) | `glm-4.7` | Ollama (`ChatOllama`) | `OLLAMA_BASE_URL` (default `http://localhost:11434`), temperature 0.2 |
 | Remote (`USE_SAIA_API=true`) | `openai-gpt-oss-120b` | SAIA API / Academic Cloud (`ChatOpenAI`, base URL `https://chat-ai.academiccloud.de/v1`) | `SAIA_API_KEY` required, temperature 0.2, timeout 120s |
 
 SAIA has a hard cap of **3,000 requests/month** — local development runs against Ollama by default; SAIA is reserved for quality evaluation and final feature review.
@@ -24,7 +24,8 @@ As agreed for whoever continues this project, the target setup reverses today's 
 
 Only one local model is planned: `gpt-oss-120b`. `GLM-4.7` is not a local alternative — it is used only as a development-time fallback over the SAIA API, in case SAIA drops support for `gpt-oss-120b` in the future (see the benchmark comparison below, where it is evaluated as a hosted/API-path candidate, not a local one).
 
-This fallback logic is not implemented yet — see [`docs/FUTURE_WORK.md`](FUTURE_WORK.md), section "Local model → API fallback", for the required changes to `backend/llm/llm.py`. The hardware sizing below is for this planned local `gpt-oss-120b` setup, since it is significantly heavier than the currently-used `qwen3:8b`.
+A SAIA-side fallback chain (SAIA `gpt-oss-120b` → SAIA `glm-4.7` → local Ollama model) is already implemented in `backend/llm/llm.py`. The *reversed* target setup — the local model as primary and a hosted API as fallback — is not implemented yet; see [`docs/FUTURE_WORK.md`](FUTURE_WORK.md), section "Local model → API fallback". The hardware sizing below is for this planned local `gpt-oss-120b` setup.
+
 
 ## Hardware requirements for local operation (`openai-gpt-oss-120b` via Ollama)
 
@@ -39,7 +40,7 @@ Sizing below assumes a departmental server the ZIM university IT team would actu
 | CPU | 8 cores (host process + Docker stack) | 16 cores (PCIe/offload bandwidth matters more than raw core count once GPUs are involved) |
 | Disk | ~65 GB for the quantized model weights | ~100 GB (model + cache + other pulled models) |
 
-This is a substantially larger footprint than the `qwen3:8b` model used today (~6 GB, runnable on CPU): moving to a locally-hosted `gpt-oss-120b` means budgeting for a small GPU server (workstation cards, not a datacenter accelerator), not a developer laptop or a single consumer GPU.
+This is a substantially larger footprint than the small local development models used so far (e.g.`qwen3:8b`, ~6 GB, runnable on CPU): moving to a locally-hosted `gpt-oss-120b` means budgeting for a small GPU server (workstation cards, not a datacenter accelerator), not a developer laptop or a single consumer GPU.
 
 If the hosted-API fallback (e.g. Claude) is used instead of the local model, no local LLM hardware is needed for that path — only network access to the API and a valid API key.
 
@@ -104,5 +105,5 @@ No Compose file sets explicit `deploy.resources`/`mem_limit`/`cpus` limits; the 
 
 ## Minimum vs. recommended — summary
 
-- **Minimum (runnable):** stack starts and functions; running `gpt-oss-120b` locally requires a small GPU server (~48 GB VRAM across 1–2 workstation/prosumer cards, with the rest of the model's experts CPU-offloaded) plus 64 GB system RAM — there is no practical CPU-only minimum for this model, unlike the smaller `qwen3:8b` used today. No headroom for load spikes, and CPU-offloaded inference is noticeably slower per token.
+- **Minimum (runnable):** stack starts and functions; running `gpt-oss-120b` locally requires a small GPU server (~48 GB VRAM across 1–2 workstation/prosumer cards, with the rest of the model's experts CPU-offloaded) plus 64 GB system RAM — there is no practical CPU-only minimum for this model, unlike the smaller local development model `qwen3:8b` used previously. No headroom for load spikes, and CPU-offloaded inference is noticeably slower per token.
 - **Recommended (production-ready):** a 2-GPU server with ~80–96 GB total VRAM (e.g. 2× RTX A6000/L40S 48GB) so the whole model stays resident in VRAM, plus 128 GB system RAM for headroom — or rely on the hosted-API fallback (e.g. Claude) to avoid local GPU hardware entirely; sufficient RAM headroom for Zammad under load (Elasticsearch indexing, multiple concurrent chat sessions); response times in the 1–3s range for production/demo use.
