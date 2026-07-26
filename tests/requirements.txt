@@ -23,4 +23,6 @@ flair==0.15.1
 huggingface-hub==0.36.2
 transformers==4.57.6
 click==8.3.3
+# Keep in sync with backend/requirements.txt (EmailTransmissionService / Issue #195).
+SQLAlchemy>=2.0.36,<3
 
