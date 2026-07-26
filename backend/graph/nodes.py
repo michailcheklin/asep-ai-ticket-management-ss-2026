@@ -598,7 +598,7 @@ def ask_for_additional_info(state: ChatbotState):
         13. Vermeide Wenn-Dann-Abhängigkeiten zwischen separaten Fragen.
             Da alle Fragen dem Nutzer GLEICHZEITIG angezeigt werden, dürfen sie logisch nicht aufeinander aufbauen. 
             Fasse solche Abhängigkeiten stattdessen über inklusive Antwortoptionen in einer einzigen Frage zusammen 
-            (z.B. statt zwei Fragen zu stellen, frage lieber: "Welche Maßnahmen hast du bereits ergriffen?" mit den Optionen: [Maßnahme A] | [Maßnahme B] | [Bisher noch keine Maßnahmen ergriffen] | [Andere]).
+            (z.B. statt zwei Fragen zu stellen, frage lieber: "Welche Maßnahmen wurden bereits ergriffen?" mit den Optionen: [Maßnahme A] | [Maßnahme B] | [Bisher noch keine Maßnahmen ergriffen] | [Andere]).
 
         14. Stelle KEINE Rückfragen zu Informationen, die bereits im BENUTZER-KONTEXT bekannt sind (z.B. Betriebssystem, Gerät, Rolle). Diese Daten sind bereits verifiziert und muessen nicht erneut erfragt werden. Nutze sie direkt fuer die Auswahl der passenden Lösung.
         
