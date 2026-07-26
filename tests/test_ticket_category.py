@@ -338,17 +338,12 @@ class ClassifyTicketNodeTests(unittest.TestCase):
         mock_classify.assert_not_called()
 
     @patch("backend.graph.nodes.classify_ticket_category")
-    @patch("backend.graph.nodes.ticket_service.create_support_ticket")
+    @patch("backend.graph.nodes.ticket_service.finalize_ticket_metadata")
     def test_finish_ai_created_ticket_reuses_category_without_reclassifying(
-        self,
-        mock_create_ticket,
-        mock_classify,
+            self,
+            mock_finalize,
+            mock_classify,
     ):
-        mock_create_ticket.return_value = {
-            "messages": [],
-            "is_complete": True,
-            "ticket_id": 55,
-        }
 
         with self.assertLogs("Langgraph", level="ERROR") as log_cm:
             result = finish_ai_created_ticket({
@@ -359,13 +354,15 @@ class ClassifyTicketNodeTests(unittest.TestCase):
                 "additional_info": [],
                 "priority": 0,
                 "category": "Incident",
+                "ticket_id": 55,
             })
 
         mock_classify.assert_not_called()
-        mock_create_ticket.assert_called_once()
+        mock_finalize.assert_called_once()
+
         self.assertEqual(result["category"], "Incident")
         self.assertEqual(
-            mock_create_ticket.call_args[0][0]["category"],
+            mock_finalize.call_args[0][0]["category"],
             "Incident",
         )
         self.assertTrue(

@@ -93,6 +93,7 @@ services:
     environment:
       MP_DATABASE: /data/mailpit.db
       MP_MAX_MESSAGES: 5000
+      MP_WEBHOOK_URL: http://backend_app:8000/api/webhook/email
     volumes:
       - mailpit-data:/data
 

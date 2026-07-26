@@ -14,7 +14,7 @@ load_dotenv()
 # The .env file format (server address and access token) is described in example.env.
 server_address = os.getenv("ZAMMAD_INTERNAL_URL")
 admin_access_token = os.getenv("ZAMMAD_API_TOKEN")
-GENERAL_TIMEOUT = 5
+GENERAL_TIMEOUT = 15
 
 # Authentication via token
 headers = {"Authorization": f"Token token={admin_access_token}",
