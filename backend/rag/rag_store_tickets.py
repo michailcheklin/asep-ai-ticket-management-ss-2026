@@ -5,19 +5,13 @@ from typing import Any
 
 import smtplib
 from email.message import EmailMessage
-from ..config import PROBLEM_TICKET_AUTHOR_EMAIL
+from ..config import PROBLEM_TICKET_AUTHOR_EMAIL, MERGE_SIMILARITY_THRESHOLD, MERGE_SEPARATOR, MERGE_MARKER, FAQ_GENERATION_THRESHOLD
 
 import chromadb
 from sentence_transformers import SentenceTransformer
 
 from .retrieve_info import retrieve_relevant_entries
 from ..llm.llm import llm
-
-
-MERGE_SIMILARITY_THRESHOLD = 0.6
-MERGE_SEPARATOR = "\n\n" + ("-" * 80) + "\n"
-MERGE_MARKER = "Dies ist ein weiterer verwandter Ticket-Eintrag"
-FAQ_GENERATION_THRESHOLD = 2
 
 from .pii_anonymizer import anonymize_ticket_fields
 from .rag_logging import anon_logger, rag_logger, merge_logger
