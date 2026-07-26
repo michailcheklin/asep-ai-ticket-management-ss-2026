@@ -3,11 +3,18 @@ import os
 import sys
 from typing import Any
 
+import smtplib
+from email.message import EmailMessage
+from ..config import PROBLEM_TICKET_AUTHOR_EMAIL, MERGE_SIMILARITY_THRESHOLD, MERGE_SEPARATOR, MERGE_MARKER, FAQ_GENERATION_THRESHOLD
+
 import chromadb
 from sentence_transformers import SentenceTransformer
 
+from .retrieve_info import retrieve_relevant_entries
+from ..llm.llm import llm
+
 from .pii_anonymizer import anonymize_ticket_fields
-from .rag_logging import anon_logger, rag_logger
+from .rag_logging import anon_logger, rag_logger, merge_logger
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TICKET_DB_PATH = os.path.join(BASE_DIR, "ticket_db")
@@ -58,11 +65,141 @@ def build_ticket_rag_document(state: dict[str, Any]) -> str:
 
     return "\n".join(parts) or "ticket"
 
+
+def _detect_similar_ticket(
+    collection: Any,
+    embedder: SentenceTransformer,
+    document: str,
+    limit: int = 1,
+    retrieval_func: Any | None = None,
+) -> tuple[str | None, float | None]:
+    if collection is None or embedder is None:
+        return None, None
+
+    try:
+        retrieval_func = retrieval_func or retrieve_relevant_entries
+        results = retrieval_func(document, n_results=limit)
+    except Exception as exc:
+        rag_logger.warning(f"Unable to query ticket collection for duplicate detection: {exc}")
+        return None, None
+
+    ticket_matches = results.get("ticket_matches", [])
+    for match in ticket_matches:
+        similarity = float(match.get("similarity", 0.0))
+        if similarity >= MERGE_SIMILARITY_THRESHOLD:
+            return str(match.get("id", "")), similarity
+
+    return None, None
+
+
+def _count_merge_markers(text: str) -> int:
+    if not text:
+        return 0
+    return text.count(MERGE_MARKER)
+
+
+def _build_faq_entry_from_merged_tickets(messages: str, document: str, llm_client: Any | None = None) -> dict[str, Any]:
+    llm_client = llm_client or llm
+    prompt = (
+        "Du erstellst einen FAQ-Eintrag für einen IT-Support. "
+        "Basierend auf den folgenden zusammengeführten Ticket-Daten, "
+        "erstelle ausschließlich ein JSON mit genau diesen Schlüsseln: "
+        "id: Das Thema des Eintrags,"
+        "context: 2 oder 3 keywords, die beim Matching helfen können,"
+        "problem: Die Problembeschreibung in einem Satz, da darf es keine Gründe Beschrieben werden, nur das Problem"
+        "solution: Die Lösung des Problems, die länger sein darf. (Dieses Feld sieht so aus: 'solution':[{'faq_content':'string')}] mit einer passenden Formatierung, die zu einem FAQ passt" \
+        "Du sollst nur die JSON zurückgeben."
+        f"TICKET-DATEN:\n{messages}\n\n{document}"
+    )
+    response = llm_client.invoke([prompt])
+    content = getattr(response, "content", response)
+    if isinstance(content, str):
+        try:
+            parsed = json.loads(content)
+        except json.JSONDecodeError:
+            parsed = json.loads(content.strip("```json\n").strip("```"))
+        merge_logger.debug(f"LLM-summarised FAQ: {parsed}")
+
+        context_str = ", ".join(parsed.get("context") or [])
+        solution_str = "\n\n".join(
+            s.get("faq_content", "") for s in parsed.get("solution") or [] if isinstance(s, dict)
+        )
+        body = (
+            f"Context: {context_str}\n\n"
+            f"Problem:\n{parsed.get('problem', '')}\n\n"
+            f"Solution:\n{solution_str}"
+        )
+
+        msg = EmailMessage()
+        msg["Subject"] = f"FAQ ADDITION SUGGESTION: {parsed.get('id', '')}"
+        msg["From"] = msg["To"] = PROBLEM_TICKET_AUTHOR_EMAIL
+        msg.set_content(body)
+
+        with smtplib.SMTP(os.environ.get("ZAMMAD_SMTP_HOST", "mailpit"), int(os.environ.get("ZAMMAD_SMTP_PORT", 1025))) as s:
+            s.send_message(msg)
+
+        return parsed
+    return {}
+
+
+def _store_faq_entry(faq_entry: dict[str, Any], faq_collection: Any | None = None, faq_embedder: SentenceTransformer | None = None) -> None:
+    if not faq_entry:
+        return
+    faq_collection = faq_collection or _get_faq_collection()
+    faq_embedder = faq_embedder or _get_faq_embedder()
+
+    faq_text = (
+        f"context: {' '.join(faq_entry.get('context', []))}\n"
+        f"problem: {faq_entry.get('problem', '')}\n"
+        f"solution: {faq_entry.get('solution', {}).get('faq_content', '')}"
+    )
+    embedding_result = faq_embedder.encode(faq_text, normalize_embeddings=True)
+    embedding = embedding_result.tolist() if hasattr(embedding_result, "tolist") else list(embedding_result)
+    faq_collection.add(
+        ids=[faq_entry.get("id", "faq_generated")],
+        embeddings=[embedding],
+        documents=[faq_text],
+        metadatas={"extracted_urls": json.dumps([], ensure_ascii=False)},
+    )
+
+
+def _get_faq_collection() -> Any:
+    client = chromadb.PersistentClient(path=os.path.join(BASE_DIR, "faq_db"))
+    return client.get_or_create_collection("faq_entries", metadata={"hnsw:space": "cosine"})
+
+
+def _get_faq_embedder() -> SentenceTransformer:
+    return SentenceTransformer("intfloat/multilingual-e5-large")
+
+
+def _merge_document_with_existing_ticket(
+    existing_document: str,
+    new_document: str,
+    existing_messages: str,
+    new_messages: str,
+) -> tuple[str, dict[str, Any]]:
+    merged_summary = (
+        f"{existing_document}\n\n{MERGE_SEPARATOR}{MERGE_MARKER}\n{new_document}"
+    )
+    merged_messages = (
+        f"{existing_messages}\n\n{MERGE_SEPARATOR}{MERGE_MARKER}\n{new_messages}"
+    ) if existing_messages and new_messages else (existing_messages or new_messages)
+    metadata = {
+        "messages": merged_messages,
+    }
+    return merged_summary, metadata
+
+
 def store_ticket_state_to_rag(
     state: dict[str, Any],
     collection: Any | None = None,
     embedder: SentenceTransformer | None = None,
     ticket_id: Any | None = None,
+    retrieval_func: Any | None = None,
+    llm_client: Any | None = None,
+    faq_collection: Any | None = None,
+    faq_embedder: SentenceTransformer | None = None,
+    faq_generation_threshold: int = FAQ_GENERATION_THRESHOLD,
 ) -> str:
     """Store a closed ticket's conversation summary and category in the ticket RAG DB."""
     collection = collection or _get_ticket_collection()
@@ -99,6 +236,61 @@ def store_ticket_state_to_rag(
     rag_logger.info(f"Document preview: {document[:400]}")
 
     try:
+        similar_ticket_id, similarity = _detect_similar_ticket(
+            collection,
+            embedder,
+            document,
+            retrieval_func=retrieval_func,
+        )
+        if similar_ticket_id is not None:
+            merge_logger.info(
+                f"Found similar ticket {similar_ticket_id} for {resolved_ticket_id} with similarity {similarity:.4f}; merging into existing entry"
+            )
+            existing_results = collection.get(ids=[similar_ticket_id], include=["documents", "metadatas"])
+            existing_documents = existing_results.get("documents", [])
+            existing_metadatas = existing_results.get("metadatas", [])
+            if existing_documents and isinstance(existing_documents[0], list):
+                existing_document = existing_documents[0][0] if existing_documents[0] else ""
+            elif existing_documents:
+                existing_document = existing_documents[0]
+            else:
+                existing_document = ""
+            if existing_metadatas and isinstance(existing_metadatas[0], list):
+                existing_metadata = existing_metadatas[0][0] if existing_metadatas[0] else {}
+            elif existing_metadatas:
+                existing_metadata = existing_metadatas[0]
+            else:
+                existing_metadata = {}
+            merged_document, merged_metadata = _merge_document_with_existing_ticket(
+                existing_document,
+                document,
+                existing_metadata.get("messages", ""),
+                anon_messages,
+            )
+            collection.delete(ids=[similar_ticket_id])
+            embedding_result = embedder.encode(merged_document, normalize_embeddings=True)
+            embedding = embedding_result.tolist() if hasattr(embedding_result, "tolist") else list(embedding_result)
+            collection.add(
+                ids=[similar_ticket_id],
+                embeddings=[embedding],
+                documents=[merged_document],
+                metadatas=[merged_metadata],
+            )
+            merge_logger.info(f"Merged closed ticket into existing RAG entry: {similar_ticket_id}")
+
+            merge_count = _count_merge_markers(merged_metadata.get("messages", "")) + 1
+            if merge_count >= faq_generation_threshold:
+                merge_logger.info(
+                    f"Merged ticket count reached threshold {faq_generation_threshold}; generating FAQ entry for {similar_ticket_id}"
+                )
+                _build_faq_entry_from_merged_tickets(
+                    merged_metadata.get("messages", ""),
+                    merged_document,
+                    llm_client=llm_client,
+                )
+                
+            return similar_ticket_id
+
         embedding_result = embedder.encode(document, normalize_embeddings=True)
         embedding = embedding_result.tolist() if hasattr(embedding_result, "tolist") else list(embedding_result)
 

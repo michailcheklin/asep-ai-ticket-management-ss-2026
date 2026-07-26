@@ -75,6 +75,19 @@ PROBLEM_TICKET_AUTHOR_EMAIL: str = os.getenv(
     os.getenv("ZAMMAD_SUPPORT_EMAIL", "support@localhost"),
 )
 
+# If a new ticket is this similar to an old one, it gets appended to it
+MERGE_SIMILARITY_THRESHOLD = 0.6
+
+# The text separating old ticket entries (between appended entries)
+# Those are used to statelessly count the number of appends in each ticket.
+MERGE_SEPARATOR = "\n\n" + ("-" * 80) + "\n"
+MERGE_MARKER = "Dies ist ein weiterer verwandter Ticket-Eintrag"
+
+# How many appended tickets it takes to trigger a summary using LLM
+# The original ticket is counted as well
+# e.g. if set to 3, it triggers after appending 2 tickets to an existing one.
+FAQ_GENERATION_THRESHOLD = 2
+
 # Publicly reachable Zammad base URL for clickable ticket links in the body.
 # Falls back to the internal URL if not set separately.
 ZAMMAD_PUBLIC_URL: str = (

@@ -8,13 +8,14 @@ The RAG (Retrieval-Augmented Generation) module retrieves relevant information f
 
 ## Databases and paths
 
-We use two separate ChromaDB collections, each with its own embedding model chosen for its specific retrieval relationship:
+We use three separate ChromaDB collections, each with its own embedding model chosen for its specific retrieval relationship:
 
 | Database | Path | Collection |
-|---|---|---|
+| --- | --- | --- |
 | FAQ | `faq_db` | `faq_entries` |
 | Tickets | `ticket_db` | `tickets` |
 | Recent Incidents | `recent_incidents_db` | `recent_incidents` |
+
 ---
 
 ## Models & Design Choices
@@ -43,6 +44,7 @@ The FAQ retrieval is a two-stage pipeline:
 
 **Why two stages?**
 The bi-encoder alone produces compressed scores (e.g. 0.81–0.83 for all results regardless of relevance) because all FAQ entries share domain vocabulary. The cross-encoder re-ranker produces well-spread, discriminative scores that reliably separate relevant from irrelevant results.
+We then use a Sigmoid function to contain the relevance scores between 0 and 1.
 
 ---
 
@@ -56,7 +58,9 @@ The bi-encoder alone produces compressed scores (e.g. 0.81–0.83 for all result
 ---
 
 ### Recent Incidents — `deutsche-telekom/gbert-large-paraphrase-cosine`
-- Same model as the ticket embedder since this database is a subset of the database of all tickets
+
+- Same model as the ticket embedder since this database is a subset of the database of all tickets.
+- This DB is used to store tickets temporarily with a timestamp in order to reliably escalate similar issues to a problem if they happen within a certain time limit of one another.
 
 ## Thresholds & Tiered FAQ Selection
 
@@ -65,7 +69,7 @@ The bi-encoder alone produces compressed scores (e.g. 0.81–0.83 for all result
 Rather than a single threshold, FAQ results are selected in tiers:
 
 | Tier | Threshold | Max results returned | Behaviour |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | 1 | 0.40 | 4 | Primary: return top 4 above 0.40 |
 | 2 | 0.20 | 2 | Fallback: if tier 1 empty, return top 2 above 0.20 |
 | 3 | 0.15 | 1 | Last resort: if tier 2 empty, return top 1 above 0.15 |
@@ -82,19 +86,22 @@ Only tickets above this threshold are returned.
 ---
 
 ### Recent Incidents
+
 Default similarity threshold is 0.55 against which the similarity check while finding recent incidents matching to the topic of the incoming ticket is filtering. Additionally, it is checked for tickets that are more recent than the recency time threshold (default is 8 hours) and also only similar open tickets are returned.
 
-A problem is only created if a specified amount of similar incident tickets (default is 5) that are
-* Not closed
-* More recent than the recency threshold
-* More similar than the similarity threshold
+A problem is only created if a specified amount of similar incident tickets (default is 5) that are:
+
+- Not closed
+- More recent than the recency threshold
+- More similar than the similarity threshold
 could be found in the recent incidents database.
 
 The thresholds can be altered by supplying the following environment variables in the .env file (also cf. the example.env file) before building the project with Docker:
-```
-INCIDENT_ESCALATION_MIN_COUNT=5
-INCIDENT_RECENCY_WINDOW_HOURS=8
-INCIDENT_SIMILARITY_THRESHOLD=0.55
+
+```python
+INCIDENT_ESCALATION_MIN_COUNT = 5
+INCIDENT_RECENCY_WINDOW_HOURS = 8
+INCIDENT_SIMILARITY_THRESHOLD = 0.55
 ```
 
 ## Function Call
@@ -106,7 +113,7 @@ results = retrieve_relevant_entries(query, n_results=5)
 ```
 
 | Parameter | Type | Description |
-|---|---|---|
+| --- | --- | --- |
 | `query` | `str` | The user's problem description as a plain string |
 | `n_results` | `int` | Max candidates to retrieve from ticket DB (default: 5) |
 
@@ -147,7 +154,7 @@ results = retrieve_relevant_entries(query, n_results=5)
 Each entry in `extracted_urls` is a `(url, status, type, content, notes)` tuple, where `notes` depends on `status`:
 
 | `status` | `notes` |
-|---|---|
+| --- | --- |
 | `"success"` | Fixed hint that `content` can be used as context for the answer. |
 | `"error"` | Fixed hint that the link is likely only reachable via the university network/VPN. |
 | `"none"` | Precomputed one-sentence description of the file type and its purpose (see `backend/crawler/generate_none_url_notes.py`), with a generic type-only fallback if not yet precomputed. |
@@ -209,9 +216,21 @@ To add **one** new FAQ entry into the live collection, use `faq_submission.py` (
 
 Frontend demo page: `frontend/pages/faq.py` (served at `:8501/faq`).
 
+## Automatically adding FAQ entries
+
+As part of the requirements to make the system automatically learn over time, we did the following:
+
+- Each closed ticket by the ZIM staff (not the chatbot) is stored alongside the suggested solution from the staff as a solved `old_ticket`.
+  - If no similar issue is found, this new solved ticket gets stored on its own.
+- If a similar ticket is found, we append the knowledge from the current ticket to the existing one (future retrievals will make use of the knowledge from all entries).
+- When many tickets are appended to the same ticket (triggering a threshold), the system queries the LLM to summarise the issue with all the knowledge gained from the tickets into an FAQ entry.
+- The suggested FAQ entry is sent to the system admin per Email to be added to the FAQ (in order to keep the human in the loop so that the final decision of storing a new FAQ entry as "common ground truth" is still manually checked).
+
 ## Additional Notes
 
 - **Models load once** at module import time (around 30 seconds on my device). Subsequent queries are fast.
 - **All input should be in German**. Both databases are stored with German text and the ticket embedder is a German monolingual model. If the user conversation is not in German, the ticket summary should still be in German. For better results, translate input before calling `retrieve_relevant_entries` if needed.
 - **A CI test file** is available at `tests/test_rag_retrieve.py` to confirm the databases are loaded correctly and retrieval works as expected.
 - **Hardware resources** used by the whole project after this feature is estimated to be around 8 GB of RAM (mostly for loading models that embed and retrieve tickets from the RAG DB as well as models to anonymise tickets).
+- **Expanding the knowledge base** by letting the LLM learn from previously closed tickets by ZIM staff only works when the solutions given are public (private comments are intentionally omitted so that internal discussions do not get leaked by the chatbot).
+Beware that the reply from the staff must be set to public and sent before closing the ticket (closing the ticket in the same "update" step as sending the reply might not store the reply from the staff).
