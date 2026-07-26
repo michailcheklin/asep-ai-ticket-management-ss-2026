@@ -19,6 +19,7 @@ from .nodes import (
     ask_intent,
     give_tutorial,
     finish_tutorial,
+    email_retrieve_solutions
 )
 
 from .routing import (
@@ -122,6 +123,7 @@ workflow.add_node("classify_intent_node", classify_intent)
 workflow.add_node("ask_intent_node", ask_intent)
 workflow.add_node("give_tutorial_node", give_tutorial)
 workflow.add_node("finish_tutorial_node", finish_tutorial)
+workflow.add_node("email_retrieve_solutions_node", email_retrieve_solutions)
 
 # Define the workflow entry point.
 workflow.add_edge(START, "extractor_node")
@@ -141,7 +143,7 @@ workflow.add_conditional_edges(
     source="extractor_node",
     path=route_based_on_state,
     path_map=build_pathmap_from_nodes_list_for_visualisation(
-        ["ask_issue_node", "finish_ai_created_ticket_node", "classify_intent_node"]
+        ["ask_issue_node", "finish_ai_created_ticket_node", "classify_intent_node", "email_retrieve_solutions_node"]
     )
 )
 
@@ -173,6 +175,8 @@ workflow.add_conditional_edges(
         ["finish_ai_created_ticket_node", "__end__"]
     )
 )
+
+workflow.add_edge("email_retrieve_solutions_node", "finish_ai_created_ticket_node")
 
 
 # End the workflow after the information collection nodes.

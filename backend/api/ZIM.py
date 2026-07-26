@@ -6,6 +6,7 @@ import requests
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from langchain_core.messages import AIMessage, HumanMessage
+from . import channel_email
 
 from ..api.zammad import get_ticket_tags, log_ticket_close_event
 from ..graph.models.ChatRequest import ChatRequest
@@ -22,6 +23,8 @@ ticket_service = TicketService()
 
 # Create FastAPI application instance
 app = FastAPI(title="AI Ticket API", version="1.0.0")
+
+app.include_router(channel_email.router)
 
 # Enable CORS so frontend applications can access the API
 app.add_middleware(

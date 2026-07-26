@@ -8,6 +8,8 @@ def route_based_on_state(state: ChatbotState):
     Determine the next workflow node based on the missing
     required information.
     """
+    if state.get("channel") == "email" and state.get("issue_description") and state.get("user_email"):
+        return "email_retrieve_solutions_node"
     if not state.get("user_email"):
         print("[ERROR route_based_on_state] user_email is missing from the state — "
               "a conversation must not start without a login session.")

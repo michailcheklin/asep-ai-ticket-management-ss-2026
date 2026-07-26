@@ -84,7 +84,7 @@ class TicketService:
         update_ticket_title(ticket_id, title)
 
     
-    def _finalize_ticket_metadata(self, state, ticket_id):
+    def finalize_ticket_metadata(self, state, ticket_id):
         """
         Updates category and title on the existing ticket once the
         conversation with the chatbot is finalized.
@@ -145,7 +145,7 @@ class TicketService:
         
         try:
             # Internal article with the chat history formatted for the ZIM team
-            self._finalize_ticket_metadata(state, ticket_id)
+            self.finalize_ticket_metadata(state, ticket_id)
             self.append_message_to_ticket(
                 ticket_id=ticket_id,
                 body=chat_info_body,
@@ -187,7 +187,7 @@ class TicketService:
 
         try:
             if ticket_id:
-                self._finalize_ticket_metadata(state, ticket_id)
+                self.finalize_ticket_metadata(state, ticket_id)
                 self.append_message_to_ticket(
                     ticket_id=ticket_id,
                     body="[ZIM AI-AGENT] Der Nutzer hat das Problem als durch den KI-Chatbot gelöst markiert. Das Ticket wird daher geschlossen.",

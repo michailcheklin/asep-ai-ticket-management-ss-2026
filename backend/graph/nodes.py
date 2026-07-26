@@ -667,12 +667,6 @@ def give_solutions(state: ChatbotState):
     """
     log_node_entry("give_solutions", state)
     msgs = state.get("messages", []) or []
-    # history = all messages except the last one
-    history_parts = [m.content for m in msgs[:-1]] if len(msgs) > 1 else []
-    history_text = " ".join(history_parts).strip()
-
-    # user_message = last message if present
-    user_msg = msgs[-1].content.strip() if msgs else ""
 
     issue = (state.get("issue_description") or "").strip()
     additional = " ".join(state.get("additional_info", [])) if state.get("additional_info") else ""
@@ -703,7 +697,6 @@ def give_solutions(state: ChatbotState):
 
     faq_matches = results.get("faq_matches", [])
     ticket_matches = results.get("ticket_matches", [])
-    inferred = results.get("inferred", {})
 
     # Build up to 2 solutions (FAQ first)
     solutions = []
@@ -820,12 +813,16 @@ def finish_ai_created_ticket(state):
         }
 
     category = _resolve_ticket_category(state)
-    state_with_category = {**state, "category": category}
-    result = ticket_service.create_support_ticket(state_with_category)
     # Append the bot's confirmation reply as an Agent article to the new ticket.
-    ticket_id = result.get("ticket_id")
+    ticket_id = state.get("ticket_id")
+    if ticket_id:
+        state_for_update = {**state, "category": category}
+        try:
+            ticket_service.finalize_ticket_metadata(state_for_update, ticket_id)
+        except Exception as e:
+            langgraph_logger.error(f"Konnte Metadaten für Ticket {ticket_id} nicht setzen: {e}")
     try:
-        bot_message_content = result["messages"][0].content
+        bot_message_content = state["messages"][-1].content
     except Exception:
         langgraph_logger.exception(
             f"Could not read bot message to append to ticket {ticket_id}"
@@ -840,7 +837,6 @@ def finish_ai_created_ticket(state):
 
     return {
         **visit("finish_ai_created_ticket_node"),
-        **result,
         "category": category
         }
 
@@ -859,3 +855,84 @@ def finish_ai_solved_ticket(state):
         **result,
         "category": category
         }
+
+
+@traceable
+def email_retrieve_solutions(state: ChatbotState):
+    """
+    Sucht RAG-Lösungen basierend auf der E-Mail (die als combined_message im State liegt)
+    und generiert eine E-Mail-freundliche Antwort für den Nutzer.
+    """
+    log_node_entry("email_retrieve_solutions", state)
+
+    # Im E-Mail-Channel speichern wir den E-Mail-Text initial in den messages.
+    # Alternativ greifst du hier auf state.get("issue_description") zu,
+    # falls du vorher einen Extraktions-Node laufen lässt.
+    issue = state.get("issue_description", "").strip()
+    if not issue and state.get("messages"):
+        issue = state["messages"][0].content.strip()
+
+    query = issue
+
+    if not issue:
+        return {
+            **visit("email_retrieve_solutions_node"),
+            "messages": [AIMessage(content="Leider konnte aus der E-Mail kein konkretes Problem extrahiert werden.")],
+            "solutions": []
+        }
+
+    try:
+        rag_logger.info(f"[EMAIL] Sending RAG query '{query}'")
+        results = retrieve_relevant_entries(query, n_results=2)
+    except Exception:
+        rag_logger.exception(f"[EMAIL] RAG retrieval failed for incoming email.")
+        return {
+            **visit("email_retrieve_solutions_node"),
+            "messages": [AIMessage(
+                content="Es gab ein internes Problem bei der Suche nach Lösungen in unserer Wissensdatenbank. Ein Support-Mitarbeiter wird sich in Kürze melden.")],
+            "solutions": []
+        }
+
+    faq_matches = results.get("faq_matches", [])
+    ticket_matches = results.get("ticket_matches", [])
+
+    solutions = []
+    for m in faq_matches[:2]:
+        solutions.append({"title": f"FAQ: {m['id']}", "description": _format_faq_match_for_prompt(m)})
+    for ticket_match in ticket_matches:
+        solutions.append(
+            {"title": f"Ähnliches Ticket ({ticket_match.get('category', 'unknown')})",
+             "description": ticket_match.get("text", "")})
+
+    truncated_solutions_for_logs = [truncate_long_strings_in_dicts_for_logging(solution) for solution in solutions]
+    langgraph_logger.info(f"[EMAIL] email_retrieve_solutions node returned: {truncated_solutions_for_logs}")
+
+    # LLM Prompt für die Formulierung der Antwort (angepasst für E-Mail)
+    system_prompt = SystemMessage(content=(
+            AGENT_PROMPT + "\n\n" +
+            f"""
+        Deine Aufgabe ist es, basierend auf dem aktuellen E-Mail-Text eine konkrete, direkt umsetzbare Lösung zu formulieren, die dem Nutzer per E-Mail zugesendet wird.
+
+        AKTUELLES PROBLEM: {issue}
+        LÖSUNGEN (RAG-Kontext): {solutions}
+
+        REGELN:
+        1. Formuliere eine professionelle, hilfsbereite E-Mail-Antwort.
+        2. VERWENDE KEIN HTML. Nutze stattdessen saubere Absätze, Bindestriche für Listen und Großbuchstaben zur Hervorhebung, falls nötig. Die E-Mail muss in reinem Text gut lesbar sein.
+        3. Formuliere die Lösung als konkrete Handlungsanweisung.
+        4. Wenn mehrere Lösungen vorhanden sind, behandle sie in separaten Absätzen mit einer klaren Überschrift (z.B. "--- Lösungsansatz 1 ---").
+        5. Keine Begrüßungsfloskeln am Anfang generieren, diese fügt das Ticket-System automatisch hinzu.
+        6. Beende die Nachricht mit einem Hinweis, dass das Ticket erstellt wurde und der Nutzer einfach auf diese E-Mail antworten kann, falls die Schritte nicht helfen.
+        7. Erfinde keine Schritte, bleibe beim RAG-Kontext.
+        """
+    ))
+
+    # LLM Aufruf (passe dies an deinen spezifischen LLM-Aufruf an)
+    message_text = llm.invoke([system_prompt])
+    final_message = AIMessage(content=message_text.content)
+
+    return {
+        **visit("email_retrieve_solutions_node"),
+        "messages": [final_message],
+        "solutions": solutions
+    }

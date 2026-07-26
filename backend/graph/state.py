@@ -56,3 +56,6 @@ class ChatbotState(TypedDict):
     device: str
     os_name: str
     language: str
+
+    # attribut for the channel the text came from
+    channel: str
