@@ -5,7 +5,7 @@ import os
 import re
 
 import requests
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from langchain_core.messages import AIMessage, HumanMessage
 
@@ -237,6 +237,16 @@ def build_ticket_summary_and_conversation(articles: list[dict]) -> str:
     full_text = "\n\n".join(parts)
     return summary_text or "", full_text, conversation_lines
 
+def _process_ticket_close_for_rag(ticket_id):
+    articles = get_zammad_ticket_articles(ticket_id)
+    ticket_summary, _, agent_messages = build_ticket_summary_and_conversation(articles)
+
+    rag_state = {
+        "summary": ticket_summary,
+        "ticket_id": ticket_id,
+        "messages": agent_messages,
+    }
+    store_ticket_state_to_rag(rag_state, ticket_id=ticket_id)
 
 # Tickets carrying any of these tags will not be used to train/improve the AI chatbot:
 # - "AI-Solved": the bot already resolved this correctly, nothing new to learn.
@@ -245,7 +255,7 @@ def build_ticket_summary_and_conversation(articles: list[dict]) -> str:
 EXCLUDE_FROM_TRAINING_TAGS = {"AI-Solved", "No-AI-Training"}
 
 @app.post("/zammad/ticket-closed")
-async def zammad_ticket_closed(payload: dict):
+async def zammad_ticket_closed(payload: dict, background_tasks: BackgroundTasks):
     """Webhook endpoint for Zammad close notifications."""
     ticket = payload.get("ticket", {}) if isinstance(payload.get("ticket"), dict) else {}
     ticket_id = ticket.get("id") or payload.get("id")
@@ -266,18 +276,10 @@ async def zammad_ticket_closed(payload: dict):
         "state": ticket.get("state", {}).get("name") if isinstance(ticket.get("state"), dict) else payload.get("state"),
     }
 
-    articles = get_zammad_ticket_articles(ticket_id) if ticket_id else []
-    ticket_summary, _, agent_messages = build_ticket_summary_and_conversation(articles)
-
-    rag_state = {
-        "summary": ticket_summary,
-        "ticket_id": ticket_id,
-        "messages": agent_messages,
-    }
     if ticket_id:
         zim_logger.debug(f"Preparing RAG store for closed ticket {ticket_id}")
         zim_logger.info(f"Close webhook received for ticket {ticket_id}")
-        store_ticket_state_to_rag(rag_state, ticket_id=ticket_id)
+        background_tasks.add_task(_process_ticket_close_for_rag, ticket_id)
 
     log_ticket_close_event(ticket_id=ticket_id, source="manual", metadata=metadata)
     return {
