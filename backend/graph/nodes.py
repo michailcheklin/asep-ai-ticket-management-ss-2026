@@ -770,6 +770,7 @@ def give_solutions(state: ChatbotState):
         - Ist der Link selbst der auszuführende Schritt (Formular, Login, Download, Zahlung), bleibt er Pflichtklick – erkläre vorher, was dort zu tun ist.
         7. Halluziniere dir keine Lösungen herbei, sondern gebe nah am Kontext die Lösung wieder!
         8. Enthält eine Lösung irreversible oder folgenreiche Schritte (z. B. Konto löschen, Daten zurücksetzen, Zahlung auslösen), weise im Text kurz und klar darauf hin, bevor du den Schritt nennst.
+        9. Wenn du eine allgemeine Lösung gibst, MUSS als solches gekennzeichnet werden. Wenn du keine Lösung findest, die direkt anwendbar ist, MUSST du sagen, dass du in der Datenbank keine Lösung gefunden hast, die direkt anwendbar ist und eine allgemeine Lösung anbieten.
         """
     ))
     message_text = llm.invoke([system_prompt])
