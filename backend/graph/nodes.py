@@ -823,7 +823,7 @@ def finish_ai_created_ticket(state):
         except Exception as e:
             langgraph_logger.error(f"Konnte Metadaten für Ticket {ticket_id} nicht setzen: {e}")
     try:
-        bot_message_content = state["messages"][-1].content
+        bot_message_content = [msg for msg in state["messages"] if isinstance(msg, AIMessage)][-1]
     except Exception:
         langgraph_logger.exception(
             f"Could not read bot message to append to ticket {ticket_id}"
