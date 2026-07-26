@@ -3,6 +3,10 @@
 # Do not commit test artifacts
 tests/*.json
 
+# Backend email-transmission SQLite (local/dev data)
+backend/data/
+**/email_ticket_transmissions.sqlite3
+
 # Files that keep regenerating and changing locally
 # when you re-run any tests that touch the RAG system
 **/*.sqlite3

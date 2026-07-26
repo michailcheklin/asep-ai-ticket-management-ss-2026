@@ -5,6 +5,8 @@ This folder contains integration code responsible for creating and updating tick
 Files
 - `TicketService.py` — high-level ticket creation and update logic. The service composes ticket payloads from the graph's `State` and calls the low-level Zammad helpers.
 - `ProblemService.py` - Handles the collection of incidents by supplying functions for the creation of system generated problem tickets and to manage recently open incidents when creating a Problem.
+- `EmailTransmissionService.py` — first public support article → external email (see `EMAIL_TICKET_TRANSMISSION.md`).
+- `email_smtp.py` — SMTP send helper used by email ticket transmission.
 
 Responsibilities
 - Create new tickets (open or closed)

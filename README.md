@@ -48,6 +48,15 @@ After copying the token, go to .env and paste it inside the `ZAMMAD_API_TOKEN` f
 
 GREAT! You are all set up and free to use Zammad.
 
+## Email ticket transmission (optional)
+
+When enabled, the backend sends **one** email to a configured external recipient
+the first time a **public support-staff article** is added to a Zammad ticket.
+Setup, trigger rules, and duplicate protection are documented in
+[`backend/services/EMAIL_TICKET_TRANSMISSION.md`](backend/services/EMAIL_TICKET_TRANSMISSION.md).
+Configure via `EMAIL_TICKET_TRANSMISSION_*` in `example.env` (placeholders only —
+set the real recipient in deployment config).
+
 
 ## Troubleshooting
 

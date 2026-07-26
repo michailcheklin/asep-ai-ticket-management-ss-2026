@@ -5,12 +5,16 @@ This folder contains the FastAPI endpoints that receive frontend requests, valid
 Files
 - `Zammad.py` — low-level Zammad helpers and wrappers used by service layer. Contains methods to call the Zammad REST API (create ticket, add tag, update status, etc.).
 - `ZIM.py` — FastAPI endpoint definitions. Routes are responsible for building the request state, calling into the graph workflow, and returning the response to the frontend.
+- `article_transmission_webhook.py` — authenticated `POST /webhook/article-created` for email ticket transmission.
 
 Main endpoints
 - `POST /chat` — main conversation endpoint. Accepts a JSON payload with the user message, optional history and user metadata. Returns the updated chatbot state, any found solutions, and whether additional data is required.
 - `POST /solution-feedback` — receives user feedback about a proposed solution. Depending on the feedback it may create or close a ticket in Zammad and return a confirmation message.
 - `POST /faq` — submit a single new FAQ entry (validated by the `FaqSubmission` model, handled by `rag/faq_submission.py`). Two-phase: a first call returns either `{"status":"redundant", ...}` (a very similar entry already exists) or `{"status":"preview","entry":...}` (language-polished + generated title, **not yet stored**); a second call with `confirmed=true` stores the approved entry and returns `{"status":"created","id":...}`. `force=true` skips the redundancy check ("create anyway").
 - `GET /faq/contexts` — returns the distinct existing FAQ categories (`{"contexts": [...]}`) that populate the submission form's category dropdown.
+- `POST /zammad/ticket-closed` — Zammad close webhook; stores eligible tickets in the RAG knowledge base.
+- `POST /webhook/ticket-closed` — removes a closed incident from the recent-incidents store.
+- `POST /webhook/article-created` — authenticated webhook for email ticket transmission (first public support article). Requires `EMAIL_TICKET_TRANSMISSION_WEBHOOK_SECRET`. See `../services/EMAIL_TICKET_TRANSMISSION.md`.
 - `POST /transcribe` — speech-to-text for the frontend's audio recorder. Accepts base64-encoded audio (`TranscribeRequest`: `audio_base64`, optional `language`), decodes it and runs it through `llm/stt.py`'s faster-whisper model, returns `{"text": ...}`. Invalid base64 is rejected with `400`.
 
 Responsibilities of the API layer

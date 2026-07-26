@@ -9,6 +9,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from langchain_core.messages import AIMessage, HumanMessage
 
+from ..api.article_transmission_webhook import router as article_transmission_router
 from ..api.zammad import get_ticket_tags, log_ticket_close_event
 from ..graph.models.ChatRequest import ChatRequest
 from ..graph.models.TranscribeRequest import TranscribeRequest
@@ -28,6 +29,7 @@ ticket_service = TicketService()
 
 # Create FastAPI application instance
 app = FastAPI(title="AI Ticket API", version="1.0.0")
+app.include_router(article_transmission_router)
 
 # Enable CORS so frontend applications can access the API
 app.add_middleware(
