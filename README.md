@@ -312,3 +312,11 @@ The fallback flow for the "no solution found" scenario is not triggered correctl
 
 
 **Note:** The examples in this documentation use the project prefix `ai-ticket-management-sprint2`; if the repository is cloned into a directory with a different name, this prefix must be replaced accordingly in all Docker commands.
+
+# Authors:
+* Michail Cheklin
+* Faruk Emre-Ertas
+* Ikram Hulich
+* Firas Khamis
+* Peter Krauza
+* Yvan Steve Tague Sokoudjou
